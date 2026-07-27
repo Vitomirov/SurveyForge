@@ -1,0 +1,131 @@
+// ─── Keys ──────────────────────────────────────────────────────────────────
+const responsesKey   = (surveyId) => `sf_responses_${surveyId}`
+const exportHistKey  = (surveyId) => `sf_exports_${surveyId}`
+
+// ─── Response CRUD ─────────────────────────────────────────────────────────
+
+/** Load all stored responses for a survey, sorted newest-first. */
+export function loadResponses(surveyId) {
+  try {
+    const raw = localStorage.getItem(responsesKey(surveyId))
+    const arr = raw ? JSON.parse(raw) : []
+    return arr.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+  } catch {
+    return []
+  }
+}
+
+/**
+ * Save a single response. If a response with the same ID already exists
+ * it is replaced (useful for updating a partial → complete status).
+ * Returns the saved entry.
+ *
+ * Shape:
+ * {
+ *   id: string,
+ *   surveyId: string,
+ *   timestamp: ISO string,
+ *   status: 'complete' | 'terminated' | 'partial',
+ *   pageReached: number,
+ *   responses: {},
+ *   companions: {},
+ *   terminatedBy: null | { blockTitle, cause }
+ * }
+ */
+export function saveResponse(surveyId, entry) {
+  try {
+    const all     = loadResponses(surveyId)
+    const without = all.filter(r => r.id !== entry.id)
+    const updated = [{ ...entry, surveyId }, ...without]
+    localStorage.setItem(responsesKey(surveyId), JSON.stringify(updated))
+    return entry
+  } catch {
+    return entry
+  }
+}
+
+/** Delete a single response by ID. */
+export function deleteResponse(surveyId, responseId) {
+  try {
+    const all = loadResponses(surveyId).filter(r => r.id !== responseId)
+    localStorage.setItem(responsesKey(surveyId), JSON.stringify(all))
+  } catch { /* noop */ }
+}
+
+/** Delete all responses for a survey. */
+export function clearResponses(surveyId) {
+  try { localStorage.removeItem(responsesKey(surveyId)) } catch { /* noop */ }
+}
+
+// ─── Export history ────────────────────────────────────────────────────────
+
+/** Load export history for a survey, newest-first. */
+export function loadExportHistory(surveyId) {
+  try {
+    const raw = localStorage.getItem(exportHistKey(surveyId))
+    return raw ? JSON.parse(raw) : []
+  } catch {
+    return []
+  }
+}
+
+/**
+ * Record a completed export.
+ * @param {string} surveyId
+ * @param {object} entry { id, timestamp, rowCount, filters: { statuses, dateFrom, dateTo, sinceLastExport } }
+ */
+export function recordExport(surveyId, entry) {
+  try {
+    const history = loadExportHistory(surveyId)
+    const updated = [entry, ...history].slice(0, 50)  // keep last 50
+    localStorage.setItem(exportHistKey(surveyId), JSON.stringify(updated))
+  } catch { /* noop */ }
+}
+
+/** Return the timestamp of the most recent export, or null. */
+export function lastExportTimestamp(surveyId) {
+  const history = loadExportHistory(surveyId)
+  return history.length > 0 ? history[0].timestamp : null
+}
+
+// ─── Filter helpers ────────────────────────────────────────────────────────
+
+/**
+ * Apply filters to a response array.
+ * @param {Array}  responses   - full response array from loadResponses()
+ * @param {object} filters
+ *   statuses:        string[]       - e.g. ['complete','terminated','partial']
+ *   dateFrom:        string|null    - ISO date string (start of day)
+ *   dateTo:          string|null    - ISO date string (end of day)
+ *   sinceLastExport: string|null    - ISO timestamp; only rows AFTER this
+ */
+export function applyFilters(responses, filters = {}) {
+  let result = [...responses]
+
+  if (filters.statuses?.length) {
+    result = result.filter(r => filters.statuses.includes(r.status))
+  }
+
+  if (filters.dateFrom) {
+    const from = new Date(filters.dateFrom)
+    from.setHours(0, 0, 0, 0)
+    result = result.filter(r => new Date(r.timestamp) >= from)
+  }
+
+  if (filters.dateTo) {
+    const to = new Date(filters.dateTo)
+    to.setHours(23, 59, 59, 999)
+    result = result.filter(r => new Date(r.timestamp) <= to)
+  }
+
+  if (filters.sinceLastExport) {
+    const cutoff = new Date(filters.sinceLastExport)
+    result = result.filter(r => new Date(r.timestamp) > cutoff)
+  }
+
+  return result
+}
+
+// ─── Unique ID ─────────────────────────────────────────────────────────────
+export const newResponseId = () =>
+  `r_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`
