@@ -1,54 +1,8 @@
 import { useRef } from 'react'
-import { Plus, Trash2 } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import { SectionLabel } from '@/components/ui'
+import { EditableListRow } from '@/components/shared'
 import { makeTextboxRow } from '@/store/surveyStore'
-
-function RowItem({ row, index, rows, onUpdate, onDelete, onAddAfter, onBulkReplace, canDelete, inputRefs }) {
-  const handleKeyDown = (e) => {
-    if (e.key === 'Enter') { e.preventDefault(); onAddAfter(row.id) }
-    if (e.key === 'Backspace' && !row.label && canDelete) {
-      e.preventDefault(); onDelete(row.id)
-      const idx = rows.findIndex(r => r.id === row.id)
-      if (idx > 0) setTimeout(() => inputRefs.current[rows[idx - 1].id]?.focus(), 30)
-    }
-  }
-  const handlePaste = (e) => {
-    const lines = e.clipboardData.getData('text').split('\n').map(l => l.trim()).filter(Boolean)
-    if (lines.length <= 1) return
-    e.preventDefault()
-    onUpdate(row.id, lines[0])
-    const newRows = lines.slice(1).map(t => makeTextboxRow(t))
-    const idx = rows.findIndex(r => r.id === row.id)
-    onBulkReplace([...rows.slice(0, idx + 1), ...newRows, ...rows.slice(idx + 1)])
-    setTimeout(() => inputRefs.current[newRows[newRows.length - 1].id]?.focus(), 30)
-  }
-
-  return (
-    <div className="flex items-center gap-2 group">
-      <span className="text-xs text-ink-400 w-5 text-right shrink-0">{index + 1}.</span>
-      <input
-        ref={el => { inputRefs.current[row.id] = el }}
-        type="text"
-        value={row.label}
-        onChange={e => onUpdate(row.id, e.target.value)}
-        onKeyDown={handleKeyDown}
-        onPaste={handlePaste}
-        placeholder={`Row label ${index + 1}`}
-        className="input-base py-1.5 text-sm flex-1"
-      />
-      {/* Preview of how it looks */}
-      <div className="w-28 h-8 border border-ink-200 rounded-lg bg-white flex items-center px-2 shrink-0">
-        <span className="text-xs text-ink-300 italic">answer…</span>
-      </div>
-      {canDelete && (
-        <button onClick={() => onDelete(row.id)}
-          className="p-1.5 text-ink-300 hover:text-rose-500 rounded-lg opacity-0 group-hover:opacity-100 transition-all">
-          <Trash2 size={13} />
-        </button>
-      )}
-    </div>
-  )
-}
 
 export function TextboxListEditor({ question, dispatch }) {
   const cfg = question.textboxListConfig
@@ -87,10 +41,26 @@ export function TextboxListEditor({ question, dispatch }) {
         <p className="text-xs text-ink-400 mb-2"><strong>Enter</strong> to add next · <strong>Paste lines</strong> to bulk-add</p>
         <div className="space-y-1.5">
           {cfg.rows.map((row, i) => (
-            <RowItem key={row.id} row={row} index={i} rows={cfg.rows}
-              onUpdate={updateRow} onDelete={deleteRow}
-              onAddAfter={addRowAfter} onBulkReplace={bulkReplace}
-              canDelete={cfg.rows.length > 1} inputRefs={inputRefs} />
+            <EditableListRow
+              key={row.id}
+              item={row}
+              index={i}
+              items={cfg.rows}
+              valueField="label"
+              onUpdate={updateRow}
+              onDelete={deleteRow}
+              onAddAfter={addRowAfter}
+              onBulkReplace={bulkReplace}
+              makeItem={makeTextboxRow}
+              canDelete={cfg.rows.length > 1}
+              inputRefs={inputRefs}
+              placeholder={`Row label ${i + 1}`}
+              trailing={
+                <div className="w-28 h-8 border border-ink-200 rounded-lg bg-white flex items-center px-2 shrink-0">
+                  <span className="text-xs text-ink-300 italic">answer…</span>
+                </div>
+              }
+            />
           ))}
         </div>
         <button onClick={addRow}

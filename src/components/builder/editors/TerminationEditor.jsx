@@ -2,16 +2,7 @@ import { useState } from 'react'
 import { Plus, Trash2, UserX, AlertTriangle, ChevronDown } from 'lucide-react'
 import { SectionLabel, Divider } from '@/components/ui'
 import { isChoiceType } from '@/utils/questionHelpers'
-
-// ─── Operator labels ───────────────────────────────────────────────────────
-const TEXT_OPERATORS = [
-  { value: 'contains',     label: 'contains',          hint: 'Answer includes this text' },
-  { value: 'not_contains', label: 'does not contain',  hint: 'Answer excludes this text' },
-  { value: 'equals',       label: 'equals',            hint: 'Exact match (case-insensitive)' },
-  { value: 'not_equals',   label: 'does not equal',    hint: 'Any answer except this' },
-  { value: 'greater_than', label: 'greater than',      hint: 'Numeric: answer > value' },
-  { value: 'less_than',    label: 'less than',         hint: 'Numeric: answer < value' },
-]
+import { TEXT_OPERATORS } from '@/utils/conditionConstants'
 
 function OperatorSelect({ value, onChange }) {
   return (

@@ -1,52 +1,8 @@
 import { useRef } from 'react'
-import { Plus, Trash2, GripVertical } from 'lucide-react'
-import { SectionLabel, Divider, Toggle } from '@/components/ui'
+import { Plus, GripVertical } from 'lucide-react'
+import { SectionLabel, Divider } from '@/components/ui'
+import { EditableListRow } from '@/components/shared'
 import { makeRankingItem } from '@/store/surveyStore'
-
-function ItemRow({ item, index, items, onUpdate, onDelete, canDelete, inputRefs, onAddAfter, onBulkReplace }) {
-  const handleKeyDown = (e) => {
-    if (e.key === 'Enter') { e.preventDefault(); onAddAfter(item.id) }
-    if (e.key === 'Backspace' && !item.text && canDelete) {
-      e.preventDefault(); onDelete(item.id)
-      const idx = items.findIndex(i => i.id === item.id)
-      if (idx > 0) setTimeout(() => inputRefs.current[items[idx - 1].id]?.focus(), 30)
-    }
-  }
-  const handlePaste = (e) => {
-    const lines = e.clipboardData.getData('text').split('\n').map(l => l.trim()).filter(Boolean)
-    if (lines.length <= 1) return
-    e.preventDefault()
-    onUpdate(item.id, lines[0])
-    const newItems = lines.slice(1).map(t => makeRankingItem(t))
-    const idx = items.findIndex(i => i.id === item.id)
-    onBulkReplace([...items.slice(0, idx + 1), ...newItems, ...items.slice(idx + 1)])
-    setTimeout(() => inputRefs.current[newItems[newItems.length - 1].id]?.focus(), 30)
-  }
-  return (
-    <div className="flex items-center gap-2 group">
-      <div className="text-ink-200 group-hover:text-ink-400 cursor-grab p-0.5">
-        <GripVertical size={14} />
-      </div>
-      <span className="text-xs text-ink-400 font-mono w-5 text-right shrink-0">{index + 1}.</span>
-      <input
-        ref={el => { inputRefs.current[item.id] = el }}
-        type="text"
-        value={item.text}
-        onChange={e => onUpdate(item.id, e.target.value)}
-        onKeyDown={handleKeyDown}
-        onPaste={handlePaste}
-        placeholder={`Item ${index + 1}`}
-        className="input-base py-1.5 text-sm flex-1"
-      />
-      {canDelete && (
-        <button onClick={() => onDelete(item.id)}
-          className="p-1.5 text-ink-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg opacity-0 group-hover:opacity-100 transition-all">
-          <Trash2 size={13} />
-        </button>
-      )}
-    </div>
-  )
-}
 
 export function RankingEditor({ question, dispatch }) {
   const cfg = question.rankingConfig
@@ -89,10 +45,20 @@ export function RankingEditor({ question, dispatch }) {
         <p className="text-xs text-ink-400 mb-2"><strong>Enter</strong> to add · <strong>Paste lines</strong> to bulk-add</p>
         <div className="space-y-1.5">
           {cfg.items.map((item, i) => (
-            <ItemRow key={item.id} item={item} index={i} items={cfg.items}
-              onUpdate={updateItem} onDelete={deleteItem}
-              onAddAfter={addItemAfter} onBulkReplace={bulkReplace}
-              canDelete={cfg.items.length > 2} inputRefs={inputRefs} />
+            <EditableListRow
+              key={item.id}
+              item={item}
+              index={i}
+              items={cfg.items}
+              onUpdate={updateItem}
+              onDelete={deleteItem}
+              onAddAfter={addItemAfter}
+              onBulkReplace={bulkReplace}
+              makeItem={makeRankingItem}
+              canDelete={cfg.items.length > 2}
+              inputRefs={inputRefs}
+              showGrip
+            />
           ))}
         </div>
         <button onClick={addItem}

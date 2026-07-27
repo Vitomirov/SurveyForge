@@ -1,62 +1,9 @@
 import { useRef } from 'react'
-import { Plus, Trash2 } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import { SectionLabel, Divider, Toggle } from '@/components/ui'
+import { EditableListRow } from '@/components/shared'
 import { makeConstantSumItem } from '@/store/surveyStore'
 
-// ─── Item row — label input with Enter / Backspace / paste ────────────────
-function ItemRow({ item, index, items, onUpdate, onDelete, onAddAfter, onBulkReplace, canDelete, inputRefs }) {
-  const handleKeyDown = (e) => {
-    if (e.key === 'Enter') {
-      e.preventDefault()
-      onAddAfter(item.id)
-    }
-    if (e.key === 'Backspace' && !item.label && canDelete) {
-      e.preventDefault()
-      onDelete(item.id)
-      const idx = items.findIndex(i => i.id === item.id)
-      if (idx > 0) setTimeout(() => inputRefs.current[items[idx - 1].id]?.focus(), 30)
-    }
-  }
-
-  const handlePaste = (e) => {
-    const raw   = e.clipboardData.getData('text')
-    const lines = raw.split('\n').map(l => l.trim()).filter(Boolean)
-    if (lines.length <= 1) return
-    e.preventDefault()
-    onUpdate(item.id, lines[0])
-    const newItems  = lines.slice(1).map(t => makeConstantSumItem(t))
-    const idx       = items.findIndex(i => i.id === item.id)
-    const merged    = [...items.slice(0, idx + 1), ...newItems, ...items.slice(idx + 1)]
-    onBulkReplace(merged)
-    setTimeout(() => inputRefs.current[newItems[newItems.length - 1].id]?.focus(), 30)
-  }
-
-  return (
-    <div className="flex items-center gap-2 group">
-      <span className="text-xs text-ink-400 w-5 text-right shrink-0">{index + 1}.</span>
-      <input
-        ref={el => { inputRefs.current[item.id] = el }}
-        type="text"
-        value={item.label}
-        onChange={e => onUpdate(item.id, e.target.value)}
-        onKeyDown={handleKeyDown}
-        onPaste={handlePaste}
-        placeholder={`Item ${index + 1}`}
-        className="input-base py-1.5 text-sm flex-1"
-      />
-      {canDelete && (
-        <button
-          onClick={() => onDelete(item.id)}
-          className="p-1.5 text-ink-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg opacity-0 group-hover:opacity-100 transition-all"
-        >
-          <Trash2 size={13} />
-        </button>
-      )}
-    </div>
-  )
-}
-
-// ─── Main ConstantSumEditor ────────────────────────────────────────────────
 export function ConstantSumEditor({ question, dispatch }) {
   const cfg      = question.constantSumConfig
   const inputRefs = useRef({})
@@ -136,17 +83,20 @@ export function ConstantSumEditor({ question, dispatch }) {
         </p>
         <div className="space-y-1.5">
           {cfg.items.map((item, i) => (
-            <ItemRow
+            <EditableListRow
               key={item.id}
               item={item}
               index={i}
               items={cfg.items}
+              valueField="label"
               onUpdate={updateItem}
               onDelete={deleteItem}
               onAddAfter={addItemAfter}
               onBulkReplace={bulkReplace}
+              makeItem={makeConstantSumItem}
               canDelete={cfg.items.length > 1}
               inputRefs={inputRefs}
+              placeholder={`Item ${i + 1}`}
             />
           ))}
         </div>

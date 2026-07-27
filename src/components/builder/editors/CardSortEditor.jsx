@@ -1,55 +1,13 @@
 import { useRef } from 'react'
 import { Plus, Trash2 } from 'lucide-react'
 import { SectionLabel, Divider, Toggle } from '@/components/ui'
+import { EditableListRow } from '@/components/shared'
 import { makeCardSortCard, makeCardSortCategory } from '@/store/surveyStore'
 
 const PRESET_COLORS = [
   '#6366f1','#3b82f6','#10b981','#f59e0b',
   '#ef4444','#8b5cf6','#06b6d4','#ec4899','#84cc16','#f97316',
 ]
-
-// ─── Card list row ─────────────────────────────────────────────────────────
-function CardRow({ card, index, cards, onUpdate, onDelete, canDelete, inputRefs, onAddAfter, onBulkReplace }) {
-  const handleKeyDown = (e) => {
-    if (e.key === 'Enter') { e.preventDefault(); onAddAfter(card.id) }
-    if (e.key === 'Backspace' && !card.text && canDelete) {
-      e.preventDefault(); onDelete(card.id)
-      const idx = cards.findIndex(c => c.id === card.id)
-      if (idx > 0) setTimeout(() => inputRefs.current[cards[idx - 1].id]?.focus(), 30)
-    }
-  }
-
-  const handlePaste = (e) => {
-    const text = e.clipboardData.getData('text')
-    const lines = text.split('\n').map(l => l.trim()).filter(Boolean)
-    if (lines.length <= 1) return
-    e.preventDefault()
-    onUpdate(card.id, 'text', lines[0])
-    const newCards = lines.slice(1).map(t => makeCardSortCard(t))
-    const idx = cards.findIndex(c => c.id === card.id)
-    onBulkReplace([...cards.slice(0, idx + 1), ...newCards, ...cards.slice(idx + 1)])
-    setTimeout(() => inputRefs.current[newCards[newCards.length - 1].id]?.focus(), 30)
-  }
-
-  return (
-    <div className="flex items-center gap-2 group">
-      <span className="text-xs text-ink-400 w-5 text-right shrink-0">{index + 1}</span>
-      <input
-        ref={el => { inputRefs.current[card.id] = el }}
-        type="text" value={card.text}
-        onChange={e => onUpdate(card.id, 'text', e.target.value)}
-        onKeyDown={handleKeyDown} onPaste={handlePaste}
-        placeholder={`Card ${index + 1}`} className="input-base py-1.5 text-sm flex-1"
-      />
-      {canDelete && (
-        <button onClick={() => onDelete(card.id)}
-          className="p-1.5 text-ink-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg opacity-0 group-hover:opacity-100 transition-all">
-          <Trash2 size={13} />
-        </button>
-      )}
-    </div>
-  )
-}
 
 // ─── Category row ──────────────────────────────────────────────────────────
 function CategoryRow({ cat, onUpdate, onDelete, canDelete }) {
@@ -84,8 +42,8 @@ export function CardSortEditor({ question, dispatch }) {
     dispatch({ type: 'UPDATE_ITEM', id: question.id, patch: { cardSortConfig: { ...cfg, ...patch } } })
 
   // ── Cards
-  const updateCard = (id, field, val) =>
-    updateCfg({ cards: cfg.cards.map(c => c.id === id ? { ...c, [field]: val } : c) })
+  const updateCard = (id, text) =>
+    updateCfg({ cards: cfg.cards.map(c => c.id === id ? { ...c, text } : c) })
 
   const deleteCard = (id) =>
     updateCfg({ cards: cfg.cards.filter(c => c.id !== id) })
@@ -151,10 +109,21 @@ export function CardSortEditor({ question, dispatch }) {
         <p className="text-xs text-ink-400 mb-2"><strong>Enter</strong> to add next · <strong>Paste lines</strong> to bulk-add</p>
         <div className="space-y-1.5">
           {cfg.cards.map((card, i) => (
-            <CardRow key={card.id} card={card} index={i} cards={cfg.cards}
-              onUpdate={updateCard} onDelete={deleteCard}
-              onAddAfter={addCardAfter} onBulkReplace={bulkReplaceCards}
-              canDelete={cfg.cards.length > 1} inputRefs={inputRefs} />
+            <EditableListRow
+              key={card.id}
+              item={card}
+              index={i}
+              items={cfg.cards}
+              onUpdate={updateCard}
+              onDelete={deleteCard}
+              onAddAfter={addCardAfter}
+              onBulkReplace={bulkReplaceCards}
+              makeItem={makeCardSortCard}
+              canDelete={cfg.cards.length > 1}
+              inputRefs={inputRefs}
+              indexSuffix=""
+              placeholder={`Card ${i + 1}`}
+            />
           ))}
         </div>
         <button onClick={addCard}

@@ -1,66 +1,8 @@
 import { useRef } from 'react'
-import { Plus, Trash2, GripVertical } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import { SectionLabel, Divider, Toggle } from '@/components/ui'
+import { EditableListRow } from '@/components/shared'
 import { makeMaxDiffItem } from '@/store/surveyStore'
-
-// ─── Item row with paste + enter support ──────────────────────────────────
-function ItemRow({ item, index, items, onUpdate, onDelete, onAddAfter, canDelete, inputRefs }) {
-  const handleKeyDown = (e) => {
-    if (e.key === 'Enter') {
-      e.preventDefault()
-      onAddAfter(item.id)
-    }
-    if (e.key === 'Backspace' && !item.text && canDelete) {
-      e.preventDefault()
-      onDelete(item.id)
-      // Focus previous
-      const idx = items.findIndex(i => i.id === item.id)
-      if (idx > 0) setTimeout(() => inputRefs.current[items[idx - 1].id]?.focus(), 30)
-    }
-  }
-
-  const handlePaste = (e) => {
-    const text = e.clipboardData.getData('text')
-    const lines = text.split('\n').map(l => l.trim()).filter(Boolean)
-    if (lines.length <= 1) return
-    e.preventDefault()
-    onUpdate(item.id, lines[0])
-    // Create one item per extra line
-    const newItems = lines.slice(1).map(t => makeMaxDiffItem(t))
-    const idx = items.findIndex(i => i.id === item.id)
-    const updated = [...items.slice(0, idx + 1), ...newItems, ...items.slice(idx + 1)]
-    // bubble up full replacement
-    onBulkReplace(updated)
-    setTimeout(() => inputRefs.current[newItems[newItems.length - 1].id]?.focus(), 30)
-  }
-
-  // onBulkReplace is injected via closure
-  const onBulkReplace = ItemRow._bulkReplace || (() => {})
-
-  return (
-    <div className="flex items-center gap-2 group">
-      <div className="text-ink-200 group-hover:text-ink-400 cursor-grab p-0.5">
-        <GripVertical size={14} />
-      </div>
-      <span className="text-xs text-ink-400 w-5 text-right shrink-0">{index + 1}</span>
-      <input
-        ref={el => { if (inputRefs) inputRefs.current[item.id] = el }}
-        type="text"
-        value={item.text}
-        onChange={e => onUpdate(item.id, e.target.value)}
-        onKeyDown={handleKeyDown}
-        onPaste={handlePaste}
-        placeholder={`Item ${index + 1}`}
-        className="input-base py-1.5 text-sm flex-1"
-      />
-      {canDelete && (
-        <button onClick={() => onDelete(item.id)} className="p-1.5 text-ink-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg opacity-0 group-hover:opacity-100 transition-all">
-          <Trash2 size={13} />
-        </button>
-      )}
-    </div>
-  )
-}
 
 // ─── Recommended trials calculation ───────────────────────────────────────
 function recommendedTrials(n, k) {
@@ -82,11 +24,12 @@ export function MaxDiffEditor({ question, dispatch }) {
   const deleteItem = (itemId) =>
     updateCfg({ items: cfg.items.filter(i => i.id !== itemId) })
 
+  const bulkReplace = (items) => updateCfg({ items })
+
   const addItemAfter = (afterId) => {
     const idx  = cfg.items.findIndex(i => i.id === afterId)
     const next = makeMaxDiffItem()
-    const updated = [...cfg.items.slice(0, idx + 1), next, ...cfg.items.slice(idx + 1)]
-    updateCfg({ items: updated })
+    updateCfg({ items: [...cfg.items.slice(0, idx + 1), next, ...cfg.items.slice(idx + 1)] })
     setTimeout(() => inputRefs.current[next.id]?.focus(), 30)
   }
 
@@ -95,11 +38,6 @@ export function MaxDiffEditor({ question, dispatch }) {
     updateCfg({ items: [...cfg.items, next] })
     setTimeout(() => inputRefs.current[next.id]?.focus(), 30)
   }
-
-  const bulkReplace = (items) => updateCfg({ items })
-
-  // Inject bulk replace into ItemRow closure
-  ItemRow._bulkReplace = bulkReplace
 
   const n = cfg.items.length
   const k = Math.min(cfg.itemsPerTrial, n)
@@ -137,7 +75,7 @@ export function MaxDiffEditor({ question, dispatch }) {
         <p className="text-xs text-ink-400 mb-2"><strong>Enter</strong> to add next · <strong>Paste lines</strong> to bulk-add</p>
         <div className="space-y-1.5">
           {cfg.items.map((item, i) => (
-            <ItemRow
+            <EditableListRow
               key={item.id}
               item={item}
               index={i}
@@ -145,8 +83,12 @@ export function MaxDiffEditor({ question, dispatch }) {
               onUpdate={updateItem}
               onDelete={deleteItem}
               onAddAfter={addItemAfter}
+              onBulkReplace={bulkReplace}
+              makeItem={makeMaxDiffItem}
               canDelete={cfg.items.length > 2}
               inputRefs={inputRefs}
+              showGrip
+              indexSuffix=""
             />
           ))}
         </div>
