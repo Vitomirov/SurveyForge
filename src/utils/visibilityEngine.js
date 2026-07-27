@@ -1,52 +1,9 @@
 // ─── Visibility Evaluator ───────────────────────────────────────────────────
-// Shared by the builder (for live "would be hidden" indicators) and the
-// preview/test-runner (for actual show/hide behavior). Mirrors the exact
-// condition-matching logic used by termination blocks, so survey creators
-// only need to learn one mental model for "combine answers with AND/OR".
+// Uses conditionEngine for all condition matching — same logic as termination
+// blocks, so survey creators only need one mental model for AND/OR rules.
 
-function evalVisibilityCondition(cond, responses, allItems) {
-  const q      = allItems.find(i => i.id === cond.questionId)
-  const answer = responses[cond.questionId]
-  if (!q || answer === undefined || answer === null || answer === '') return false
-
-  const isChoice = ['single_select', 'multi_select', 'dropdown'].includes(q.questionType)
-
-  if (isChoice) {
-    const selected = Array.isArray(answer) ? answer : [answer]
-    const ids = cond.optionIds || []
-    switch (cond.conditionType) {
-      case 'any_of':  return ids.some(id => selected.includes(id))
-      case 'none_of': return ids.length > 0 && !ids.some(id => selected.includes(id))
-      case 'all_of':  return ids.length > 0 && ids.every(id => selected.includes(id))
-      default: return false
-    }
-  }
-
-  // text-based
-  const hay    = String(answer).toLowerCase().trim()
-  const needle = String(cond.textValue || '').toLowerCase().trim()
-  switch (cond.textOperator) {
-    case 'contains':     return hay.includes(needle)
-    case 'not_contains': return !hay.includes(needle)
-    case 'equals':       return hay === needle
-    case 'not_equals':   return hay !== needle
-    case 'greater_than': { const n = parseFloat(answer); return !isNaN(n) && n > parseFloat(cond.textValue) }
-    case 'less_than':    { const n = parseFloat(answer); return !isNaN(n) && n < parseFloat(cond.textValue) }
-    default: return false
-  }
-}
-
-// AND binds tighter than OR: A AND B OR C = (A AND B) OR C
-// Same precedence model as termination blocks, for consistency.
-function evalConditionSet(conditions, responses, allItems) {
-  if (!conditions || !conditions.length) return false
-  const orGroups = [[]]
-  for (const c of conditions) {
-    if (c.join === 'OR') orGroups.push([c])
-    else orGroups[orGroups.length - 1].push(c)
-  }
-  return orGroups.some(g => g.length > 0 && g.every(c => evalVisibilityCondition(c, responses, allItems)))
-}
+import { isChoiceType } from '@/utils/questionHelpers'
+import { evalConditionSet } from '@/utils/conditionEngine'
 
 /**
  * Returns true if `item` (a question, page_break, or group) should be
@@ -130,6 +87,7 @@ export function buildVisiblePages(items, responses) {
     blocksByPage: filtered.map(x => x.b),
   }
 }
+
 export function visibilitySummary(vis, allItems) {
   if (!vis?.enabled || !vis.conditions?.length) return null
   const verb = vis.mode === 'hide_if' ? 'Hidden if' : 'Shown only if'
@@ -137,8 +95,7 @@ export function visibilitySummary(vis, allItems) {
     const q = allItems.find(item => item.id === c.questionId)
     const qLabel = q ? `Q${allItems.filter(it => it.itemType === 'question').indexOf(q) + 1}` : '?'
     let condStr
-    const isChoice = q && ['single_select', 'multi_select', 'dropdown'].includes(q.questionType)
-    if (isChoice) {
+    if (q && isChoiceType(q.questionType)) {
       const labels = (c.optionIds || []).map(id => q.options?.find(o => o.id === id)?.text || '?')
       condStr = `${qLabel} ${c.conditionType?.replace(/_/g, ' ')} [${labels.join(', ')}]`
     } else {

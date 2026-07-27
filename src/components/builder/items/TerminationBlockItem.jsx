@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Trash2, GripVertical, ChevronRight, ChevronDown, Plus, Zap, X } from 'lucide-react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
+import { isChoiceType } from '@/utils/questionHelpers'
 
 // ─── Condition type options by question type ───────────────────────────────
 const CHOICE_CONDITION_TYPES = [
@@ -22,7 +23,7 @@ function conditionSummary(cond, questions) {
   const q = questions.find(q => q.id === cond.questionId)
   if (!q) return <span className="italic text-rose-300">Pick a question</span>
   const qLabel = q.text ? `"${q.text.slice(0, 30)}${q.text.length > 30 ? '…' : ''}"` : `Question`
-  const isChoice = ['single_select', 'multi_select', 'dropdown'].includes(q.questionType)
+  const isChoice = isChoiceType(q.questionType)
   if (isChoice) {
     const labels = cond.optionIds.map(id => q.options?.find(o => o.id === id)?.text || '?').filter(Boolean)
     const ct = CHOICE_CONDITION_TYPES.find(t => t.value === cond.conditionType)?.label || cond.conditionType
@@ -34,7 +35,7 @@ function conditionSummary(cond, questions) {
 // ─── Single condition editor ───────────────────────────────────────────────
 function ConditionRow({ cond, index, blockId, availableQuestions, dispatch }) {
   const q       = availableQuestions.find(q => q.id === cond.questionId)
-  const isChoice = q && ['single_select', 'multi_select', 'dropdown'].includes(q.questionType)
+  const isChoice = q && isChoiceType(q.questionType)
   const opts    = q?.options || []
 
   const update = (patch) =>
@@ -46,7 +47,7 @@ function ConditionRow({ cond, index, blockId, availableQuestions, dispatch }) {
   // When question changes, reset condition fields
   const setQuestion = (qId) => {
     const newQ = availableQuestions.find(q => q.id === qId)
-    const isC = newQ && ['single_select', 'multi_select', 'dropdown'].includes(newQ.questionType)
+    const isC = newQ && isChoiceType(newQ.questionType)
     update({ questionId: qId, optionIds: [], conditionType: isC ? 'any_of' : undefined, textOperator: isC ? undefined : 'contains', textValue: '' })
   }
 
@@ -338,7 +339,7 @@ function buildLogicString(conditions, questions) {
   return conditions.map((c, i) => {
     const q    = questions.find(q => q.id === c.questionId)
     const qLbl = q ? `Q${questions.indexOf(q) + 1}` : '?'
-    const isChoice = q && ['single_select', 'multi_select', 'dropdown'].includes(q.questionType)
+    const isChoice = q && isChoiceType(q.questionType)
     let condStr
     if (isChoice) {
       const ct = CHOICE_CONDITION_TYPES.find(t => t.value === c.conditionType)?.label || c.conditionType

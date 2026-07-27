@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { Plus, Trash2, UserX, AlertTriangle, ChevronDown } from 'lucide-react'
 import { SectionLabel, Divider } from '@/components/ui'
+import { isChoiceType } from '@/utils/questionHelpers'
 
 // ─── Operator labels ───────────────────────────────────────────────────────
 const TEXT_OPERATORS = [
-  { value: 'contains',     label: 'contains',         hint: 'Answer includes this text' },
+  { value: 'contains',     label: 'contains',          hint: 'Answer includes this text' },
   { value: 'not_contains', label: 'does not contain',  hint: 'Answer excludes this text' },
   { value: 'equals',       label: 'equals',            hint: 'Exact match (case-insensitive)' },
   { value: 'not_equals',   label: 'does not equal',    hint: 'Any answer except this' },
@@ -184,7 +185,7 @@ function RuleCard({ rule, ruleIndex, question, dispatch, onDelete, showChoiceRul
 export function TerminationEditor({ question, dispatch }) {
   const rules          = question.terminationRules || []
   const logic          = question.terminationLogic || 'if_any'
-  const isChoiceQ      = ['single_select', 'multi_select', 'dropdown'].includes(question.questionType)
+  const isChoiceQ      = isChoiceType(question.questionType)
   const showChoiceRule = isChoiceQ  // whether to offer choice rule type
   const perOptCount    = (question.options || []).filter(o => o.terminates).length
 

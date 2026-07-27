@@ -1,5 +1,6 @@
 import { Plus, X, Eye, EyeOff, GitBranch } from 'lucide-react'
 import { Toggle, SectionLabel } from '@/components/ui'
+import { isChoiceType } from '@/utils/questionHelpers'
 
 const CHOICE_CONDITION_TYPES = [
   { value: 'any_of', label: 'is any of',  hint: 'Answer includes at least one of' },
@@ -19,7 +20,7 @@ function conditionSummary(cond, questions) {
   const q = questions.find(q => q.id === cond.questionId)
   if (!q) return <span className="italic text-violet-300">Pick a question</span>
   const qLabel = q.text ? `"${q.text.slice(0, 26)}${q.text.length > 26 ? '…' : ''}"` : 'Question'
-  const isChoice = ['single_select', 'multi_select', 'dropdown'].includes(q.questionType)
+  const isChoice = isChoiceType(q.questionType)
   if (isChoice) {
     const labels = cond.optionIds.map(id => q.options?.find(o => o.id === id)?.text || '?').filter(Boolean)
     const ct = CHOICE_CONDITION_TYPES.find(t => t.value === cond.conditionType)?.label || cond.conditionType
@@ -30,7 +31,7 @@ function conditionSummary(cond, questions) {
 
 function ConditionRow({ cond, index, itemId, availableQuestions, dispatch }) {
   const q        = availableQuestions.find(q => q.id === cond.questionId)
-  const isChoice = q && ['single_select', 'multi_select', 'dropdown'].includes(q.questionType)
+  const isChoice = q && isChoiceType(q.questionType)
   const opts     = q?.options || []
 
   const update = (patch) =>
@@ -40,7 +41,7 @@ function ConditionRow({ cond, index, itemId, availableQuestions, dispatch }) {
 
   const setQuestion = (qId) => {
     const newQ = availableQuestions.find(q => q.id === qId)
-    const isC  = newQ && ['single_select', 'multi_select', 'dropdown'].includes(newQ.questionType)
+    const isC  = newQ && isChoiceType(newQ.questionType)
     update({ questionId: qId, optionIds: [], conditionType: isC ? 'any_of' : undefined, textOperator: isC ? undefined : 'contains', textValue: '' })
   }
 

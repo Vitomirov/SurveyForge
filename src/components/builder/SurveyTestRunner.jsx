@@ -5,6 +5,7 @@ import {
   GitBranch, List, SkipForward,
 } from 'lucide-react'
 import { buildVisiblePages } from '@/utils/visibilityEngine'
+import { evalBlock, checkTermination } from '@/utils/terminationEngine'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // BRANCH ANALYSIS
@@ -324,101 +325,6 @@ function buildResponses(items, branch) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// TERMINATION EVALUATORS  (mirror of SurveyPreview logic)
-// ═══════════════════════════════════════════════════════════════════════════
-function evalCond(cond, responses, items) {
-  const q      = items.find(i => i.id === cond.questionId)
-  const answer = responses[cond.questionId]
-  if (!q || answer == null || answer === '') return false
-
-  const isChoice = ['single_select', 'multi_select', 'dropdown'].includes(q.questionType)
-  if (isChoice) {
-    const sel = Array.isArray(answer) ? answer : [answer]
-    const ids = cond.optionIds || []
-    if (cond.conditionType === 'any_of') return ids.some(id => sel.includes(id))
-    if (cond.conditionType === 'none_of') return ids.length > 0 && !ids.some(id => sel.includes(id))
-    if (cond.conditionType === 'all_of')  return ids.length > 0 && ids.every(id => sel.includes(id))
-    return false
-  }
-
-  const hay    = String(answer).toLowerCase().trim()
-  const needle = String(cond.textValue || '').toLowerCase().trim()
-  switch (cond.textOperator) {
-    case 'contains':     return hay.includes(needle)
-    case 'not_contains': return !hay.includes(needle)
-    case 'equals':       return hay === needle
-    case 'not_equals':   return hay !== needle
-    case 'greater_than': { const n = parseFloat(answer); return !isNaN(n) && n > parseFloat(cond.textValue) }
-    case 'less_than':    { const n = parseFloat(answer); return !isNaN(n) && n < parseFloat(cond.textValue) }
-    default: return false
-  }
-}
-
-function evalBlock(block, responses, items) {
-  const conds = block.conditions || []
-  if (!conds.length) return false
-  const orGroups = [[]]
-  for (const c of conds) {
-    if (c.join === 'OR') orGroups.push([c])
-    else orGroups[orGroups.length - 1].push(c)
-  }
-  return orGroups.some(g => g.length > 0 && g.every(c => evalCond(c, responses, items)))
-}
-
-function checkQTermination(q, answer) {
-  const opts = q.options || []
-
-  // Per-option instant terminate
-  if (['single_select', 'dropdown'].includes(q.questionType) && answer) {
-    const opt = opts.find(o => o.id === answer)
-    if (opt?.terminates) return { terminated: true, reason: `Option "${clip(opt.text)}" is marked instant screen-out` }
-  }
-  if (q.questionType === 'multi_select' && Array.isArray(answer)) {
-    const termOpt = opts.find(o => answer.includes(o.id) && o.terminates)
-    if (termOpt) return { terminated: true, reason: `Option "${clip(termOpt.text)}" is marked instant screen-out` }
-  }
-
-  // terminationRules
-  const rules = q.terminationRules || []
-  if (!rules.length) return { terminated: false }
-
-  const logic   = q.terminationLogic || 'if_any'
-  const results = rules.map(r => evalRuleQ(r, q, answer))
-
-  if (logic === 'if_any') {
-    const idx = results.findIndex(r => r)
-    if (idx === -1) return { terminated: false }
-    return { terminated: true, reason: `IF ANY rule fired: ${ruleDesc(rules[idx], q)}` }
-  } else {
-    if (results.every(r => !r)) {
-      return { terminated: true, reason: `IF NONE: no qualifying condition met` }
-    }
-    return { terminated: false }
-  }
-}
-
-function evalRuleQ(rule, q, answer) {
-  if (rule.ruleType === 'text') {
-    if (!answer) return false
-    const hay    = String(answer).toLowerCase()
-    const needle = String(rule.textValue || '').toLowerCase()
-    switch (rule.textOperator) {
-      case 'contains':     return hay.includes(needle)
-      case 'not_contains': return !hay.includes(needle)
-      case 'equals':       return hay === needle
-      case 'not_equals':   return hay !== needle
-      case 'greater_than': return parseFloat(answer) > parseFloat(rule.textValue)
-      case 'less_than':    return parseFloat(answer) < parseFloat(rule.textValue)
-      default: return false
-    }
-  }
-  const sel = Array.isArray(answer) ? answer : (answer ? [answer] : [])
-  const ids = rule.optionIds || []
-  if (rule.matchMode === 'all') return ids.length > 0 && ids.every(id => sel.includes(id))
-  return ids.some(id => sel.includes(id))
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
 // SIMULATION ENGINE
 // Walks page-by-page, logging every decision and checking termination.
 // ═══════════════════════════════════════════════════════════════════════════
@@ -461,12 +367,12 @@ function runSimulation(items, survey, branch) {
       })
     }
 
-    // Check per-question termination
+    // Check per-question termination (shared terminationEngine)
     for (const q of pageQ) {
-      const result = checkQTermination(q, responses[q.id])
+      const result = checkTermination(q, responses[q.id])
       if (result.terminated) {
-        log.push({ type: 'terminate', source: `Q${getQNum(q.id)}: "${clip(q.text)}"`, reason: result.reason })
-        outcome = { type: 'terminated', source: `Q${getQNum(q.id)}`, reason: result.reason }
+        log.push({ type: 'terminate', source: `Q${getQNum(q.id)}: "${clip(q.text)}"`, reason: result.cause })
+        outcome = { type: 'terminated', source: `Q${getQNum(q.id)}`, reason: result.cause }
         return { outcome, log, responses }
       }
     }

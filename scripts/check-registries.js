@@ -1,0 +1,81 @@
+#!/usr/bin/env node
+/**
+ * Registry parity check — run before/after refactors that touch question types.
+ *
+ * Ensures every entry in QUESTION_TYPES is handled by:
+ *   - builder: QuestionTypeEditor.jsx  (choice types via isChoiceType + switch)
+ *   - taker:   QuestionRenderer.jsx    (switch cases)
+ *
+ * Usage: npm run check:registries
+ */
+
+import { readFileSync } from 'fs'
+import { fileURLToPath } from 'url'
+import { dirname, join } from 'path'
+import { QUESTION_TYPES, isChoiceType } from '../src/utils/questionHelpers.js'
+
+const __dirname = dirname(fileURLToPath(import.meta.url))
+const ROOT = join(__dirname, '..')
+
+const BUILDER_REGISTRY = join(ROOT, 'src/components/builder/editors/QuestionTypeEditor.jsx')
+const TAKER_REGISTRY   = join(ROOT, 'src/components/taker/questions/QuestionRenderer.jsx')
+
+function extractSwitchCases(source) {
+  const cases = new Set()
+  const re = /case\s+'([^']+)':/g
+  let match
+  while ((match = re.exec(source)) !== null) {
+    cases.add(match[1])
+  }
+  return cases
+}
+
+function getBuilderTypes(source) {
+  const types = new Set(extractSwitchCases(source))
+  for (const { type } of QUESTION_TYPES) {
+    if (isChoiceType(type)) types.add(type)
+  }
+  return types
+}
+
+function diff(label, expected, actual) {
+  const missing = [...expected].filter(t => !actual.has(t)).sort()
+  const extra   = [...actual].filter(t => !expected.has(t)).sort()
+  if (missing.length === 0 && extra.length === 0) return true
+
+  console.error(`\n✗ ${label}`)
+  if (missing.length) {
+    console.error(`  Missing (${missing.length}): ${missing.join(', ')}`)
+  }
+  if (extra.length) {
+    console.error(`  Extra (${extra.length}):   ${extra.join(', ')}`)
+  }
+  return false
+}
+
+const canonical = new Set(QUESTION_TYPES.map(t => t.type))
+
+const builderSource = readFileSync(BUILDER_REGISTRY, 'utf8')
+const takerSource   = readFileSync(TAKER_REGISTRY, 'utf8')
+
+const builderTypes = getBuilderTypes(builderSource)
+const takerTypes   = extractSwitchCases(takerSource)
+
+console.log('Question type registry parity check')
+console.log('─'.repeat(40))
+console.log(`Canonical types (QUESTION_TYPES): ${canonical.size}`)
+console.log(`Builder registry:                 ${builderTypes.size}`)
+console.log(`Taker registry:                   ${takerTypes.size}`)
+
+let ok = true
+ok = diff('Builder vs QUESTION_TYPES', canonical, builderTypes) && ok
+ok = diff('Taker vs QUESTION_TYPES', canonical, takerTypes) && ok
+ok = diff('Builder vs Taker (must match)', builderTypes, takerTypes) && ok
+
+if (ok) {
+  console.log('\n✓ All registries are in sync.\n')
+  process.exit(0)
+}
+
+console.error('\nRegistry mismatch — update QuestionTypeEditor, QuestionRenderer, and/or QUESTION_TYPES together.\n')
+process.exit(1)

@@ -1,3 +1,5 @@
+import { isChoiceType } from '@/utils/questionHelpers'
+
 // ─── ID Generator ─────────────────────────────────────────────────────────
 export const newId = () => crypto.randomUUID()
 
@@ -35,7 +37,7 @@ export const makeCascadeItem      = (label = '', level = 0, parentId = null) => 
 const CATEGORY_COLORS = ['#6366f1','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#ec4899','#84cc16']
 
 export const makeQuestion = (questionType = 'single_select') => {
-  const isChoice = ['single_select', 'multi_select', 'dropdown'].includes(questionType)
+  const isChoice = isChoiceType(questionType)
   return {
     id: newId(),
     itemType: 'question',
