@@ -1,28 +1,6 @@
-import { Trash2, Plus } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import { Toggle, SectionLabel, Divider } from '@/components/ui'
-
-function RowColInput({ value, onChange, onDelete, canDelete, placeholder }) {
-  return (
-    <div className="flex items-center gap-1.5 group">
-      <input
-        type="text"
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        placeholder={placeholder}
-        className="input-base py-1.5 text-sm flex-1"
-        onKeyDown={e => e.key === 'Enter' && e.currentTarget.blur()}
-      />
-      {canDelete && (
-        <button
-          onClick={onDelete}
-          className="p-1.5 text-ink-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg opacity-0 group-hover:opacity-100 transition-all"
-        >
-          <Trash2 size={13} />
-        </button>
-      )}
-    </div>
-  )
-}
+import { DeletableTextInput } from '@/components/shared'
 
 // ── Preview grid ─────────────────────────────────────────────────────────────
 function MatrixPreview({ rows, columns, subType }) {
@@ -115,13 +93,14 @@ export function MatrixEditor({ question, dispatch }) {
         <SectionLabel>Rows (statements / items)</SectionLabel>
         <div className="space-y-1.5">
           {cfg.rows.map((row, i) => (
-            <RowColInput
+            <DeletableTextInput
               key={row.id}
               value={row.text}
               onChange={text => updateRow(row.id, text)}
               onDelete={() => deleteRow(row.id)}
               canDelete={cfg.rows.length > 1}
               placeholder={`Row ${i + 1}`}
+              blurOnEnter
             />
           ))}
         </div>
@@ -135,13 +114,14 @@ export function MatrixEditor({ question, dispatch }) {
         <SectionLabel>Columns (scale points)</SectionLabel>
         <div className="space-y-1.5">
           {cfg.columns.map((col, i) => (
-            <RowColInput
+            <DeletableTextInput
               key={col.id}
               value={col.text}
               onChange={text => updateCol(col.id, text)}
               onDelete={() => deleteCol(col.id)}
               canDelete={cfg.columns.length > 1}
               placeholder={`Column ${i + 1}`}
+              blurOnEnter
             />
           ))}
         </div>
@@ -158,6 +138,11 @@ export function MatrixEditor({ question, dispatch }) {
         </div>
         <Toggle checked={cfg.randomizeRows || false} onChange={val => updateCfg({ randomizeRows: val })} />
       </div>
+      {cfg.randomizeRows && (
+        <p className="text-xs text-ink-400 -mt-2">
+          Row order is shuffled for each respondent in preview and live surveys (builder list stays in your order).
+        </p>
+      )}
 
       {/* Preview */}
       <Divider label="Preview" />

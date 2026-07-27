@@ -1,45 +1,11 @@
-import { Trash2, Plus } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import { Toggle, SectionLabel, Divider } from '@/components/ui'
-
-function RowInput({ value, onChange, onDelete, canDelete, placeholder }) {
-  return (
-    <div className="flex items-center gap-1.5 group">
-      <input
-        type="text" value={value} onChange={e => onChange(e.target.value)}
-        placeholder={placeholder} className="input-base py-1.5 text-sm flex-1"
-      />
-      {canDelete && (
-        <button onClick={onDelete} className="p-1.5 text-ink-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg opacity-0 group-hover:opacity-100 transition-all">
-          <Trash2 size={13} />
-        </button>
-      )}
-    </div>
-  )
-}
-
-function ColInput({ value, onChange, onDelete, canDelete, placeholder, side }) {
-  const sideColor = side === 'left' ? 'border-l-2 border-l-rose-300 pl-2' : 'border-l-2 border-l-brand-300 pl-2'
-  return (
-    <div className={`flex items-center gap-1.5 group ${sideColor}`}>
-      <input
-        type="text" value={value} onChange={e => onChange(e.target.value)}
-        placeholder={placeholder} className="input-base py-1.5 text-sm flex-1"
-      />
-      {canDelete && (
-        <button onClick={onDelete} className="p-1.5 text-ink-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg opacity-0 group-hover:opacity-100 transition-all">
-          <Trash2 size={13} />
-        </button>
-      )}
-    </div>
-  )
-}
+import { DeletableTextInput } from '@/components/shared'
 
 // Preview grid for bipolar matrix
 function BipolarPreview({ cfg }) {
   const { rows, leftColumns, rightColumns, showCenter, centerLabel, leftLabel, rightLabel, leftSelectType, rightSelectType } = cfg
   if (!rows.length) return null
-
-  const totalCols = leftColumns.length + (showCenter ? 1 : 0) + rightColumns.length
 
   return (
     <div className="overflow-x-auto">
@@ -207,8 +173,14 @@ export function BipolarMatrixEditor({ question, dispatch }) {
         <SectionLabel>Rows</SectionLabel>
         <div className="space-y-1.5">
           {cfg.rows.map((row, i) => (
-            <RowInput key={row.id} value={row.text} onChange={t => updateRow(row.id, t)}
-              onDelete={() => deleteRow(row.id)} canDelete={cfg.rows.length > 1} placeholder={`Item ${i + 1}`} />
+            <DeletableTextInput
+              key={row.id}
+              value={row.text}
+              onChange={t => updateRow(row.id, t)}
+              onDelete={() => deleteRow(row.id)}
+              canDelete={cfg.rows.length > 1}
+              placeholder={`Item ${i + 1}`}
+            />
           ))}
         </div>
         <button onClick={addRow} className="mt-2 flex items-center gap-1.5 text-sm text-brand-600 hover:text-brand-700 font-medium px-2 py-1 hover:bg-brand-50 rounded-lg transition-all">
@@ -223,9 +195,15 @@ export function BipolarMatrixEditor({ question, dispatch }) {
           <p className="text-xs font-semibold text-rose-500 uppercase tracking-wider mb-2">Left columns</p>
           <div className="space-y-1.5">
             {cfg.leftColumns.map((col, i) => (
-              <ColInput key={col.id} value={col.text} onChange={t => updateLeftCol(col.id, t)}
-                onDelete={() => deleteLeftCol(col.id)} canDelete={cfg.leftColumns.length > 1}
-                placeholder={`L${i + 1}`} side="left" />
+              <DeletableTextInput
+                key={col.id}
+                value={col.text}
+                onChange={t => updateLeftCol(col.id, t)}
+                onDelete={() => deleteLeftCol(col.id)}
+                canDelete={cfg.leftColumns.length > 1}
+                placeholder={`L${i + 1}`}
+                accent="left"
+              />
             ))}
           </div>
           <button onClick={addLeftCol} className="mt-2 flex items-center gap-1 text-xs text-rose-500 hover:text-rose-600 font-medium px-2 py-1 hover:bg-rose-50 rounded-lg transition-all">
@@ -238,9 +216,15 @@ export function BipolarMatrixEditor({ question, dispatch }) {
           <p className="text-xs font-semibold text-brand-500 uppercase tracking-wider mb-2">Right columns</p>
           <div className="space-y-1.5">
             {cfg.rightColumns.map((col, i) => (
-              <ColInput key={col.id} value={col.text} onChange={t => updateRightCol(col.id, t)}
-                onDelete={() => deleteRightCol(col.id)} canDelete={cfg.rightColumns.length > 1}
-                placeholder={`R${i + 1}`} side="right" />
+              <DeletableTextInput
+                key={col.id}
+                value={col.text}
+                onChange={t => updateRightCol(col.id, t)}
+                onDelete={() => deleteRightCol(col.id)}
+                canDelete={cfg.rightColumns.length > 1}
+                placeholder={`R${i + 1}`}
+                accent="right"
+              />
             ))}
           </div>
           <button onClick={addRightCol} className="mt-2 flex items-center gap-1 text-xs text-brand-500 hover:text-brand-600 font-medium px-2 py-1 hover:bg-brand-50 rounded-lg transition-all">

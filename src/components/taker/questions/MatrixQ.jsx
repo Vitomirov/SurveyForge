@@ -1,7 +1,14 @@
+import { useRef } from 'react'
 import { Check } from 'lucide-react'
+import { shuffleArray } from '@/utils/shuffleArray'
 
 export function MatrixQ({ question, value = {}, onChange }) {
   const cfg = question.matrixConfig
+  const rowsRef = useRef(null)
+  if (rowsRef.current === null) {
+    rowsRef.current = cfg.randomizeRows ? shuffleArray(cfg.rows) : cfg.rows
+  }
+  const rows = rowsRef.current
   const toggle = (rowId, colId) => {
     if (cfg.subType === 'single') {
       onChange({ ...value, [rowId]: value[rowId] === colId ? null : colId })
@@ -21,7 +28,7 @@ export function MatrixQ({ question, value = {}, onChange }) {
           </tr>
         </thead>
         <tbody>
-          {cfg.rows.map((row, ri) => (
+          {rows.map((row, ri) => (
             <tr key={row.id} className={`${ri % 2 === 0 ? 'bg-ink-50/50' : 'bg-white'} hover:bg-brand-50/20 transition-colors`}>
               <td className="px-3 py-2.5 text-ink-700 font-medium">{row.text}</td>
               {cfg.columns.map(col => {

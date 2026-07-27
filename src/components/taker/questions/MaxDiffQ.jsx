@@ -1,13 +1,5 @@
 import { useRef, useState } from 'react'
-
-function shuffle(arr) {
-  const a = [...arr]
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]]
-  }
-  return a
-}
+import { shuffleArray } from '@/utils/shuffleArray'
 
 function buildTrials(cfg) {
   const items = [...(cfg.items || [])]
@@ -17,7 +9,7 @@ function buildTrials(cfg) {
   const numTrials = cfg.trialsPerRespondent || Math.max(3, Math.ceil(2 * n / k))
   // Build pool: repeat shuffled items until we have enough
   const pool = []
-  while (pool.length < numTrials * k) pool.push(...shuffle(items))
+  while (pool.length < numTrials * k) pool.push(...shuffleArray(items))
   return Array.from({ length: numTrials }, (_, t) => pool.slice(t * k, t * k + k))
 }
 
