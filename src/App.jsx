@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from 'react'
 import { Dashboard, LoginPage, SurveyBuilder, SurveyPreview } from '@/components'
+import { ErrorBoundary } from '@/components/shared'
 import { INITIAL_STATE } from '@/store/surveyStore'
 import { getSession, logout } from '@/utils/authStore'
 import { loadSurvey } from '@/utils/surveyLibrary'
@@ -70,12 +71,14 @@ export default function App() {
     }
     // Survey found — SurveyPreview handles closed/draft status internally
     return (
-      <SurveyPreview
-        survey={publicEntry.survey}
-        items={publicEntry.items || []}
-        onClose={null}
-        isPublic={true}
-      />
+      <ErrorBoundary title="Survey error">
+        <SurveyPreview
+          survey={publicEntry.survey}
+          items={publicEntry.items || []}
+          onClose={null}
+          isPublic={true}
+        />
+      </ErrorBoundary>
     )
   }
 
@@ -108,31 +111,37 @@ export default function App() {
 
   if (view === 'builder') {
     return (
-      <SurveyBuilder
-        initialState={builderState}
-        onBackToDashboard={backToDashboard}
-      />
+      <ErrorBoundary title="Builder error" onReset={backToDashboard}>
+        <SurveyBuilder
+          initialState={builderState}
+          onBackToDashboard={backToDashboard}
+        />
+      </ErrorBoundary>
     )
   }
 
   if (view === 'preview' && previewEntry) {
     return (
-      <SurveyPreview
-        survey={previewEntry.survey}
-        items={previewEntry.items || []}
-        onClose={backToDashboard}
-        isPublic={false}
-      />
+      <ErrorBoundary title="Preview error" onReset={backToDashboard}>
+        <SurveyPreview
+          survey={previewEntry.survey}
+          items={previewEntry.items || []}
+          onClose={backToDashboard}
+          isPublic={false}
+        />
+      </ErrorBoundary>
     )
   }
 
   return (
-    <Dashboard
-      session={session}
-      onLogout={handleLogout}
-      onNewSurvey={() => openBuilder(null)}
-      onOpenSurvey={(entry) => openBuilder(entry)}
-      onPreviewSurvey={(entry) => openPreview(entry)}
-    />
+    <ErrorBoundary title="Dashboard error" onReset={() => setView('dashboard')}>
+      <Dashboard
+        session={session}
+        onLogout={handleLogout}
+        onNewSurvey={() => openBuilder(null)}
+        onOpenSurvey={(entry) => openBuilder(entry)}
+        onPreviewSurvey={(entry) => openPreview(entry)}
+      />
+    </ErrorBoundary>
   )
 }
