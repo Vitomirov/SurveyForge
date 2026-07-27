@@ -1,3 +1,10 @@
+import {
+  CircleDot, CheckSquare, ChevronDownSquare, AlignLeft,
+  Calendar, Grid, ArrowLeftRight, BarChart2, Layers, Hash, SlidersHorizontal,
+  RadioTower, Star, ListOrdered, AlignJustify,
+  ArrowLeftRight as ArrowLR, Layers as LayersIcon, Image as ImageIcon,
+} from 'lucide-react'
+
 export const QUESTION_TYPES = [
   {
     type: 'single_select',
@@ -153,6 +160,9 @@ export const QUESTION_TYPES = [
   },
 ]
 
+/** All question type keys — derived from QUESTION_TYPES (single source of truth). */
+export const QUESTION_TYPE_KEYS = QUESTION_TYPES.map(t => t.type)
+
 export const getTypeMeta = (type) =>
   QUESTION_TYPES.find(t => t.type === type) || QUESTION_TYPES[0]
 
@@ -161,6 +171,28 @@ export const isChoiceType = (type) =>
 
 export const isMatrixType = (type) =>
   ['matrix', 'bipolar_matrix'].includes(type)
+
+export const TYPE_ICONS = {
+  single_select:       CircleDot,
+  multi_select:        CheckSquare,
+  dropdown:            ChevronDownSquare,
+  open_text:           AlignLeft,
+  date:                Calendar,
+  matrix:              Grid,
+  bipolar_matrix:      ArrowLeftRight,
+  maxdiff:             BarChart2,
+  card_sort:           Layers,
+  constant_sum:        Hash,
+  slider:              SlidersHorizontal,
+  nps:                 RadioTower,
+  star_rating:         Star,
+  ranking:             ListOrdered,
+  textbox_list:        AlignJustify,
+  semantic_diff:       ArrowLR,
+  cascade:             LayersIcon,
+  image_choice_single: ImageIcon,
+  image_choice_multi:  ImageIcon,
+}
 
 export const TYPE_COLORS = {
   single_select:  { bg: 'bg-blue-50',    text: 'text-blue-600',    border: 'border-blue-200' },

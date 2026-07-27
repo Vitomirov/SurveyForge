@@ -10,7 +10,7 @@ import {
 
 import { surveyReducer, INITIAL_STATE } from '@/store/surveyStore'
 import {
-  QuestionCard, TYPE_ICONS,
+  QuestionCard,
   PageBreakItem, GroupItem, TerminationBlockItem, TextBlockItem,
 } from '@/components/builder/items'
 import { SurveyPreview } from '@/components/taker'
@@ -21,7 +21,7 @@ import {
 import { RichTextEditor } from '@/components/shared'
 import { upsertSurvey } from '@/utils/surveyLibrary'
 import { generateTemplateCSV, downloadCSV } from '@/utils/csvExport'
-import { QUESTION_TYPES, TYPE_COLORS, QUESTION_TYPE_GROUPS } from '@/utils/questionHelpers'
+import { QUESTION_TYPES, TYPE_COLORS, TYPE_ICONS, QUESTION_TYPE_GROUPS } from '@/utils/questionHelpers'
 import {
   Plus, Save, Eye, BarChart3, Layers,
   Scissors, FolderPlus, Download, Zap, PlayCircle, ArrowLeft, FileText,

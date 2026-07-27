@@ -12,7 +12,7 @@
 import { readFileSync } from 'fs'
 import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
-import { QUESTION_TYPES, isChoiceType } from '../src/utils/questionHelpers.js'
+import { QUESTION_TYPES, QUESTION_TYPE_KEYS, isChoiceType, TYPE_COLORS, TYPE_ICONS } from '../src/utils/questionHelpers.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const ROOT = join(__dirname, '..')
@@ -53,7 +53,10 @@ function diff(label, expected, actual) {
   return false
 }
 
-const canonical = new Set(QUESTION_TYPES.map(t => t.type))
+const canonical = new Set(QUESTION_TYPE_KEYS)
+
+const iconKeys = new Set(Object.keys(TYPE_ICONS))
+const colorKeys = new Set(Object.keys(TYPE_COLORS))
 
 const builderSource = readFileSync(BUILDER_REGISTRY, 'utf8')
 const takerSource   = readFileSync(TAKER_REGISTRY, 'utf8')
@@ -71,6 +74,8 @@ let ok = true
 ok = diff('Builder vs QUESTION_TYPES', canonical, builderTypes) && ok
 ok = diff('Taker vs QUESTION_TYPES', canonical, takerTypes) && ok
 ok = diff('Builder vs Taker (must match)', builderTypes, takerTypes) && ok
+ok = diff('TYPE_ICONS vs QUESTION_TYPES', canonical, iconKeys) && ok
+ok = diff('TYPE_COLORS vs QUESTION_TYPES', canonical, colorKeys) && ok
 
 if (ok) {
   console.log('\n✓ All registries are in sync.\n')

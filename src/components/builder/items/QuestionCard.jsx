@@ -2,9 +2,6 @@ import { useState } from 'react'
 import React from 'react'
 import {
   ChevronDown, ChevronRight, Copy, Trash2, GripVertical,
-  CircleDot, CheckSquare, ChevronDownSquare, AlignLeft,
-  Calendar, Grid, ArrowLeftRight, BarChart2, Layers, Hash, SlidersHorizontal,
-  RadioTower, Star, ListOrdered, AlignJustify, ArrowLeftRight as ArrowLR, Layers as LayersIcon, Image as ImageIcon
 } from 'lucide-react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
@@ -12,7 +9,7 @@ import { Toggle, IconBtn } from '@/components/ui'
 import { QuestionTypeEditor } from '@/components/builder/editors'
 import { VisibilityEditor } from '@/components/shared'
 import { makeToken } from '@/utils/piping'
-import { getTypeMeta, TYPE_COLORS, isChoiceType, QUESTION_TYPES } from '@/utils/questionHelpers'
+import { getTypeMeta, TYPE_COLORS, TYPE_ICONS, isChoiceType, QUESTION_TYPES } from '@/utils/questionHelpers'
 import { makeOption } from '@/store/surveyStore'
 
 // ─── Token Picker — insert piping reference into question text ─────────────
@@ -60,33 +57,11 @@ function TokenPicker({ availableQuestions, onInsert }) {
   )
 }
 
-export const TYPE_ICONS = {
-  single_select:  CircleDot,
-  multi_select:   CheckSquare,
-  dropdown:       ChevronDownSquare,
-  open_text:      AlignLeft,
-  date:           Calendar,
-  matrix:         Grid,
-  bipolar_matrix: ArrowLeftRight,
-  maxdiff:        BarChart2,
-  card_sort:      Layers,
-  constant_sum:   Hash,
-  slider:         SlidersHorizontal,
-  nps:            RadioTower,
-  star_rating:    Star,
-  ranking:        ListOrdered,
-  textbox_list:   AlignJustify,
-  semantic_diff:  ArrowLR,
-  cascade:           LayersIcon,
-  image_choice_single: ImageIcon,
-  image_choice_multi:  ImageIcon,
-}
-
 export function QuestionCard({ question, questionNumber, isActive, dispatch, onActivate, focusOptionId, surveyDateFormat, availableQuestions = [] }) {
   const [showTypeMenu, setShowTypeMenu] = useState(false)
   const meta   = getTypeMeta(question.questionType)
   const colors = TYPE_COLORS[question.questionType] || TYPE_COLORS.single_select
-  const TypeIcon = TYPE_ICONS[question.questionType] || CircleDot
+  const TypeIcon = TYPE_ICONS[question.questionType] || TYPE_ICONS.single_select
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: question.id })
   const style = { transform: CSS.Transform.toString(transform), transition }
