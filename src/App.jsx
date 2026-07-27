@@ -1,11 +1,8 @@
 import { useState, useCallback, useEffect } from 'react'
-import { Dashboard }      from './components/Dashboard.jsx'
-import { SurveyBuilder }  from './components/SurveyBuilder.jsx'
-import { SurveyPreview }  from './components/SurveyPreview.jsx'
-import { LoginPage }      from './components/LoginPage.jsx'
-import { INITIAL_STATE }  from './store/surveyStore.js'
-import { getSession, logout } from './utils/authStore.js'
-import { loadSurvey }     from './utils/surveyLibrary.js'
+import { Dashboard, LoginPage, SurveyBuilder, SurveyPreview } from '@/components'
+import { INITIAL_STATE } from '@/store/surveyStore'
+import { getSession, logout } from '@/utils/authStore'
+import { loadSurvey } from '@/utils/surveyLibrary'
 
 function libraryEntryToState(entry) {
   return {
