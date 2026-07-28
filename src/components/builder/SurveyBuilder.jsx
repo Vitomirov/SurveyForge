@@ -1,4 +1,4 @@
-import { useReducer, useState, useEffect } from 'react'
+import { useReducer, useState, useMemo } from 'react'
 import {
   DndContext, closestCenter, KeyboardSensor, PointerSensor,
   useSensor, useSensors, DragOverlay,
@@ -20,7 +20,8 @@ import {
 } from '@/components/builder'
 import { AddPanel, StatsPanel, EmptyState } from '@/components/builder/panels'
 import { RichTextEditor } from '@/components/shared'
-import { upsertSurvey } from '@/utils/surveyLibrary'
+import { useAutosave } from '@/hooks/useAutosave'
+import { buildItemMeta, buildAvailableQuestionsByIndex, buildGroupQuestionCounts } from '@/utils/builderLayout'
 import { generateTemplateCSV, downloadCSV } from '@/utils/csvExport'
 import {
   Plus, Save, Eye, BarChart3, Layers,
@@ -29,17 +30,7 @@ import {
 export function SurveyBuilder({ initialState, onBackToDashboard }) {
   const [state, dispatch] = useReducer(surveyReducer, initialState || INITIAL_STATE)
 
-  // Auto-save to the survey library on every change
-  useEffect(() => {
-    if (state.survey?.id) {
-      upsertSurvey({
-        id:      state.survey.id,
-        survey:  state.survey,
-        items:   state.items,
-        savedAt: new Date().toISOString(),
-      })
-    }
-  }, [state.survey, state.items])
+  useAutosave({ survey: state.survey, items: state.items })
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -50,43 +41,21 @@ export function SurveyBuilder({ initialState, onBackToDashboard }) {
   const [showTest, setShowTest]         = useState(false)
   const [showExport, setShowExport]     = useState(false)
 
-  // ── Compute display info ───────────────────────────────────────────────
-  // Track page numbers and question numbers as we iterate items
-  const itemMeta = (() => {
-    let pageNum = 1
-    let qNum    = 0
-    let currentGroupId = null
-    // Which groups are collapsed
-    const collapsedGroups = new Set(
-      state.items.filter(i => i.itemType === 'group' && i.collapsed).map(i => i.id)
-    )
-    // For each item: { pageNum, questionNumber, groupId, hidden }
-    return state.items.map(item => {
-      if (item.itemType === 'page_break') {
-        pageNum++
-        currentGroupId = null
-        return { pageNum, questionNumber: null, currentGroupId, hidden: false }
-      }
-      if (item.itemType === 'group') {
-        currentGroupId = item.id
-        return { pageNum, questionNumber: null, currentGroupId: item.id, hidden: false }
-      }
-      // question
-      qNum++
-      const hidden = currentGroupId ? collapsedGroups.has(currentGroupId) : false
-      return { pageNum, questionNumber: qNum, currentGroupId, hidden }
-    })
-  })()
+  // ── Compute display info (memoized — only when items change) ─────────────
+  const itemMeta = useMemo(
+    () => buildItemMeta(state.items),
+    [state.items]
+  )
 
-  // Count questions per group
-  const groupQuestionCounts = {}
-  state.items.forEach((item, i) => {
-    if (item.itemType !== 'question') return
-    const meta = itemMeta[i]
-    if (meta.currentGroupId) {
-      groupQuestionCounts[meta.currentGroupId] = (groupQuestionCounts[meta.currentGroupId] || 0) + 1
-    }
-  })
+  const availableQuestionsByIndex = useMemo(
+    () => buildAvailableQuestionsByIndex(state.items),
+    [state.items]
+  )
+
+  const groupQuestionCounts = useMemo(
+    () => buildGroupQuestionCounts(state.items, itemMeta),
+    [state.items, itemMeta]
+  )
 
   // ── Drag handlers ──────────────────────────────────────────────────────
   const handleDragStart = (e) => setDragActiveId(e.active.id)
@@ -333,9 +302,7 @@ export function SurveyBuilder({ initialState, onBackToDashboard }) {
                     const meta = itemMeta[idx]
 
                     if (item.itemType === 'page_break') {
-                      const availableQuestions = state.items
-                        .slice(0, idx)
-                        .filter(i => i.itemType === 'question')
+                      const availableQuestions = availableQuestionsByIndex[idx]
                       return (
                         <PageBreakItem
                           key={item.id}
@@ -353,9 +320,7 @@ export function SurveyBuilder({ initialState, onBackToDashboard }) {
                     }
 
                     if (item.itemType === 'group') {
-                      const availableQuestions = state.items
-                        .slice(0, idx)
-                        .filter(i => i.itemType === 'question')
+                      const availableQuestions = availableQuestionsByIndex[idx]
                       return (
                         <GroupItem
                           key={item.id}
@@ -373,9 +338,7 @@ export function SurveyBuilder({ initialState, onBackToDashboard }) {
                     }
 
                     if (item.itemType === 'termination_block') {
-                      const availableQuestions = state.items
-                        .slice(0, idx)
-                        .filter(i => i.itemType === 'question')
+                      const availableQuestions = availableQuestionsByIndex[idx]
                       return (
                         <TerminationBlockItem
                           key={item.id}
@@ -392,9 +355,7 @@ export function SurveyBuilder({ initialState, onBackToDashboard }) {
                     }
 
                     if (item.itemType === 'text_block') {
-                      const availableQuestions = state.items
-                        .slice(0, idx)
-                        .filter(i => i.itemType === 'question')
+                      const availableQuestions = availableQuestionsByIndex[idx]
                       return (
                         <TextBlockItem
                           key={item.id}
@@ -414,9 +375,7 @@ export function SurveyBuilder({ initialState, onBackToDashboard }) {
                     if (meta.hidden) return null
 
                     const inGroup = !!meta.currentGroupId
-                    const availableQuestions = state.items
-                      .slice(0, idx)
-                      .filter(i => i.itemType === 'question')
+                    const availableQuestions = availableQuestionsByIndex[idx]
                     return (
                       <div key={item.id} className={inGroup ? 'ml-4 border-l-2 border-ink-200 pl-3' : ''}>
                         <QuestionCard
