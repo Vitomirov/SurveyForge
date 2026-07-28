@@ -8,6 +8,7 @@ import { collectFingerprint } from '@/utils/fingerprint'
 import { isOnDNCList } from '@/utils/dncStore'
 import { checkTermination, evalBlock, buildBlockCause } from '@/utils/terminationEngine'
 import { validateAnswer } from '@/utils/answerValidation'
+import { buildQuestionNumberById } from '@/utils/questionHelpers'
 import { QuestionRenderer } from './questions'
 import { CoverPage, CompletionScreen, TerminationScreen, ClosedSurveyScreen } from './screens'
 
@@ -47,12 +48,43 @@ export function SurveyPreview({ survey, items, onClose, isPublic = false }) {
     [items, responses]
   )
 
-  const allQuestions = items.filter(i => i.itemType === 'question')
-  const getQNum = (id) => allQuestions.findIndex(q => q.id === id) + 1
+  const questionNumberById = useMemo(
+    () => buildQuestionNumberById(items),
+    [items]
+  )
 
-  const currentItems    = pages[currentPage] || []
+  const currentItems     = pages[currentPage] || []
   const currentQuestions = currentItems.filter(i => i.itemType === 'question')
-  const totalPages = pages.length
+  const totalPages       = pages.length
+
+  const currentPageBreakTitle = useMemo(() => {
+    if (currentPage <= 0) return null
+    let breakIndex = 0
+    for (const item of items) {
+      if (item.itemType !== 'page_break') continue
+      if (breakIndex === currentPage - 1) return item.title || null
+      breakIndex++
+    }
+    return null
+  }, [items, currentPage])
+
+  // Resolve piped text once per visible page item when responses change
+  const pipedDisplayByItemId = useMemo(() => {
+    const map = {}
+    for (const item of currentItems) {
+      if (item.itemType === 'text_block') {
+        map[item.id] = {
+          title: item.title ? resolvePipingTokens(item.title, responses, items) : '',
+          content: item.content ? resolvePipingTokens(item.content, responses, items) : '',
+        }
+      } else if (item.itemType === 'question') {
+        map[item.id] = {
+          text: resolvePipingTokens(item.text, responses, items),
+        }
+      }
+    }
+    return map
+  }, [currentItems, responses, items])
 
   const reset = () => {
     setResponses({}); setCompanions({}); setErrors({}); setCurrentPage(0)
@@ -225,24 +257,20 @@ export function SurveyPreview({ survey, items, onClose, isPublic = false }) {
         <>
           <div className="flex-1 py-8 px-6">
             <div className="max-w-2xl mx-auto space-y-5">
-              {/* Page title if there's a page break with a title before this page */}
-              {currentPage > 0 && (() => {
-                const breaks = items.filter(i => i.itemType === 'page_break')
-                const pb = breaks[currentPage - 1]
-                return pb?.title ? (
-                  <div className="text-center mb-2">
-                    <h2 className="text-lg font-semibold text-ink-700">{pb.title}</h2>
-                  </div>
-                ) : null
-              })()}
+              {currentPageBreakTitle && (
+                <div className="text-center mb-2">
+                  <h2 className="text-lg font-semibold text-ink-700">{currentPageBreakTitle}</h2>
+                </div>
+              )}
 
               {currentItems.map(item => {
                 // ── Text / Media block ──────────────────────────────────
                 if (item.itemType === 'text_block') {
+                  const piped = pipedDisplayByItemId[item.id] || {}
                   return (
                     <div key={item.id} className="bg-white rounded-2xl border border-emerald-100 p-6">
                       {item.title && (
-                        <p className="text-base font-semibold text-ink-800 mb-3">{resolvePipingTokens(item.title, responses, items)}</p>
+                        <p className="text-base font-semibold text-ink-800 mb-3">{piped.title}</p>
                       )}
                       {item.image && (
                         <div className="mb-3">
@@ -254,7 +282,7 @@ export function SurveyPreview({ survey, items, onClose, isPublic = false }) {
                       )}
                       {item.content && (
                         <div className="rte-content text-ink-700 text-sm leading-relaxed"
-                          dangerouslySetInnerHTML={{ __html: resolvePipingTokens(item.content, responses, items) }} />
+                          dangerouslySetInnerHTML={{ __html: piped.content }} />
                       )}
                       {!item.title && !item.image && !item.content && (
                         <p className="text-ink-300 italic text-sm">Empty text block</p>
@@ -265,7 +293,8 @@ export function SurveyPreview({ survey, items, onClose, isPublic = false }) {
 
                 // ── Question ────────────────────────────────────────────
                 const q     = item
-                const qNum  = getQNum(q.id)
+                const qNum  = questionNumberById[q.id] ?? 0
+                const piped = pipedDisplayByItemId[q.id]
                 const error = errors[q.id]
                 return (
                   <div key={q.id} className={`bg-white rounded-2xl border-2 p-6 transition-all duration-200 ${error ? 'border-rose-300 shadow-sm shadow-rose-100' : 'border-ink-100 hover:border-ink-200'}`}>
@@ -275,7 +304,7 @@ export function SurveyPreview({ survey, items, onClose, isPublic = false }) {
                       </span>
                       <div className="flex-1">
                         <p className="text-base font-semibold text-ink-800 leading-snug">
-                          {resolvePipingTokens(q.text, responses, items) || <span className="text-ink-300 italic">Untitled question</span>}
+                          {piped?.text || <span className="text-ink-300 italic">Untitled question</span>}
                           {q.required && <span className="text-rose-500 ml-1">*</span>}
                         </p>
                       </div>

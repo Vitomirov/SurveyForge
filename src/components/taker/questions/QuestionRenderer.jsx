@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { buildPipedOptions } from '@/utils/piping'
 import { SingleSelectQ } from './SingleSelectQ'
 import { MultiSelectQ } from './MultiSelectQ'
@@ -23,10 +24,11 @@ import { ImageChoiceQ } from './ImageChoiceQ'
  * Central registry — add new question types here only.
  */
 export function QuestionRenderer({ question, value, onChange, surveyDateFormat, companions, onCompanionChange, responses, items }) {
-  // Resolve piped options for choice questions
-  const opts = (question.pipedOptionsConfig?.enabled)
-    ? buildPipedOptions(question, responses, items)
-    : question.options
+  const pipeCfg = question.pipedOptionsConfig
+  const opts = useMemo(
+    () => (pipeCfg?.enabled ? buildPipedOptions(question, responses, items) : question.options),
+    [question, pipeCfg?.enabled, pipeCfg?.sourceQuestionId, responses, items]
+  )
 
   switch (question.questionType) {
     case 'single_select':  return <SingleSelectQ  question={{ ...question, options: opts }} value={value} onChange={onChange} companions={companions} onCompanionChange={onCompanionChange} />

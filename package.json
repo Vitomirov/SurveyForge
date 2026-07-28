@@ -8,7 +8,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "check:registries": "node scripts/check-registries.js",
-    "test:phase2": "node --test scripts/phase2.test.mjs"
+    "test:phase2": "node --test scripts/phase2.test.mjs",
+    "test:phase3": "node --test scripts/phase3.test.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.1.0",

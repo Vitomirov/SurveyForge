@@ -2,7 +2,7 @@
 // Uses conditionEngine for all condition matching — same logic as termination
 // blocks, so survey creators only need one mental model for AND/OR rules.
 
-import { isChoiceType } from '@/utils/questionHelpers'
+import { isChoiceType, buildQuestionNumberById } from '@/utils/questionHelpers'
 import { evalConditionSet } from '@/utils/conditionEngine'
 
 /**
@@ -90,10 +90,15 @@ export function buildVisiblePages(items, responses) {
 
 export function visibilitySummary(vis, allItems) {
   if (!vis?.enabled || !vis.conditions?.length) return null
+
+  const qNumById = buildQuestionNumberById(allItems)
+  const itemById = {}
+  for (const item of allItems) itemById[item.id] = item
+
   const verb = vis.mode === 'hide_if' ? 'Hidden if' : 'Shown only if'
   const parts = vis.conditions.map((c, i) => {
-    const q = allItems.find(item => item.id === c.questionId)
-    const qLabel = q ? `Q${allItems.filter(it => it.itemType === 'question').indexOf(q) + 1}` : '?'
+    const q = itemById[c.questionId]
+    const qLabel = q ? `Q${qNumById[q.id] ?? '?'}` : '?'
     let condStr
     if (q && isChoiceType(q.questionType)) {
       const labels = (c.optionIds || []).map(id => q.options?.find(o => o.id === id)?.text || '?')
