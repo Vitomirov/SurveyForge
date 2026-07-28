@@ -12,9 +12,15 @@ import {
   makeMatrixRow,
   makeMatrixCol,
 } from './factories'
-
-const updateItem = (items, id, patch) =>
-  items.map(item => item.id === id ? { ...item, ...patch } : item)
+import {
+  updateItemById,
+  patchItem,
+  mapById,
+  mapArray,
+  patchNested,
+  withItems,
+  findItemIndex,
+} from './reducerHelpers'
 
 export function surveyReducer(state, action) {
   const now = new Date().toISOString()
@@ -88,118 +94,70 @@ export function surveyReducer(state, action) {
       return { ...state, items: [...state.items, blk], activeItemId: blk.id, isDirty: true }
     }
 
-    case 'ADD_TERMINATION_CONDITION': {
-      return {
-        ...state,
-        items: state.items.map(item => {
-          if (item.id !== action.blockId) return item
-          const isFirst  = (item.conditions || []).length === 0
-          const newCond  = makeTerminationCondition(isFirst)
-          return { ...item, conditions: [...(item.conditions || []), newCond] }
-        }),
-        isDirty: true,
-      }
-    }
+    case 'ADD_TERMINATION_CONDITION':
+      return withItems(state, updateItemById(state.items, action.blockId, item => {
+        const isFirst = (item.conditions || []).length === 0
+        const newCond = makeTerminationCondition(isFirst)
+        return { ...item, conditions: [...(item.conditions || []), newCond] }
+      }))
 
-    case 'UPDATE_TERMINATION_CONDITION': {
-      return {
-        ...state,
-        items: state.items.map(item => {
-          if (item.id !== action.blockId) return item
-          return {
-            ...item,
-            conditions: (item.conditions || []).map(c =>
-              c.id === action.conditionId ? { ...c, ...action.patch } : c
-            ),
-          }
-        }),
-        isDirty: true,
-      }
-    }
+    case 'UPDATE_TERMINATION_CONDITION':
+      return withItems(state, updateItemById(state.items, action.blockId, item => {
+        const conditions = mapById(item.conditions || [], action.conditionId, c =>
+          patchItem(c, action.patch)
+        )
+        return conditions === item.conditions ? item : { ...item, conditions }
+      }))
 
-    case 'DELETE_TERMINATION_CONDITION': {
-      return {
-        ...state,
-        items: state.items.map(item => {
-          if (item.id !== action.blockId) return item
-          const remaining = (item.conditions || []).filter(c => c.id !== action.conditionId)
-          if (remaining.length > 0) remaining[0] = { ...remaining[0], join: null }
-          return { ...item, conditions: remaining }
-        }),
-        isDirty: true,
-      }
-    }
+    case 'DELETE_TERMINATION_CONDITION':
+      return withItems(state, updateItemById(state.items, action.blockId, item => {
+        const remaining = (item.conditions || []).filter(c => c.id !== action.conditionId)
+        if (remaining.length > 0) remaining[0] = { ...remaining[0], join: null }
+        return { ...item, conditions: remaining }
+      }))
 
-    case 'SET_EMAIL_FIELD': {
-      return {
-        ...state,
-        items: state.items.map(item => {
-          if (item.itemType !== 'question') return item
-          return { ...item, isEmailField: item.id === action.id }
-        }),
-        isDirty: true,
-      }
-    }
+    case 'SET_EMAIL_FIELD':
+      return withItems(state, mapArray(state.items, item => {
+        if (item.itemType !== 'question') return item
+        const isEmailField = item.id === action.id
+        return item.isEmailField === isEmailField ? item : { ...item, isEmailField }
+      }))
 
-    case 'SET_ITEM_VISIBILITY_MODE': {
-      return {
-        ...state,
-        items: state.items.map(item => {
-          if (item.id !== action.itemId) return item
-          const vis = item.visibility || makeVisibilityConfig()
-          return { ...item, visibility: { ...vis, ...action.patch } }
-        }),
-        isDirty: true,
-      }
-    }
+    case 'SET_ITEM_VISIBILITY_MODE':
+      return withItems(state, updateItemById(state.items, action.itemId, item => {
+        const vis = item.visibility || makeVisibilityConfig()
+        const nextVis = patchNested(vis, action.patch)
+        return nextVis === vis ? item : { ...item, visibility: nextVis }
+      }))
 
-    case 'ADD_VISIBILITY_CONDITION': {
-      return {
-        ...state,
-        items: state.items.map(item => {
-          if (item.id !== action.itemId) return item
-          const vis      = item.visibility || makeVisibilityConfig()
-          const isFirst  = (vis.conditions || []).length === 0
-          const newCond  = makeVisibilityCondition(isFirst)
-          return { ...item, visibility: { ...vis, conditions: [...(vis.conditions || []), newCond] } }
-        }),
-        isDirty: true,
-      }
-    }
+    case 'ADD_VISIBILITY_CONDITION':
+      return withItems(state, updateItemById(state.items, action.itemId, item => {
+        const vis = item.visibility || makeVisibilityConfig()
+        const isFirst = (vis.conditions || []).length === 0
+        const newCond = makeVisibilityCondition(isFirst)
+        return {
+          ...item,
+          visibility: { ...vis, conditions: [...(vis.conditions || []), newCond] },
+        }
+      }))
 
-    case 'UPDATE_VISIBILITY_CONDITION': {
-      return {
-        ...state,
-        items: state.items.map(item => {
-          if (item.id !== action.itemId) return item
-          const vis = item.visibility || makeVisibilityConfig()
-          return {
-            ...item,
-            visibility: {
-              ...vis,
-              conditions: (vis.conditions || []).map(c =>
-                c.id === action.conditionId ? { ...c, ...action.patch } : c
-              ),
-            },
-          }
-        }),
-        isDirty: true,
-      }
-    }
+    case 'UPDATE_VISIBILITY_CONDITION':
+      return withItems(state, updateItemById(state.items, action.itemId, item => {
+        const vis = item.visibility || makeVisibilityConfig()
+        const conditions = mapById(vis.conditions || [], action.conditionId, c =>
+          patchItem(c, action.patch)
+        )
+        if (conditions === vis.conditions) return item
+        return { ...item, visibility: { ...vis, conditions } }
+      }))
 
-    case 'DELETE_VISIBILITY_CONDITION': {
-      return {
-        ...state,
-        items: state.items.map(item => {
-          if (item.id !== action.itemId) return item
-          const vis = item.visibility || makeVisibilityConfig()
-          const remaining = (vis.conditions || []).filter(c => c.id !== action.conditionId)
-          if (remaining.length > 0) remaining[0] = { ...remaining[0], join: null }
-          return { ...item, visibility: { ...vis, conditions: remaining } }
-        }),
-        isDirty: true,
-      }
-    }
+    case 'DELETE_VISIBILITY_CONDITION':
+      return withItems(state, updateItemById(state.items, action.itemId, item => {
+        const vis = item.visibility || makeVisibilityConfig()
+        const remaining = (vis.conditions || []).filter(c => c.id !== action.conditionId)
+        if (remaining.length > 0) remaining[0] = { ...remaining[0], join: null }
+        return { ...item, visibility: { ...vis, conditions: remaining } }
+      }))
 
     case 'DELETE_ITEM': {
       const remaining = state.items.filter(i => i.id !== action.id)
@@ -212,7 +170,7 @@ export function surveyReducer(state, action) {
     }
 
     case 'DUPLICATE_ITEM': {
-      const idx = state.items.findIndex(i => i.id === action.id)
+      const idx = findItemIndex(state.items, action.id)
       if (idx === -1) return state
       const orig = state.items[idx]
       const copy = {
@@ -220,7 +178,7 @@ export function surveyReducer(state, action) {
         id: newId(),
         options: orig.options ? orig.options.map(o => ({ ...o, id: newId() })) : undefined,
       }
-      const next = [...state.items]
+      const next = state.items.slice()
       next.splice(idx + 1, 0, copy)
       return { ...state, items: next, activeItemId: copy.id, isDirty: true }
     }
@@ -235,264 +193,155 @@ export function surveyReducer(state, action) {
       }
 
     case 'UPDATE_ITEM':
-      return {
-        ...state,
-        items: updateItem(state.items, action.id, action.patch),
-        isDirty: true,
-      }
+      return withItems(state, updateItemById(state.items, action.id, item =>
+        patchItem(item, action.patch)
+      ))
 
     case 'REORDER_ITEMS':
-      return { ...state, items: action.items, isDirty: true }
+      return action.items === state.items ? state : { ...state, items: action.items, isDirty: true }
 
-    case 'ADD_OPTION': {
-      return {
-        ...state,
-        items: state.items.map(item => {
-          if (item.id !== action.questionId) return item
-          return { ...item, options: [...item.options, makeOption()] }
-        }),
-        isDirty: true,
-      }
-    }
+    case 'ADD_OPTION':
+      return withItems(state, updateItemById(state.items, action.questionId, item => ({
+        ...item,
+        options: [...item.options, makeOption()],
+      })))
 
     case 'ADD_OPTION_AFTER': {
       const newOpt = makeOption()
-      return {
-        ...state,
-        items: state.items.map(item => {
-          if (item.id !== action.questionId) return item
-          const idx = item.options.findIndex(o => o.id === action.afterOptionId)
-          const opts = [...item.options]
-          opts.splice(idx + 1, 0, newOpt)
-          return { ...item, options: opts }
-        }),
-        focusOptionId: newOpt.id,
-        isDirty: true,
-      }
+      const items = updateItemById(state.items, action.questionId, item => {
+        const idx = item.options.findIndex(o => o.id === action.afterOptionId)
+        const opts = item.options.slice()
+        opts.splice(idx + 1, 0, newOpt)
+        return { ...item, options: opts }
+      })
+      return withItems(state, items, { focusOptionId: newOpt.id })
     }
 
-    case 'PASTE_OPTIONS': {
-      return {
-        ...state,
-        items: state.items.map(item => {
-          if (item.id !== action.questionId) return item
-          const idx = item.options.findIndex(o => o.id === action.currentOptionId)
-          const opts = [...item.options]
-          opts[idx] = { ...opts[idx], text: action.lines[0] }
-          const newOpts = action.lines.slice(1).map(text => makeOption(text))
-          opts.splice(idx + 1, 0, ...newOpts)
-          return { ...item, options: opts }
-        }),
-        isDirty: true,
-      }
-    }
+    case 'PASTE_OPTIONS':
+      return withItems(state, updateItemById(state.items, action.questionId, item => {
+        const idx = item.options.findIndex(o => o.id === action.currentOptionId)
+        const opts = item.options.slice()
+        opts[idx] = { ...opts[idx], text: action.lines[0] }
+        const newOpts = action.lines.slice(1).map(text => makeOption(text))
+        opts.splice(idx + 1, 0, ...newOpts)
+        return { ...item, options: opts }
+      }))
 
-    case 'UPDATE_OPTION': {
-      return {
-        ...state,
-        items: state.items.map(item => {
-          if (item.id !== action.questionId) return item
-          return {
-            ...item,
-            options: item.options.map(o =>
-              o.id === action.optionId ? { ...o, ...action.patch } : o
-            ),
-          }
-        }),
-        isDirty: true,
-      }
-    }
+    case 'UPDATE_OPTION':
+      return withItems(state, updateItemById(state.items, action.questionId, item => {
+        const options = mapById(item.options, action.optionId, o => patchItem(o, action.patch))
+        return options === item.options ? item : { ...item, options }
+      }))
 
-    case 'UPDATE_OPTION_OPEN_TEXT': {
-      return {
-        ...state,
-        items: state.items.map(item => {
-          if (item.id !== action.questionId) return item
-          return {
-            ...item,
-            options: item.options.map(o =>
-              o.id === action.optionId
-                ? { ...o, openText: { ...o.openText, ...action.patch } }
-                : o
-            ),
-          }
-        }),
-        isDirty: true,
-      }
-    }
+    case 'UPDATE_OPTION_OPEN_TEXT':
+      return withItems(state, updateItemById(state.items, action.questionId, item => {
+        const options = mapById(item.options, action.optionId, o => {
+          const openText = patchNested(o.openText, action.patch)
+          return openText === o.openText ? o : { ...o, openText }
+        })
+        return options === item.options ? item : { ...item, options }
+      }))
 
-    case 'DELETE_OPTION': {
-      return {
-        ...state,
-        items: state.items.map(item => {
-          if (item.id !== action.questionId) return item
-          return { ...item, options: item.options.filter(o => o.id !== action.optionId) }
-        }),
-        isDirty: true,
-      }
-    }
+    case 'DELETE_OPTION':
+      return withItems(state, updateItemById(state.items, action.questionId, item => ({
+        ...item,
+        options: item.options.filter(o => o.id !== action.optionId),
+      })))
 
-    case 'REORDER_OPTIONS': {
-      return {
-        ...state,
-        items: state.items.map(item =>
-          item.id === action.questionId ? { ...item, options: action.options } : item
-        ),
-        isDirty: true,
-      }
-    }
+    case 'REORDER_OPTIONS':
+      return withItems(state, updateItemById(state.items, action.questionId, item =>
+        item.options === action.options ? item : { ...item, options: action.options }
+      ))
 
-    case 'ADD_MATRIX_ROW': {
-      return {
-        ...state,
-        items: state.items.map(item => {
-          if (item.id !== action.questionId) return item
-          const cfg = action.configKey
-          return { ...item, [cfg]: { ...item[cfg], rows: [...item[cfg].rows, makeMatrixRow()] } }
-        }),
-        isDirty: true,
-      }
-    }
+    case 'ADD_MATRIX_ROW':
+      return withItems(state, updateItemById(state.items, action.questionId, item => {
+        const cfg = action.configKey
+        return { ...item, [cfg]: { ...item[cfg], rows: [...item[cfg].rows, makeMatrixRow()] } }
+      }))
 
-    case 'ADD_MATRIX_COL': {
-      return {
-        ...state,
-        items: state.items.map(item => {
-          if (item.id !== action.questionId) return item
-          const cfg = action.configKey
-          const colKey = action.colKey || 'columns'
-          return { ...item, [cfg]: { ...item[cfg], [colKey]: [...item[cfg][colKey], makeMatrixCol()] } }
-        }),
-        isDirty: true,
-      }
-    }
+    case 'ADD_MATRIX_COL':
+      return withItems(state, updateItemById(state.items, action.questionId, item => {
+        const cfg = action.configKey
+        const colKey = action.colKey || 'columns'
+        return { ...item, [cfg]: { ...item[cfg], [colKey]: [...item[cfg][colKey], makeMatrixCol()] } }
+      }))
 
-    case 'UPDATE_MATRIX_ROW': {
-      return {
-        ...state,
-        items: state.items.map(item => {
-          if (item.id !== action.questionId) return item
-          const cfg = action.configKey
-          return {
-            ...item,
-            [cfg]: {
-              ...item[cfg],
-              rows: item[cfg].rows.map(r => r.id === action.rowId ? { ...r, text: action.text } : r),
-            },
-          }
-        }),
-        isDirty: true,
-      }
-    }
+    case 'UPDATE_MATRIX_ROW':
+      return withItems(state, updateItemById(state.items, action.questionId, item => {
+        const cfg = action.configKey
+        const rows = mapById(item[cfg].rows, action.rowId, r =>
+          r.text === action.text ? r : { ...r, text: action.text }
+        )
+        if (rows === item[cfg].rows) return item
+        return { ...item, [cfg]: { ...item[cfg], rows } }
+      }))
 
-    case 'UPDATE_MATRIX_COL': {
-      return {
-        ...state,
-        items: state.items.map(item => {
-          if (item.id !== action.questionId) return item
-          const cfg = action.configKey
-          const colKey = action.colKey || 'columns'
-          return {
-            ...item,
-            [cfg]: {
-              ...item[cfg],
-              [colKey]: item[cfg][colKey].map(c => c.id === action.colId ? { ...c, text: action.text } : c),
-            },
-          }
-        }),
-        isDirty: true,
-      }
-    }
+    case 'UPDATE_MATRIX_COL':
+      return withItems(state, updateItemById(state.items, action.questionId, item => {
+        const cfg = action.configKey
+        const colKey = action.colKey || 'columns'
+        const cols = mapById(item[cfg][colKey], action.colId, c =>
+          c.text === action.text ? c : { ...c, text: action.text }
+        )
+        if (cols === item[cfg][colKey]) return item
+        return { ...item, [cfg]: { ...item[cfg], [colKey]: cols } }
+      }))
 
-    case 'DELETE_MATRIX_ROW': {
-      return {
-        ...state,
-        items: state.items.map(item => {
-          if (item.id !== action.questionId) return item
-          const cfg = action.configKey
-          return { ...item, [cfg]: { ...item[cfg], rows: item[cfg].rows.filter(r => r.id !== action.rowId) } }
-        }),
-        isDirty: true,
-      }
-    }
+    case 'DELETE_MATRIX_ROW':
+      return withItems(state, updateItemById(state.items, action.questionId, item => {
+        const cfg = action.configKey
+        return { ...item, [cfg]: { ...item[cfg], rows: item[cfg].rows.filter(r => r.id !== action.rowId) } }
+      }))
 
-    case 'DELETE_MATRIX_COL': {
-      return {
-        ...state,
-        items: state.items.map(item => {
-          if (item.id !== action.questionId) return item
-          const cfg = action.configKey
-          const colKey = action.colKey || 'columns'
-          return {
-            ...item,
-            [cfg]: { ...item[cfg], [colKey]: item[cfg][colKey].filter(c => c.id !== action.colId) },
-          }
-        }),
-        isDirty: true,
-      }
-    }
+    case 'DELETE_MATRIX_COL':
+      return withItems(state, updateItemById(state.items, action.questionId, item => {
+        const cfg = action.configKey
+        const colKey = action.colKey || 'columns'
+        return {
+          ...item,
+          [cfg]: { ...item[cfg], [colKey]: item[cfg][colKey].filter(c => c.id !== action.colId) },
+        }
+      }))
 
-    case 'UPDATE_MATRIX_CONFIG': {
-      return {
-        ...state,
-        items: state.items.map(item => {
-          if (item.id !== action.questionId) return item
-          const cfg = action.configKey
-          return { ...item, [cfg]: { ...item[cfg], ...action.patch } }
-        }),
-        isDirty: true,
-      }
-    }
+    case 'UPDATE_MATRIX_CONFIG':
+      return withItems(state, updateItemById(state.items, action.questionId, item => {
+        const cfg = action.configKey
+        const nextCfg = patchNested(item[cfg], action.patch)
+        return nextCfg === item[cfg] ? item : { ...item, [cfg]: nextCfg }
+      }))
 
     case 'CLEAR_FOCUS':
       return { ...state, focusOptionId: null }
 
-    case 'ADD_TERMINATION_RULE': {
-      return {
-        ...state,
-        items: state.items.map(item => {
-          if (item.id !== action.questionId) return item
-          const newRule = {
-            id: newId(),
-            ruleType: action.ruleType || 'choice',
-            matchMode: 'any',
-            optionIds: [],
-            textOperator: 'contains',
-            textValue: '',
-            note: '',
-          }
-          return { ...item, terminationRules: [...(item.terminationRules || []), newRule] }
-        }),
-        isDirty: true,
-      }
-    }
+    case 'ADD_TERMINATION_RULE':
+      return withItems(state, updateItemById(state.items, action.questionId, item => {
+        const newRule = {
+          id: newId(),
+          ruleType: action.ruleType || 'choice',
+          matchMode: 'any',
+          optionIds: [],
+          textOperator: 'contains',
+          textValue: '',
+          note: '',
+        }
+        return { ...item, terminationRules: [...(item.terminationRules || []), newRule] }
+      }))
 
-    case 'UPDATE_TERMINATION_RULE': {
-      return {
-        ...state,
-        items: state.items.map(item => {
-          if (item.id !== action.questionId) return item
-          return {
-            ...item,
-            terminationRules: (item.terminationRules || []).map(r =>
-              r.id === action.ruleId ? { ...r, ...action.patch } : r
-            ),
-          }
-        }),
-        isDirty: true,
-      }
-    }
+    case 'UPDATE_TERMINATION_RULE':
+      return withItems(state, updateItemById(state.items, action.questionId, item => {
+        const terminationRules = mapById(item.terminationRules || [], action.ruleId, r =>
+          patchItem(r, action.patch)
+        )
+        return terminationRules === item.terminationRules
+          ? item
+          : { ...item, terminationRules }
+      }))
 
-    case 'DELETE_TERMINATION_RULE': {
-      return {
-        ...state,
-        items: state.items.map(item => {
-          if (item.id !== action.questionId) return item
-          return { ...item, terminationRules: (item.terminationRules || []).filter(r => r.id !== action.ruleId) }
-        }),
-        isDirty: true,
-      }
-    }
+    case 'DELETE_TERMINATION_RULE':
+      return withItems(state, updateItemById(state.items, action.questionId, item => ({
+        ...item,
+        terminationRules: (item.terminationRules || []).filter(r => r.id !== action.ruleId),
+      })))
 
     case 'SET_SURVEY_SETTING': {
       return {

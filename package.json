@@ -9,7 +9,9 @@
     "preview": "vite preview",
     "check:registries": "node scripts/check-registries.js",
     "test:phase2": "node --test scripts/phase2.test.mjs",
-    "test:phase3": "node --test scripts/phase3.test.mjs"
+    "test:phase3": "node --test scripts/phase3.test.mjs",
+    "test:phase4": "node --test scripts/phase4.test.mjs",
+    "test:track-a": "node --test scripts/phase2.test.mjs scripts/phase3.test.mjs scripts/phase4.test.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.1.0",
