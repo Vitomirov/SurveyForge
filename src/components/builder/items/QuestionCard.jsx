@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, memo } from 'react'
 import React from 'react'
 import {
   ChevronDown, ChevronRight, Copy, Trash2, GripVertical,
@@ -57,7 +57,10 @@ function TokenPicker({ availableQuestions, onInsert }) {
   )
 }
 
-export function QuestionCard({ question, questionNumber, isActive, dispatch, onActivate, focusOptionId, surveyDateFormat, availableQuestions = [] }) {
+export const QuestionCard = memo(function QuestionCard({
+  question, questionNumber, isActive, dispatch, onActivateItem, focusOptionId,
+  surveyDateFormat, availableQuestions = [],
+}) {
   const [showTypeMenu, setShowTypeMenu] = useState(false)
   const meta   = getTypeMeta(question.questionType)
   const colors = TYPE_COLORS[question.questionType] || TYPE_COLORS.single_select
@@ -93,7 +96,7 @@ export function QuestionCard({ question, questionNumber, isActive, dispatch, onA
       <div className={`card transition-all duration-150 ${isActive ? 'border-brand-400 shadow-md shadow-brand-100' : 'hover:border-ink-300'}`}>
 
         {/* ── Header ────────────────────────────────────────────────── */}
-        <div className="flex items-start gap-3 p-4 cursor-pointer" onClick={onActivate}>
+        <div className="flex items-start gap-3 p-4 cursor-pointer" onClick={() => onActivateItem(question.id)}>
 
           {/* Drag handle */}
           <div {...attributes} {...listeners} className="drag-handle mt-0.5 text-ink-200 hover:text-ink-400 transition-colors" onClick={e => e.stopPropagation()}>
@@ -280,4 +283,4 @@ export function QuestionCard({ question, questionNumber, isActive, dispatch, onA
       </div>
     </div>
   )
-}
+})

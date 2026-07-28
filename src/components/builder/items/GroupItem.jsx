@@ -1,10 +1,13 @@
+import { memo } from 'react'
 import { Trash2, GripVertical, ChevronDown, ChevronRight, Layers, GitBranch, Settings2 } from 'lucide-react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { VisibilityEditor } from '@/components/shared'
 import { visibilitySummary } from '@/utils/visibilityEngine'
 
-export function GroupItem({ item, questionCount, dispatch, isActive, onActivate, availableQuestions = [] }) {
+export const GroupItem = memo(function GroupItem({
+  item, questionCount, dispatch, isActive, onActivateItem, availableQuestions = [],
+}) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.id })
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 }
 
@@ -58,7 +61,7 @@ export function GroupItem({ item, questionCount, dispatch, isActive, onActivate,
 
         {/* Visibility settings toggle */}
         <button
-          onClick={onActivate}
+          onClick={() => onActivateItem(item.id)}
           title="Conditional visibility settings"
           className={`p-1.5 rounded-lg transition-all shrink-0 ${
             isActive ? 'text-violet-300 bg-violet-900/60' : 'text-ink-500 hover:text-violet-300 hover:bg-ink-700'
@@ -93,4 +96,4 @@ export function GroupItem({ item, questionCount, dispatch, isActive, onActivate,
       )}
     </div>
   )
-}
+})

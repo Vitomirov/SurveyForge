@@ -228,6 +228,12 @@ export function surveyReducer(state, action) {
     case 'SET_ACTIVE_ITEM':
       return { ...state, activeItemId: action.id }
 
+    case 'TOGGLE_ACTIVE_ITEM':
+      return {
+        ...state,
+        activeItemId: state.activeItemId === action.id ? null : action.id,
+      }
+
     case 'UPDATE_ITEM':
       return {
         ...state,

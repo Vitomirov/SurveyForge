@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { Trash2, GripVertical, ChevronRight, Zap } from 'lucide-react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
@@ -33,7 +34,9 @@ function CollapsedSummary({ conditions, questions }) {
 }
 
 // ─── Main TerminationBlockItem ─────────────────────────────────────────────
-export function TerminationBlockItem({ item, availableQuestions, isActive, onActivate, dispatch }) {
+export const TerminationBlockItem = memo(function TerminationBlockItem({
+  item, availableQuestions, isActive, onActivateItem, dispatch,
+}) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: item.id })
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 }
@@ -50,7 +53,7 @@ export function TerminationBlockItem({ item, availableQuestions, isActive, onAct
         {/* ── Header ── */}
         <div
           className="flex items-center gap-2.5 px-3 py-2.5 cursor-pointer"
-          onClick={onActivate}
+          onClick={() => onActivateItem(item.id)}
         >
           <div
             {...attributes} {...listeners}
@@ -142,4 +145,4 @@ export function TerminationBlockItem({ item, availableQuestions, isActive, onAct
       </div>
     </div>
   )
-}
+})

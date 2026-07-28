@@ -1,10 +1,13 @@
+import { memo } from 'react'
 import { Trash2, GripVertical, FileText, GitBranch, ChevronDown } from 'lucide-react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { VisibilityEditor } from '@/components/shared'
 import { visibilitySummary } from '@/utils/visibilityEngine'
 
-export function PageBreakItem({ item, pageNumber, dispatch, isActive, onActivate, availableQuestions = [] }) {
+export const PageBreakItem = memo(function PageBreakItem({
+  item, pageNumber, dispatch, isActive, onActivateItem, availableQuestions = [],
+}) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.id })
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 }
 
@@ -24,7 +27,7 @@ export function PageBreakItem({ item, pageNumber, dispatch, isActive, onActivate
 
         {/* Page break badge */}
         <button
-          onClick={onActivate}
+          onClick={() => onActivateItem(item.id)}
           className={`flex items-center gap-2 px-3 py-1.5 bg-white border rounded-full shadow-sm transition-all ${
             isActive ? 'border-violet-400 ring-2 ring-violet-100' : 'border-ink-200'
           }`}
@@ -79,4 +82,4 @@ export function PageBreakItem({ item, pageNumber, dispatch, isActive, onActivate
       )}
     </div>
   )
-}
+})

@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useRef, useState, memo } from 'react'
 import { GripVertical, Trash2, ChevronDown, ChevronRight, Image as ImageIcon, X, Upload, FileText } from 'lucide-react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
@@ -7,7 +7,9 @@ import { visibilitySummary } from '@/utils/visibilityEngine'
 
 const MAX_IMAGE_BYTES = 4 * 1024 * 1024
 
-export function TextBlockItem({ item, dispatch, isActive, onActivate, availableQuestions = [] }) {
+export const TextBlockItem = memo(function TextBlockItem({
+  item, dispatch, isActive, onActivateItem, availableQuestions = [],
+}) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: item.id })
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 }
@@ -64,7 +66,7 @@ export function TextBlockItem({ item, dispatch, isActive, onActivate, availableQ
           )}
 
           <button
-            onClick={onActivate}
+            onClick={() => onActivateItem(item.id)}
             className="p-1 text-ink-300 hover:text-ink-600 transition-colors"
           >
             {isActive ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
@@ -167,4 +169,4 @@ export function TextBlockItem({ item, dispatch, isActive, onActivate, availableQ
       </div>
     </div>
   )
-}
+})

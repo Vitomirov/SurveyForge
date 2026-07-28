@@ -1,4 +1,4 @@
-import { useReducer, useState, useMemo } from 'react'
+import { useReducer, useState, useMemo, useCallback } from 'react'
 import {
   DndContext, closestCenter, KeyboardSensor, PointerSensor,
   useSensor, useSensors, DragOverlay,
@@ -31,6 +31,15 @@ export function SurveyBuilder({ initialState, onBackToDashboard }) {
   const [state, dispatch] = useReducer(surveyReducer, initialState || INITIAL_STATE)
 
   useAutosave({ survey: state.survey, items: state.items })
+
+  const handleActivateItem = useCallback((id) => {
+    dispatch({ type: 'TOGGLE_ACTIVE_ITEM', id })
+  }, [])
+
+  const sortableItemIds = useMemo(
+    () => state.items.map(i => i.id),
+    [state.items]
+  )
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -296,7 +305,7 @@ export function SurveyBuilder({ initialState, onBackToDashboard }) {
               onDragStart={handleDragStart}
               onDragEnd={handleDragEnd}
             >
-              <SortableContext items={state.items.map(i => i.id)} strategy={verticalListSortingStrategy}>
+              <SortableContext items={sortableItemIds} strategy={verticalListSortingStrategy}>
                 <div className="space-y-2">
                   {state.items.map((item, idx) => {
                     const meta = itemMeta[idx]
@@ -311,10 +320,7 @@ export function SurveyBuilder({ initialState, onBackToDashboard }) {
                           dispatch={dispatch}
                           availableQuestions={availableQuestions}
                           isActive={state.activeItemId === item.id}
-                          onActivate={() => dispatch({
-                            type: 'SET_ACTIVE_ITEM',
-                            id: state.activeItemId === item.id ? null : item.id,
-                          })}
+                          onActivateItem={handleActivateItem}
                         />
                       )
                     }
@@ -329,10 +335,7 @@ export function SurveyBuilder({ initialState, onBackToDashboard }) {
                           dispatch={dispatch}
                           availableQuestions={availableQuestions}
                           isActive={state.activeItemId === item.id}
-                          onActivate={() => dispatch({
-                            type: 'SET_ACTIVE_ITEM',
-                            id: state.activeItemId === item.id ? null : item.id,
-                          })}
+                          onActivateItem={handleActivateItem}
                         />
                       )
                     }
@@ -345,10 +348,7 @@ export function SurveyBuilder({ initialState, onBackToDashboard }) {
                           item={item}
                           availableQuestions={availableQuestions}
                           isActive={state.activeItemId === item.id}
-                          onActivate={() => dispatch({
-                            type: 'SET_ACTIVE_ITEM',
-                            id: state.activeItemId === item.id ? null : item.id,
-                          })}
+                          onActivateItem={handleActivateItem}
                           dispatch={dispatch}
                         />
                       )
@@ -363,10 +363,7 @@ export function SurveyBuilder({ initialState, onBackToDashboard }) {
                           dispatch={dispatch}
                           availableQuestions={availableQuestions}
                           isActive={state.activeItemId === item.id}
-                          onActivate={() => dispatch({
-                            type: 'SET_ACTIVE_ITEM',
-                            id: state.activeItemId === item.id ? null : item.id,
-                          })}
+                          onActivateItem={handleActivateItem}
                         />
                       )
                     }
@@ -383,11 +380,10 @@ export function SurveyBuilder({ initialState, onBackToDashboard }) {
                           questionNumber={meta.questionNumber}
                           isActive={state.activeItemId === item.id}
                           dispatch={dispatch}
-                          onActivate={() => dispatch({
-                            type: 'SET_ACTIVE_ITEM',
-                            id: state.activeItemId === item.id ? null : item.id
-                          })}
-                          focusOptionId={state.focusOptionId}
+                          onActivateItem={handleActivateItem}
+                          focusOptionId={
+                            state.activeItemId === item.id ? state.focusOptionId : null
+                          }
                           surveyDateFormat={state.survey.defaultDateFormat || 'DD/MM/YYYY'}
                           availableQuestions={availableQuestions}
                         />
