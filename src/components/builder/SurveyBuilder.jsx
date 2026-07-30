@@ -21,16 +21,21 @@ import {
 import { AddPanel, StatsPanel, EmptyState } from '@/components/builder/panels'
 import { RichTextEditor } from '@/components/shared'
 import { useAutosave } from '@/hooks/useAutosave'
+import { useApi } from '@/config/api'
 import { buildItemMeta, buildAvailableQuestionsByIndex, buildGroupQuestionCounts } from '@/utils/builderLayout'
 import { generateTemplateCSV, downloadCSV } from '@/utils/csvExport'
 import {
   Plus, Save, Eye, BarChart3, Layers,
   Scissors, Download, PlayCircle, ArrowLeft, FileText,
 } from 'lucide-react'
-export function SurveyBuilder({ initialState, onBackToDashboard }) {
+export function SurveyBuilder({ initialState, initialRevision = null, onBackToDashboard }) {
   const [state, dispatch] = useReducer(surveyReducer, initialState || INITIAL_STATE)
 
-  useAutosave({ survey: state.survey, items: state.items })
+  const { saveStatus } = useAutosave({
+    survey: state.survey,
+    items: state.items,
+    revision: initialRevision,
+  })
 
   const handleActivateItem = useCallback((id) => {
     dispatch({ type: 'TOGGLE_ACTIVE_ITEM', id })
@@ -127,7 +132,15 @@ export function SurveyBuilder({ initialState, onBackToDashboard }) {
             <div className="w-7 h-7 bg-brand-600 rounded-lg flex items-center justify-center">
               <Layers size={14} className="text-white" />
             </div>
-            <span className="font-bold text-ink-800 tracking-tight">SurveyForge</span>
+            <span
+              role="button"
+              tabIndex={0}
+              onClick={onBackToDashboard}
+              onKeyDown={e => e.key === 'Enter' && onBackToDashboard?.()}
+              className={`font-bold text-ink-800 tracking-tight${onBackToDashboard ? ' cursor-pointer hover:text-brand-600 transition-colors' : ''}`}
+            >
+              SurveyForge
+            </span>
           </div>
           <div className="w-px h-5 bg-ink-100" />
           <input
@@ -137,7 +150,18 @@ export function SurveyBuilder({ initialState, onBackToDashboard }) {
             className="text-sm font-medium text-ink-700 bg-transparent border-none outline-none focus:bg-ink-50 px-2 py-1 rounded-lg transition-colors flex-1 min-w-0 max-w-sm"
             placeholder="Survey title..."
           />
-          {state.isDirty && <span className="text-xs text-amber-500 font-medium shrink-0">● Unsaved</span>}
+          {useApi && saveStatus === 'saving' && (
+            <span className="text-xs text-ink-400 font-medium shrink-0">Saving…</span>
+          )}
+          {useApi && saveStatus === 'saved' && (
+            <span className="text-xs text-emerald-600 font-medium shrink-0">Saved</span>
+          )}
+          {useApi && saveStatus === 'error' && (
+            <span className="text-xs text-rose-500 font-medium shrink-0">Save failed</span>
+          )}
+          {!useApi && state.isDirty && (
+            <span className="text-xs text-amber-500 font-medium shrink-0">● Unsaved</span>
+          )}
           <div className="ml-auto flex items-center gap-1.5 shrink-0">
             {/* Survey date format setting */}
             <div className="hidden lg:flex items-center gap-1.5 px-2 py-1 bg-ink-50 rounded-lg mr-1">

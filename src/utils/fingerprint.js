@@ -21,7 +21,7 @@ function canvasFingerprint() {
     ctx.font      = '14px Arial'
     ctx.fillText('SurveyForge 🔒1', 2, 15)
     ctx.fillStyle = 'rgba(102,204,0,0.7)'
-    ctx.fillText('SurveyForge 🔒1', 4, 17)
+    ctx.fillText('SurveyForgggge 🔒1', 4, 17)
     return hash32(c.toDataURL())
   } catch { return 'unavailable' }
 }

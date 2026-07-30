@@ -29,6 +29,7 @@ export default function App() {
   const [session,      setSession]      = useState(() => getSession())
   const [view,         setView]         = useState('dashboard')
   const [builderState, setBuilderState] = useState(null)
+  const [builderRevision, setBuilderRevision] = useState(null)
   const [previewEntry, setPreviewEntry] = useState(null)
   // Public survey-taking state
   const [publicSurveyId, setPublicSurveyId] = useState(() => parseHash())
@@ -94,6 +95,7 @@ export default function App() {
   }
 
   const openBuilder = useCallback((entry = null) => {
+    setBuilderRevision(entry?.revision ?? null)
     setBuilderState(entry ? libraryEntryToState(entry) : null)
     setView('builder')
   }, [])
@@ -105,6 +107,7 @@ export default function App() {
 
   const backToDashboard = useCallback(() => {
     setBuilderState(null)
+    setBuilderRevision(null)
     setPreviewEntry(null)
     setView('dashboard')
   }, [])
@@ -114,6 +117,7 @@ export default function App() {
       <ErrorBoundary title="Builder error" onReset={backToDashboard}>
         <SurveyBuilder
           initialState={builderState}
+          initialRevision={builderRevision}
           onBackToDashboard={backToDashboard}
         />
       </ErrorBoundary>

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import React from 'react'
 import {
   Plus, Search, Settings, Filter, MoreVertical,
@@ -9,6 +9,11 @@ import {
 import {
   loadLibrary, deleteSurvey, duplicateSurvey,
 } from '@/utils/surveyLibrary'
+import { useApi } from '@/config/api'
+import {
+  listSurveys, getSurvey, deleteSurveyApi, migrateLocalLibrary,
+  metaToLibraryEntry, payloadToLibraryEntry, patchSurvey,
+} from '@/api/surveys'
 import {
   loadClients, loadTopics,
   SURVEY_TYPES, SURVEY_STATUSES,
@@ -136,6 +141,8 @@ function StatsBar({ surveys }) {
 // ─── Main Dashboard ────────────────────────────────────────────────────────
 export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session, onLogout }) {
   const [tick, setTick]             = useState(0)
+  const [apiSurveys, setApiSurveys] = useState([])
+  const [apiLoading, setApiLoading] = useState(useApi)
   const [search, setSearch]         = useState('')
   const [filterStatus, setFilterStatus] = useState('')
   const [filterClient, setFilterClient] = useState('')
@@ -144,10 +151,41 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
   const [sort, setSort]             = useState({ field: 'updatedAt', dir: 'desc' })
   const [showSettings, setShowSettings] = useState(false)
   const [deleteId, setDeleteId]     = useState(null)
+  const migrateAttemptedRef = useRef(false)
 
-  const refresh = () => setTick(t => t + 1)
+  const refresh = useCallback(async ({ allowMigrate = false } = {}) => {
+    if (!useApi) {
+      setTick(t => t + 1)
+      return
+    }
+    setApiLoading(true)
+    try {
+      let rows = await listSurveys()
+      // One-time import from localStorage on first load only — not after deletes
+      if (rows.length === 0 && allowMigrate && !migrateAttemptedRef.current) {
+        migrateAttemptedRef.current = true
+        const local = loadLibrary()
+        if (local.length > 0) {
+          await migrateLocalLibrary(local)
+          rows = await listSurveys()
+        }
+      }
+      setApiSurveys(rows.map(metaToLibraryEntry))
+    } catch (err) {
+      console.error('Failed to load surveys from API', err)
+    } finally {
+      setApiLoading(false)
+    }
+  }, [])
 
-  const surveys = useMemo(() => loadLibrary(), [tick])
+  useEffect(() => {
+    if (useApi) refresh({ allowMigrate: true })
+  }, [refresh])
+
+  const surveys = useMemo(
+    () => (useApi ? apiSurveys : loadLibrary()),
+    [useApi, apiSurveys, tick]
+  )
   const clients = useMemo(() => loadClients(), [tick])
   const topics  = useMemo(() => loadTopics(),  [tick])
 
@@ -209,13 +247,73 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
   const toggleSort = (field) =>
     setSort(s => s.field === field ? { field, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { field, dir: 'asc' })
 
-  const handleDuplicate = (id) => {
-    duplicateSurvey(id)
-    refresh()
+  const handleOpenSurvey = async (entry) => {
+    if (!useApi) {
+      onOpenSurvey(entry)
+      return
+    }
+    try {
+      const full = await getSurvey(entry.id || entry.survey?.id)
+      onOpenSurvey(payloadToLibraryEntry(entry.id || entry.survey?.id, full))
+    } catch (err) {
+      console.error('Failed to load survey', err)
+    }
   }
 
-  const handleDelete = () => {
+  const handlePreviewSurvey = async (entry) => {
+    if (!useApi) {
+      onPreviewSurvey(entry)
+      return
+    }
+    try {
+      const full = await getSurvey(entry.id || entry.survey?.id)
+      onPreviewSurvey(payloadToLibraryEntry(entry.id || entry.survey?.id, full))
+    } catch (err) {
+      console.error('Failed to load survey for preview', err)
+    }
+  }
+
+  const handleDuplicate = async (id) => {
+    if (!useApi) {
+      duplicateSurvey(id)
+      refresh()
+      return
+    }
+    try {
+      const full = await getSurvey(id)
+      const now = new Date().toISOString()
+      const newId = crypto.randomUUID?.() ||
+        `sv_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+      const cloneSurvey = {
+        ...JSON.parse(JSON.stringify(full.survey)),
+        id: newId,
+        internalName: (full.survey.internalName || full.survey.title || '') + ' (copy)',
+        surveyCode: full.survey.surveyCode ? full.survey.surveyCode + '_COPY' : '',
+        status: 'draft',
+        createdAt: now,
+        updatedAt: now,
+      }
+      const cloneItems = JSON.parse(JSON.stringify(full.items || []))
+      await patchSurvey(newId, { survey: cloneSurvey, items: cloneItems })
+      refresh()
+    } catch (err) {
+      console.error('Failed to duplicate survey', err)
+    }
+  }
+
+  const handleDelete = async () => {
     if (!deleteId) return
+    if (useApi) {
+      try {
+        await deleteSurveyApi(deleteId)
+        deleteSurvey(deleteId) // keep localStorage in sync so migrate won't resurrect it
+        setDeleteId(null)
+        refresh()
+      } catch (err) {
+        console.error('Failed to delete survey', err)
+      }
+      return
+    }
     deleteSurvey(deleteId)
     setDeleteId(null)
     refresh()
@@ -319,7 +417,13 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
         </div>
 
         {/* Empty state */}
-        {surveys.length === 0 && (
+        {apiLoading && (
+          <div className="flex items-center justify-center py-24 text-sm text-ink-400">
+            Loading surveys…
+          </div>
+        )}
+
+        {!apiLoading && surveys.length === 0 && (
           <div className="flex flex-col items-center justify-center py-24 text-center">
             <div className="w-16 h-16 rounded-2xl bg-brand-50 flex items-center justify-center mb-4">
               <Layers size={28} className="text-brand-400" />
@@ -333,7 +437,7 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
         )}
 
         {/* Table */}
-        {surveys.length > 0 && (
+        {!apiLoading && surveys.length > 0 && (
           <div className="card overflow-hidden">
             <table className="w-full text-sm">
               <thead>
@@ -371,13 +475,14 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
                 )}
                 {displayed.map(entry => {
                   const sv     = entry.survey || {}
-                  const qCount = (entry.items || []).filter(i => i.itemType === 'question').length
+                  const qCount = entry.questionCount ??
+                    (entry.items || []).filter(i => i.itemType === 'question').length
                   const rc     = responseCounts[sv.id] || { total: 0, complete: 0 }
                   return (
                     <tr
                       key={sv.id}
                       className="border-b border-ink-50 hover:bg-ink-50/50 transition-colors cursor-pointer group"
-                      onClick={() => onOpenSurvey(entry)}
+                      onClick={() => handleOpenSurvey(entry)}
                     >
                       {/* Code */}
                       <td className="px-4 py-3">
@@ -448,8 +553,8 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
                       <td className="px-2 py-3" onClick={e => e.stopPropagation()}>
                         <SurveyMenu
                           surveyId={sv.id}
-                          onOpen={() => onOpenSurvey(entry)}
-                          onPreview={() => onPreviewSurvey(entry)}
+                          onOpen={() => handleOpenSurvey(entry)}
+                          onPreview={() => handlePreviewSurvey(entry)}
                           onDuplicate={() => handleDuplicate(sv.id)}
                           onDelete={() => setDeleteId(sv.id)}
                         />
