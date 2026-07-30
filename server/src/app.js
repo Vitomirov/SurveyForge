@@ -1,7 +1,9 @@
 import Fastify from 'fastify'
 import cors from '@fastify/cors'
 import { registerPrisma } from './plugins/prisma.js'
-import { registerOrgScope } from './plugins/orgScope.js'
+import { registerAuth } from './plugins/auth.js'
+import { registerAuthRoutes } from './routes/auth.js'
+import { registerPublicRoutes } from './routes/public.js'
 import { registerSurveyRoutes } from './routes/surveys.js'
 import { registerMigrateRoutes } from './routes/migrate.js'
 import { loadConfig } from './config.js'
@@ -19,7 +21,7 @@ export async function buildApp() {
   })
 
   await registerPrisma(app)
-  await registerOrgScope(app)
+  await registerAuth(app, { jwtSecret: config.jwtSecret })
 
   app.get('/health', async () => ({
     ok: true,
@@ -27,6 +29,8 @@ export async function buildApp() {
     timestamp: new Date().toISOString(),
   }))
 
+  await registerAuthRoutes(app)
+  await registerPublicRoutes(app)
   await registerSurveyRoutes(app)
   await registerMigrateRoutes(app, { isDev: config.isDev })
 

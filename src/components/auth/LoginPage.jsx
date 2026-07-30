@@ -9,21 +9,18 @@ export function LoginPage({ onLogin }) {
   const [error, setError]       = useState('')
   const [loading, setLoading]   = useState(false)
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
     if (!username || !password) { setError('Please enter both username and password.'); return }
     setLoading(true)
     setError('')
-    // Small delay for UX
-    setTimeout(() => {
-      const result = login(username, password)
-      setLoading(false)
-      if (result.ok) {
-        onLogin(result.session)
-      } else {
-        setError(result.error)
-      }
-    }, 300)
+    const result = await login(username, password)
+    setLoading(false)
+    if (result.ok) {
+      onLogin(result.session)
+    } else {
+      setError(result.error)
+    }
   }
 
   return (

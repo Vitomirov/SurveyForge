@@ -4,6 +4,8 @@ import { ErrorBoundary } from '@/components/shared'
 import { INITIAL_STATE } from '@/store/surveyStore'
 import { getSession, logout } from '@/utils/authStore'
 import { loadSurvey } from '@/utils/surveyLibrary'
+import { useApi } from '@/config/api'
+import { getPublicSurvey } from '@/api/surveys'
 
 function libraryEntryToState(entry) {
   return {
@@ -45,9 +47,31 @@ export default function App() {
 
   useEffect(() => {
     if (!publicSurveyId) { setPublicEntry(null); setPublicError(null); return }
+
+    if (useApi) {
+      let cancelled = false
+      getPublicSurvey(publicSurveyId)
+        .then(data => {
+          if (cancelled) return
+          setPublicEntry({ survey: data.survey, items: data.items || [] })
+          setPublicError(null)
+        })
+        .catch(() => {
+          if (cancelled) return
+          setPublicError('Survey not found. The link may be incorrect or the survey may have been removed.')
+          setPublicEntry(null)
+        })
+      return () => { cancelled = true }
+    }
+
     const entry = loadSurvey(publicSurveyId)
-    if (!entry) { setPublicError('Survey not found. The link may be incorrect or the survey may have been removed.'); setPublicEntry(null) }
-    else { setPublicEntry(entry); setPublicError(null) }
+    if (!entry) {
+      setPublicError('Survey not found. The link may be incorrect or the survey may have been removed.')
+      setPublicEntry(null)
+    } else {
+      setPublicEntry(entry)
+      setPublicError(null)
+    }
   }, [publicSurveyId])
 
   // ── Public survey route — no login required ─────────────────────────────

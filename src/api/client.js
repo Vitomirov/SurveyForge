@@ -1,4 +1,5 @@
 import { useApi } from '@/config/api'
+import { getAuthToken, clearAuthToken } from '@/api/token'
 
 export class ApiError extends Error {
   constructor(message, { status, body } = {}) {
@@ -11,9 +12,13 @@ export class ApiError extends Error {
 
 export async function apiFetch(path, options = {}) {
   const headers = { ...options.headers }
-  // Only set JSON content-type when there is a body — avoids Fastify 400 on DELETE
   if (options.body != null && !headers['Content-Type']) {
     headers['Content-Type'] = 'application/json'
+  }
+
+  const token = useApi ? getAuthToken() : null
+  if (token) {
+    headers.Authorization = `Bearer ${token}`
   }
 
   const res = await fetch(path, {
@@ -27,6 +32,11 @@ export async function apiFetch(path, options = {}) {
     try { body = JSON.parse(text) } catch { body = text }
   }
 
+  if (res.status === 401 && useApi) {
+    clearAuthToken()
+    try { sessionStorage.removeItem('sf_session') } catch { /* noop */ }
+  }
+
   if (!res.ok) {
     throw new ApiError(body?.error || res.statusText || 'Request failed', {
       status: res.status,
@@ -37,7 +47,6 @@ export async function apiFetch(path, options = {}) {
   return body
 }
 
-/** Fire-and-forget when API is disabled. */
 export function apiEnabled() {
   return useApi
 }

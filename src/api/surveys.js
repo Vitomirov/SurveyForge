@@ -30,6 +30,11 @@ export async function migrateLocalLibrary(surveys) {
   })
 }
 
+/** Public taker route — live surveys only, no auth. */
+export async function getPublicSurvey(id) {
+  return apiFetch(`/api/public/surveys/${encodeURIComponent(id)}`)
+}
+
 /** Map API list row → library entry shape (metadata only; items loaded on open). */
 export function metaToLibraryEntry(meta) {
   return {
