@@ -1,0 +1,115 @@
+// SurveyForge — multi-organization SaaS schema
+// Same codebase supports single-tenant enterprise deployments via env + isolated DB.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Organization {
+  id        String   @id @default(uuid())
+  name      String
+  settings  Json     @default("{}")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  users     User[]
+  surveys   Survey[]
+  responses Response[]
+  clients   Client[]
+  topics    Topic[]
+
+  @@map("organizations")
+}
+
+model User {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  email          String
+  username       String?
+  passwordHash   String   @map("password_hash")
+  name           String?
+  role           String   @default("editor")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, email])
+  @@map("users")
+}
+
+model Survey {
+  id             String   @id
+  organizationId String   @map("organization_id")
+  tenantId       String?  @map("tenant_id")
+  survey         Json
+  items          Json     @default("[]")
+  revision       Int      @default(1)
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  responses    Response[]
+  dncEntries   DncEntry[]
+
+  @@index([organizationId])
+  @@index([organizationId, updatedAt(sort: Desc)])
+  @@map("surveys")
+}
+
+model Response {
+  id             String   @id
+  surveyId       String   @map("survey_id")
+  organizationId String   @map("organization_id")
+  payload        Json
+  status         String
+  timestamp      DateTime @default(now())
+
+  survey       Survey       @relation(fields: [surveyId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([surveyId])
+  @@index([organizationId])
+  @@index([surveyId, status])
+  @@map("responses")
+}
+
+model Client {
+  id             String   @id
+  organizationId String   @map("organization_id")
+  name           String
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@map("clients")
+}
+
+model Topic {
+  id             String   @id
+  organizationId String   @map("organization_id")
+  name           String
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@map("topics")
+}
+
+model DncEntry {
+  id       String @id @default(uuid())
+  surveyId String @map("survey_id")
+  email    String
+
+  survey Survey @relation(fields: [surveyId], references: [id], onDelete: Cascade)
+
+  @@unique([surveyId, email])
+  @@index([surveyId])
+  @@map("dnc_entries")
+}

@@ -1,0 +1,27 @@
+# Local development PostgreSQL for SurveyForge API (Phase B0+).
+# Enterprise single-tenant deployments will bundle app + postgres similarly.
+#
+# If `docker compose ps` is empty after `up -d`, check Docker context:
+#   docker context ls && docker context use default
+# (Postgres may already be running on the default context at localhost:5433.)
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: surveyforge
+      POSTGRES_PASSWORD: surveyforge
+      POSTGRES_DB: surveyforge
+    ports:
+      - '5433:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U surveyforge -d surveyforge']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pgdata:

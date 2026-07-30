@@ -1,0 +1,26 @@
+{
+  "name": "survey-builder-server",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "node --watch src/index.js",
+    "start": "node src/index.js",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate deploy",
+    "db:migrate:dev": "prisma migrate dev",
+    "postinstall": "prisma generate"
+  },
+  "dependencies": {
+    "@fastify/cors": "^10.0.2",
+    "@prisma/client": "^6.9.0",
+    "dotenv": "^16.6.1",
+    "fastify": "^5.3.3"
+  },
+  "devDependencies": {
+    "prisma": "^6.9.0"
+  }
+}
