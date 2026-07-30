@@ -53,6 +53,7 @@ export function metaToLibraryEntry(meta) {
     items: [],
     revision: null,
     questionCount: meta.questionCount ?? 0,
+    stats: meta.stats ?? { total: 0, complete: 0, terminated: 0, partial: 0 },
   }
 }
 

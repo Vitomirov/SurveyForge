@@ -4,6 +4,8 @@ import { buildVisiblePages } from '@/utils/visibilityEngine'
 import { resolvePipingTokens } from '@/utils/piping'
 import { generateCSV, downloadCSV } from '@/utils/csvExport'
 import { saveResponse, newResponseId } from '@/utils/responseStore'
+import { useApi } from '@/config/api'
+import { saveResponseApi, savePublicResponse } from '@/api/responses'
 import { collectFingerprint } from '@/utils/fingerprint'
 import { isOnDNCList } from '@/utils/dncStore'
 import { checkTermination, evalBlock, buildBlockCause } from '@/utils/terminationEngine'
@@ -129,7 +131,14 @@ export function SurveyPreview({ survey, items, onClose, isPublic = false }) {
       }
     }
     const entry = buildEntry(finalStatus, terminatedByArg)
-    if (survey?.id) saveResponse(survey.id, entry)
+    if (survey?.id) {
+      if (useApi) {
+        const save = isPublic ? savePublicResponse : saveResponseApi
+        save(survey.id, entry).catch(err => console.error('Failed to save response', err))
+      } else {
+        saveResponse(survey.id, entry)
+      }
+    }
     if (doDownload) {
       const csv = generateCSV(items, [entry], survey)
       downloadCSV(csv, `${(survey?.title || 'survey').replace(/\s+/g, '_')}_${finalStatus}.csv`)

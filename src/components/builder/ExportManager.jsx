@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useEffect } from 'react'
 import {
   X, Download, Filter, Clock, CheckCircle2, XCircle, Loader2,
   Trash2, AlertTriangle, RefreshCw, ChevronDown, ChevronUp,
@@ -9,6 +9,10 @@ import {
   lastExportTimestamp, applyFilters, deleteResponse, clearResponses,
   newResponseId,
 } from '@/utils/responseStore'
+import { useApi } from '@/config/api'
+import {
+  fetchAllResponses, deleteResponseApi, clearResponsesApi,
+} from '@/api/responses'
 import { generateCSV, downloadCSV } from '@/utils/csvExport'
 
 const STATUS_META = {
@@ -169,12 +173,12 @@ function FiltersPanel({ filters, setFilters, lastExport, surveyId }) {
 }
 
 // ─── Response table ─────────────────────────────────────────────────────────
-function ResponseTable({ responses, surveyId, onDeleted }) {
+function ResponseTable({ responses, surveyId, onDeleted, onDeleteResponse }) {
   const [expanded, setExpanded] = useState(null)
 
-  const del = (id) => {
+  const del = async (id) => {
     if (!window.confirm('Delete this response? This cannot be undone.')) return
-    deleteResponse(surveyId, id)
+    await onDeleteResponse(id)
     onDeleted()
   }
 
@@ -263,14 +267,33 @@ export function ExportManager({ survey, items, onClose }) {
     dateTo: '',
     sinceLastExport: null,
   })
-  const [tick, setTick] = useState(0)  // increment to force re-read from localStorage
+  const [tick, setTick] = useState(0)
+  const [apiResponses, setApiResponses] = useState([])
+  const [responsesLoading, setResponsesLoading] = useState(useApi)
   const [showHistory, setShowHistory] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
   const [confirmClear, setConfirmClear] = useState(false)
 
   const refresh = () => setTick(t => t + 1)
 
-  const allResponses  = useMemo(() => loadResponses(surveyId),             [surveyId, tick])
+  const loadApiResponses = useCallback(async () => {
+    if (!useApi || !surveyId) return
+    setResponsesLoading(true)
+    try {
+      setApiResponses(await fetchAllResponses(surveyId))
+    } catch (err) {
+      console.error('Failed to load responses', err)
+    } finally {
+      setResponsesLoading(false)
+    }
+  }, [surveyId])
+
+  useEffect(() => {
+    if (useApi) loadApiResponses()
+  }, [useApi, loadApiResponses, tick])
+
+  const localResponses = useMemo(() => loadResponses(surveyId), [surveyId, tick])
+  const allResponses   = useApi ? apiResponses : localResponses
   const exportHistory = useMemo(() => loadExportHistory(surveyId),         [surveyId, tick])
   const lastExport    = useMemo(() => lastExportTimestamp(surveyId),       [surveyId, tick])
   const filtered      = useMemo(() => applyFilters(allResponses, filters), [allResponses, filters])
@@ -304,10 +327,27 @@ export function ExportManager({ survey, items, onClose }) {
     }, 150)
   }, [filtered, items, survey, surveyId, filters])
 
-  const handleClearAll = () => {
-    clearResponses(surveyId)
+  const handleClearAll = async () => {
+    if (useApi) {
+      try {
+        await clearResponsesApi(surveyId)
+      } catch (err) {
+        console.error('Failed to clear responses', err)
+        return
+      }
+    } else {
+      clearResponses(surveyId)
+    }
     setConfirmClear(false)
     refresh()
+  }
+
+  const handleDeleteResponse = async (responseId) => {
+    if (useApi) {
+      await deleteResponseApi(surveyId, responseId)
+      return
+    }
+    deleteResponse(surveyId, responseId)
   }
 
   const counts = useMemo(() => {
@@ -419,7 +459,9 @@ export function ExportManager({ survey, items, onClose }) {
                 </div>
               </div>
 
-              {allResponses.length === 0 ? (
+              {responsesLoading ? (
+                <div className="text-center py-16 text-ink-400 text-sm">Loading responses…</div>
+              ) : allResponses.length === 0 ? (
                 <div className="text-center py-16 text-ink-300">
                   <Download size={36} className="mx-auto mb-3 text-ink-200" />
                   <p className="text-sm font-semibold text-ink-400">No responses yet</p>
@@ -430,6 +472,7 @@ export function ExportManager({ survey, items, onClose }) {
                   responses={filtered}
                   surveyId={surveyId}
                   onDeleted={refresh}
+                  onDeleteResponse={handleDeleteResponse}
                 />
               )}
             </div>

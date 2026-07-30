@@ -11,9 +11,10 @@ import {
 } from '@/utils/surveyLibrary'
 import { useApi } from '@/config/api'
 import {
-  listSurveys, getSurvey, deleteSurveyApi, migrateLocalLibrary,
+  getSurvey, deleteSurveyApi, migrateLocalLibrary,
   metaToLibraryEntry, payloadToLibraryEntry, patchSurvey,
 } from '@/api/surveys'
+import { getDashboard } from '@/api/dashboard'
 import {
   loadClients, loadTopics,
   SURVEY_TYPES, SURVEY_STATUSES,
@@ -160,19 +161,18 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
     }
     setApiLoading(true)
     try {
-      let rows = await listSurveys()
-      // One-time import from localStorage on first load only — not after deletes
-      if (rows.length === 0 && allowMigrate && !migrateAttemptedRef.current) {
+      let data = await getDashboard()
+      if (data.surveys.length === 0 && allowMigrate && !migrateAttemptedRef.current) {
         migrateAttemptedRef.current = true
         const local = loadLibrary()
         if (local.length > 0) {
           await migrateLocalLibrary(local)
-          rows = await listSurveys()
+          data = await getDashboard()
         }
       }
-      setApiSurveys(rows.map(metaToLibraryEntry))
+      setApiSurveys(data.surveys.map(metaToLibraryEntry))
     } catch (err) {
-      console.error('Failed to load surveys from API', err)
+      console.error('Failed to load dashboard', err)
     } finally {
       setApiLoading(false)
     }
@@ -196,8 +196,16 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
   const typeMap   = Object.fromEntries(SURVEY_TYPES.map(t => [t.id, t.label]))
 
   // Response counts per survey
-  const responseCounts = useMemo(() =>
-    Object.fromEntries(
+  const responseCounts = useMemo(() => {
+    if (useApi) {
+      return Object.fromEntries(
+        surveys.map(s => {
+          const id = s.survey?.id || s.id
+          return [id, s.stats || { total: 0, complete: 0, terminated: 0, partial: 0 }]
+        })
+      )
+    }
+    return Object.fromEntries(
       surveys.map(s => {
         const all = loadResponses(s.survey?.id || s.id)
         return [s.survey?.id || s.id, {
@@ -207,7 +215,8 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
           partial:    all.filter(r => r.status === 'partial').length,
         }]
       })
-    ), [tick])
+    )
+  }, [useApi, surveys, tick])
 
   // Filter + sort
   const displayed = useMemo(() => {
