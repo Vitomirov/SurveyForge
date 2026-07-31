@@ -149,7 +149,7 @@ export function ImageChoiceEditor({ question, dispatch }) {
       </div>
 
       {/* Grid columns + show labels */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <label className="text-xs text-ink-500 mb-1 block">Grid columns</label>
           <div className="flex gap-1.5">
@@ -185,7 +185,7 @@ export function ImageChoiceEditor({ question, dispatch }) {
       {/* Image options grid */}
       <div>
         <SectionLabel>Options ({cfg.imageOptions.length})</SectionLabel>
-        <div className={`grid gap-3 ${cfg.columns === 2 ? 'grid-cols-2' : cfg.columns === 3 ? 'grid-cols-3' : 'grid-cols-4'}`}>
+        <div className={`grid gap-3 ${cfg.columns === 2 ? 'grid-cols-1 sm:grid-cols-2' : cfg.columns === 3 ? 'grid-cols-2 sm:grid-cols-3' : 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4'}`}>
           {cfg.imageOptions.map((opt, i) => (
             <ImageOptionCard
               key={opt.id}

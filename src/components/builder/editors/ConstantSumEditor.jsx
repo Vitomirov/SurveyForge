@@ -35,7 +35,7 @@ export function ConstantSumEditor({ question, dispatch }) {
   return (
     <div className="space-y-4">
       {/* Target sum + unit row */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <label className="text-xs font-semibold text-ink-500 mb-1 block">Target total</label>
           <input

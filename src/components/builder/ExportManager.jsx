@@ -379,10 +379,10 @@ export function ExportManager({ survey, items, onClose }) {
           </button>
         </div>
 
-        <div className="flex flex-1 min-h-0">
+        <div className="flex flex-col md:flex-row flex-1 min-h-0">
 
           {/* Left: filters */}
-          <div className="w-64 shrink-0 border-r border-ink-100 flex flex-col">
+          <div className="w-full md:w-64 shrink-0 border-b md:border-b-0 md:border-r border-ink-100 flex flex-col max-h-[40vh] md:max-h-none">
             <div className="flex-1 overflow-y-auto p-4">
               <div className="flex items-center gap-2 mb-4">
                 <Filter size={14} className="text-ink-500" />

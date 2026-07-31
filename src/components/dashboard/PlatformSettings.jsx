@@ -170,7 +170,7 @@ function UserManager({ users, setUsers }) {
       {showForm && (
         <div className="border border-ink-200 rounded-xl p-3 bg-ink-50 space-y-2.5">
           <p className="text-xs font-semibold text-ink-600">{editId ? 'Edit user' : 'New user'}</p>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <div>
               <label className="text-xs text-ink-500 mb-1 block">Full name</label>
               <input type="text" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
@@ -182,7 +182,7 @@ function UserManager({ users, setUsers }) {
                 placeholder="jsmith" disabled={!!editId} className="input-base py-1.5 text-sm disabled:opacity-50" />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <div>
               <label className="text-xs text-ink-500 mb-1 block">{editId ? 'New password (optional)' : 'Password'}</label>
               <div className="relative">
@@ -327,7 +327,7 @@ export function PlatformSettings({ onClose }) {
           {loading ? (
             <p className="text-sm text-ink-400 text-center py-8">Loading settings…</p>
           ) : tab === 'lists' ? (
-            <div className="grid grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
               <EditableList label="Clients" items={clients}
                 onAdd={handleAddClient}
                 onUpdate={handleUpdateClient}

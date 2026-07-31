@@ -7,7 +7,7 @@ export function CoverPage({ survey, onStart, isPublic = false }) {
                                          'justify-start'
 
   return (
-    <div className="flex-1 flex items-center justify-center py-12 px-6">
+    <div className="flex-1 flex items-center justify-center py-8 sm:py-12 px-4 sm:px-6">
       <div className="max-w-lg w-full">
         {survey?.coverImage && (
           <div className="mb-6 rounded-2xl overflow-hidden border border-ink-100 shadow-sm bg-white">
@@ -25,7 +25,7 @@ export function CoverPage({ survey, onStart, isPublic = false }) {
           </div>
         )}
 
-        <h1 className="text-2xl font-bold text-ink-800 mb-3 leading-snug text-center">
+        <h1 className="text-xl sm:text-2xl font-bold text-ink-800 mb-3 leading-snug text-center">
           {survey?.title || DEFAULT_SURVEY_TITLE}
         </h1>
 
@@ -37,7 +37,7 @@ export function CoverPage({ survey, onStart, isPublic = false }) {
         )}
 
         <div className="text-center">
-          <button onClick={onStart} className="btn-primary px-8 py-3 text-base">
+          <button onClick={onStart} className="btn-primary px-6 sm:px-8 py-2.5 sm:py-3 text-sm sm:text-base w-full sm:w-auto">
             {survey?.startButtonText || DEFAULT_START_BUTTON_TEXT}
           </button>
           {!isPublic && (

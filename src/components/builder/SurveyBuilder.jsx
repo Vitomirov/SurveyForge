@@ -27,8 +27,8 @@ import { generateTemplateCSV, downloadCSV } from '@/utils/csvExport'
 import { APP_NAME } from '@/constants/branding'
 import { DEFAULT_DATE_FORMAT, DEFAULT_SCREEN_MESSAGES } from '@/constants/surveyDefaults'
 import {
-  Plus, Save, Eye, BarChart3, Layers,
-  Scissors, Download, PlayCircle, ArrowLeft, FileText,
+  Plus, Eye, BarChart3, Layers,
+  Scissors, Download, PlayCircle, ArrowLeft, FileText, Menu, X,
 } from 'lucide-react'
 export function SurveyBuilder({ initialState, initialRevision = null, onBackToDashboard }) {
   const [state, dispatch] = useReducer(surveyReducer, initialState || INITIAL_STATE)
@@ -56,6 +56,8 @@ export function SurveyBuilder({ initialState, initialRevision = null, onBackToDa
   const [dragActiveId, setDragActiveId] = useState(null)
   const [showTest, setShowTest]         = useState(false)
   const [showExport, setShowExport]     = useState(false)
+  const [showMobilePanel, setShowMobilePanel] = useState(false)
+  const [showMobileMenu, setShowMobileMenu]   = useState(false)
 
   // ── Compute display info (memoized — only when items change) ─────────────
   const itemMeta = useMemo(
@@ -119,19 +121,19 @@ export function SurveyBuilder({ initialState, initialRevision = null, onBackToDa
   return (
     <div className="min-h-screen bg-ink-50 flex flex-col">
       {/* ── Top Nav ──────────────────────────────────────────────────── */}
-      <header className="bg-white border-b border-ink-200 sticky top-0 z-30">
-        <div className="max-w-screen-xl mx-auto px-6 h-14 flex items-center gap-4">
-          <div className="flex items-center gap-2 shrink-0">
+      <header className="bg-white border-b border-ink-200 sticky top-0 z-30 safe-top">
+        <div className="max-w-screen-xl mx-auto px-4 sm:px-6 min-h-14 py-2 sm:py-0 flex items-center gap-2 sm:gap-4">
+          <div className="flex items-center gap-2 shrink-0 min-w-0">
             {onBackToDashboard && (
               <button
                 onClick={onBackToDashboard}
-                className="p-1.5 text-ink-400 hover:text-ink-700 hover:bg-ink-100 rounded-lg transition-all mr-1"
+                className="p-1.5 text-ink-400 hover:text-ink-700 hover:bg-ink-100 rounded-lg transition-all"
                 title="Back to dashboard"
               >
                 <ArrowLeft size={16} />
               </button>
             )}
-            <div className="w-7 h-7 bg-brand-600 rounded-lg flex items-center justify-center">
+            <div className="w-7 h-7 bg-brand-600 rounded-lg flex items-center justify-center shrink-0">
               <Layers size={14} className="text-white" />
             </div>
             <span
@@ -139,32 +141,32 @@ export function SurveyBuilder({ initialState, initialRevision = null, onBackToDa
               tabIndex={0}
               onClick={onBackToDashboard}
               onKeyDown={e => e.key === 'Enter' && onBackToDashboard?.()}
-              className={`font-bold text-ink-800 tracking-tight${onBackToDashboard ? ' cursor-pointer hover:text-brand-600 transition-colors' : ''}`}
+              className={`font-bold text-ink-800 tracking-tight truncate max-w-[120px] sm:max-w-none${onBackToDashboard ? ' cursor-pointer hover:text-brand-600 transition-colors' : ''}`}
             >
               {APP_NAME}
             </span>
           </div>
-          <div className="w-px h-5 bg-ink-100" />
+          <div className="hidden md:block w-px h-5 bg-ink-100 shrink-0" />
           <input
             type="text"
             value={state.survey.title}
             onChange={e => dispatch({ type: 'SET_SURVEY_FIELD', field: 'title', value: e.target.value })}
-            className="text-sm font-medium text-ink-700 bg-transparent border-none outline-none focus:bg-ink-50 px-2 py-1 rounded-lg transition-colors flex-1 min-w-0 max-w-sm"
+            className="hidden md:block text-sm font-medium text-ink-700 bg-transparent border-none outline-none focus:bg-ink-50 px-2 py-1 rounded-lg transition-colors flex-1 min-w-0 max-w-sm"
             placeholder="Survey title..."
           />
           {useApi && saveStatus === 'saving' && (
             <span className="text-xs text-ink-400 font-medium shrink-0">Saving…</span>
           )}
           {useApi && saveStatus === 'saved' && (
-            <span className="text-xs text-emerald-600 font-medium shrink-0">Saved</span>
+            <span className="text-xs text-emerald-600 font-medium shrink-0 hidden sm:inline">Saved</span>
           )}
           {useApi && saveStatus === 'error' && (
-            <span className="text-xs text-rose-500 font-medium shrink-0">Save failed</span>
+            <span className="text-xs text-rose-500 font-medium shrink-0">Failed</span>
           )}
           {!useApi && state.isDirty && (
-            <span className="text-xs text-amber-500 font-medium shrink-0">● Unsaved</span>
+            <span className="text-xs text-amber-500 font-medium shrink-0 hidden sm:inline">● Unsaved</span>
           )}
-          <div className="ml-auto flex items-center gap-1.5 shrink-0">
+          <div className="ml-auto flex items-center gap-1 sm:gap-1.5 shrink-0">
             {/* Survey date format setting */}
             <div className="hidden lg:flex items-center gap-1.5 px-2 py-1 bg-ink-50 rounded-lg mr-1">
               <span className="text-xs text-ink-400">Date:</span>
@@ -179,56 +181,111 @@ export function SurveyBuilder({ initialState, initialRevision = null, onBackToDa
               </select>
             </div>
 
-            <button
-              onClick={handleExportCSVTemplate}
-              className="btn-ghost text-xs px-2.5 py-1.5"
-              title="Download CSV column template"
-            >
-              <Download size={13} /> <span className="hidden md:inline">CSV Template</span>
-            </button>
+            {/* Desktop toolbar */}
+            <div className="hidden sm:flex items-center gap-1.5">
+              <button
+                onClick={handleExportCSVTemplate}
+                className="btn-ghost text-xs px-2.5 py-1.5"
+                title="Download CSV column template"
+              >
+                <Download size={13} /> <span className="hidden md:inline">CSV Template</span>
+              </button>
 
-            <button
-              onClick={() => setShowExport(true)}
-              className="inline-flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium px-3 py-1.5 rounded-lg transition-all"
-              title="Open Export Manager — download response data"
-            >
-              <BarChart3 size={14} /> Exports
-            </button>
+              <button
+                onClick={() => setShowExport(true)}
+                className="inline-flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium px-3 py-1.5 rounded-lg transition-all"
+                title="Open Export Manager — download response data"
+              >
+                <BarChart3 size={14} /> <span className="hidden md:inline">Exports</span>
+              </button>
 
-            <button
-              onClick={() => setShowTest(true)}
-              className="btn-ghost text-xs px-2.5 py-1.5"
-            >
-              <PlayCircle size={13} /> <span className="hidden md:inline">Test</span>
-            </button>
+              <button
+                onClick={() => setShowTest(true)}
+                className="btn-ghost text-xs px-2.5 py-1.5"
+              >
+                <PlayCircle size={13} /> <span className="hidden md:inline">Test</span>
+              </button>
 
-            <button
-              onClick={() => dispatch({ type: 'SET_PREVIEW', show: true })}
-              className="btn-ghost text-xs px-2.5 py-1.5"
-            >
-              <Eye size={13} /> <span className="hidden md:inline">Preview</span>
-            </button>
+              <button
+                onClick={() => dispatch({ type: 'SET_PREVIEW', show: true })}
+                className="btn-ghost text-xs px-2.5 py-1.5"
+              >
+                <Eye size={13} /> <span className="hidden md:inline">Preview</span>
+              </button>
 
-            <button onClick={handleSave} className="btn-primary text-sm px-3 py-1.5">
-              <Download size={14} /> Save JSON
-            </button>
+              <button onClick={handleSave} className="btn-primary text-sm px-3 py-1.5">
+                <Download size={14} /> <span className="hidden lg:inline">Save JSON</span>
+              </button>
+            </div>
+
+            {/* Mobile toolbar — primary actions + overflow menu */}
+            <div className="flex sm:hidden items-center gap-1">
+              <button
+                onClick={() => dispatch({ type: 'SET_PREVIEW', show: true })}
+                className="btn-ghost p-2"
+                title="Preview"
+              >
+                <Eye size={16} />
+              </button>
+              <button
+                onClick={() => setShowExport(true)}
+                className="p-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-all"
+                title="Exports"
+              >
+                <BarChart3 size={16} />
+              </button>
+              <div className="relative">
+                <button
+                  onClick={() => setShowMobileMenu(m => !m)}
+                  className="btn-ghost p-2"
+                  title="More actions"
+                >
+                  <Menu size={16} />
+                </button>
+                {showMobileMenu && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setShowMobileMenu(false)} />
+                    <div className="absolute right-0 top-full mt-1 z-50 bg-white border border-ink-200 rounded-xl shadow-xl py-1 w-48">
+                      <button
+                        onClick={() => { setShowTest(true); setShowMobileMenu(false) }}
+                        className="w-full flex items-center gap-2 px-3 py-2.5 text-sm hover:bg-ink-50 text-ink-700"
+                      >
+                        <PlayCircle size={14} /> Test runner
+                      </button>
+                      <button
+                        onClick={() => { handleExportCSVTemplate(); setShowMobileMenu(false) }}
+                        className="w-full flex items-center gap-2 px-3 py-2.5 text-sm hover:bg-ink-50 text-ink-700"
+                      >
+                        <Download size={14} /> CSV template
+                      </button>
+                      <button
+                        onClick={() => { handleSave(); setShowMobileMenu(false) }}
+                        className="w-full flex items-center gap-2 px-3 py-2.5 text-sm hover:bg-ink-50 text-ink-700"
+                      >
+                        <Download size={14} /> Save JSON
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </header>
 
       {/* ── Layout ───────────────────────────────────────────────────── */}
-      <div className="flex-1 max-w-screen-xl mx-auto w-full px-6 py-6 flex gap-6">
+      <div className="flex-1 max-w-screen-xl mx-auto w-full px-4 sm:px-6 py-4 sm:py-6 flex flex-col lg:flex-row gap-4 lg:gap-6">
 
         {/* ── Main list ──────────────────────────────────────────────── */}
         <main className="flex-1 min-w-0">
           {/* Survey header card */}
-          <div className="card p-4 mb-5">
+          <div className="card p-3 sm:p-4 mb-4 sm:mb-5">
             <input
               type="text"
               value={state.survey.title}
               onChange={e => dispatch({ type: 'SET_SURVEY_FIELD', field: 'title', value: e.target.value })}
               placeholder="Survey Title"
-              className="w-full text-xl font-bold text-ink-900 bg-transparent border-none outline-none focus:bg-ink-50 px-2 py-1 rounded-lg -ml-2 mb-1 transition-colors"
+              className="w-full text-lg sm:text-xl font-bold text-ink-900 bg-transparent border-none outline-none focus:bg-ink-50 px-2 py-1 rounded-lg -ml-2 mb-1 transition-colors"
             />
             <div className="mb-1">
               <RichTextEditor
@@ -295,8 +352,8 @@ export function SurveyBuilder({ initialState, initialRevision = null, onBackToDa
                 <p className="text-xs font-semibold text-ink-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
                   🔗 Shareable survey URL
                 </p>
-                <div className="flex items-center gap-2">
-                  <code className="flex-1 text-xs bg-ink-100 text-ink-600 px-2 py-1.5 rounded-lg truncate font-mono">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                  <code className="flex-1 text-xs bg-ink-100 text-ink-600 px-2 py-1.5 rounded-lg truncate font-mono min-w-0">
                     {`${window.location.origin}${window.location.pathname}#/take/${state.survey.id}`}
                   </code>
                   <button
@@ -400,7 +457,7 @@ export function SurveyBuilder({ initialState, initialRevision = null, onBackToDa
                     const inGroup = !!meta.currentGroupId
                     const availableQuestions = availableQuestionsByIndex[idx]
                     return (
-                      <div key={item.id} className={inGroup ? 'ml-4 border-l-2 border-ink-200 pl-3' : ''}>
+                      <div key={item.id} className={inGroup ? 'ml-2 sm:ml-4 border-l-2 border-ink-200 pl-2 sm:pl-3' : ''}>
                         <QuestionCard
                           question={item}
                           questionNumber={meta.questionNumber}
@@ -458,8 +515,8 @@ export function SurveyBuilder({ initialState, initialRevision = null, onBackToDa
           )}
         </main>
 
-        {/* ── Right sidebar — sticky ──────────────────────────────── */}
-        <aside className="w-64 shrink-0 space-y-4 sticky top-16 self-start max-h-[calc(100vh-4.5rem)] overflow-y-auto pb-4">
+        {/* ── Right sidebar — sticky on desktop ──────────────────────── */}
+        <aside className="hidden lg:block w-64 shrink-0 space-y-4 sticky top-16 self-start max-h-[calc(100vh-4.5rem)] overflow-y-auto pb-4">
           <AddPanel
             onAddQuestion={type => dispatch({ type: 'ADD_QUESTION', qtype: type })}
             onAddPageBreak={() => dispatch({ type: 'ADD_PAGE_BREAK' })}
@@ -470,6 +527,47 @@ export function SurveyBuilder({ initialState, initialRevision = null, onBackToDa
           {state.items.length > 0 && <StatsPanel items={state.items} />}
         </aside>
       </div>
+
+      {/* Mobile FAB — open add panel */}
+      <button
+        onClick={() => setShowMobilePanel(true)}
+        className="lg:hidden fixed bottom-6 right-4 z-20 w-14 h-14 bg-brand-600 hover:bg-brand-700 text-white rounded-full shadow-lg flex items-center justify-center transition-all active:scale-95 safe-bottom"
+        title="Add question or structure"
+      >
+        <Plus size={24} />
+      </button>
+
+      {/* Mobile add panel drawer */}
+      {showMobilePanel && (
+        <div className="lg:hidden fixed inset-0 z-40">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setShowMobilePanel(false)} />
+          <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl shadow-2xl max-h-[85vh] flex flex-col safe-bottom">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-ink-100 shrink-0">
+              <h3 className="text-sm font-bold text-ink-800">Add to survey</h3>
+              <button
+                onClick={() => setShowMobilePanel(false)}
+                className="p-2 text-ink-400 hover:text-ink-700 hover:bg-ink-100 rounded-lg"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4">
+              <AddPanel
+                onAddQuestion={type => { dispatch({ type: 'ADD_QUESTION', qtype: type }); setShowMobilePanel(false) }}
+                onAddPageBreak={() => { dispatch({ type: 'ADD_PAGE_BREAK' }); setShowMobilePanel(false) }}
+                onAddGroup={() => { dispatch({ type: 'ADD_GROUP' }); setShowMobilePanel(false) }}
+                onAddTerminationBlock={() => { dispatch({ type: 'ADD_TERMINATION_BLOCK' }); setShowMobilePanel(false) }}
+                onAddTextBlock={() => { dispatch({ type: 'ADD_TEXT_BLOCK' }); setShowMobilePanel(false) }}
+              />
+              {state.items.length > 0 && (
+                <div className="mt-4">
+                  <StatsPanel items={state.items} />
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Test Runner modal ────────────────────────────────────────── */}
       {showTest && (

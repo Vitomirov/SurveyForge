@@ -29,7 +29,11 @@ export function ImageChoiceQ({ question, value, onChange }) {
     }
   }
 
-  const colClass = cfg.columns === 2 ? 'grid-cols-2' : cfg.columns === 3 ? 'grid-cols-3' : 'grid-cols-4'
+  const colClass = cfg.columns === 2
+    ? 'grid-cols-2'
+    : cfg.columns === 3
+      ? 'grid-cols-2 sm:grid-cols-3'
+      : 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4'
 
   return (
     <div>

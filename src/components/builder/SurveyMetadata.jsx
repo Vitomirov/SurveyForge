@@ -38,7 +38,7 @@ export function SurveyMetadata({ survey, dispatch }) {
         <span className="ml-1 text-ink-300 font-normal normal-case tracking-normal">— visible to admins only</span>
       </p>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {/* Internal name */}
         <div className="col-span-2">
           <label className="text-xs text-ink-500 mb-1 block">Internal name</label>

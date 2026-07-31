@@ -67,7 +67,7 @@ export function MatrixEditor({ question, dispatch }) {
       {/* Sub-type */}
       <div>
         <SectionLabel>Selection type per row</SectionLabel>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           {[
             { key: 'single', title: 'Single select', desc: 'One choice per row (radio)' },
             { key: 'multi',  title: 'Multi select',  desc: 'Multiple per row (checkbox)' },

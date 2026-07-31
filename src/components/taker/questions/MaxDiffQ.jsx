@@ -67,10 +67,10 @@ export function MaxDiffQ({ question, value = {}, onChange }) {
       {cfg.instruction && <p className="text-sm text-ink-500 mb-3 italic">{cfg.instruction}</p>}
 
       {/* Column headers */}
-      <div className="grid grid-cols-[1fr_auto_auto] gap-x-4 mb-2 px-2">
+      <div className="grid grid-cols-[1fr_auto_auto] gap-x-2 sm:gap-x-4 mb-2 px-1 sm:px-2">
         <div />
-        <span className="text-xs font-bold text-emerald-600 text-center w-20">{cfg.bestLabel}</span>
-        <span className="text-xs font-bold text-rose-600 text-center w-20">{cfg.worstLabel}</span>
+        <span className="text-[10px] sm:text-xs font-bold text-emerald-600 text-center w-14 sm:w-20">{cfg.bestLabel}</span>
+        <span className="text-[10px] sm:text-xs font-bold text-rose-600 text-center w-14 sm:w-20">{cfg.worstLabel}</span>
       </div>
 
       {/* Items */}
@@ -79,11 +79,11 @@ export function MaxDiffQ({ question, value = {}, onChange }) {
           const isBest  = trialVal.best  === item.id
           const isWorst = trialVal.worst === item.id
           return (
-            <div key={item.id} className={`grid grid-cols-[1fr_auto_auto] gap-x-4 items-center px-4 py-3 transition-colors ${
+            <div key={item.id} className={`grid grid-cols-[1fr_auto_auto] gap-x-2 sm:gap-x-4 items-center px-2 sm:px-4 py-2.5 sm:py-3 transition-colors ${
               isBest ? 'bg-emerald-50' : isWorst ? 'bg-rose-50' : i % 2 === 0 ? 'bg-white' : 'bg-ink-50/40'
             }`}>
-              <span className="text-sm text-ink-800 font-medium">{item.text}</span>
-              <div className="w-20 flex justify-center">
+              <span className="text-xs sm:text-sm text-ink-800 font-medium">{item.text}</span>
+              <div className="w-14 sm:w-20 flex justify-center">
                 <button onClick={() => selectBest(item.id)}
                   className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
                     isBest ? 'border-emerald-500 bg-emerald-500' : isWorst ? 'border-ink-200 opacity-30 cursor-not-allowed' : 'border-ink-300 hover:border-emerald-400'
@@ -91,7 +91,7 @@ export function MaxDiffQ({ question, value = {}, onChange }) {
                   {isBest && <div className="w-2.5 h-2.5 rounded-full bg-white" />}
                 </button>
               </div>
-              <div className="w-20 flex justify-center">
+              <div className="w-14 sm:w-20 flex justify-center">
                 <button onClick={() => selectWorst(item.id)}
                   className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
                     isWorst ? 'border-rose-500 bg-rose-500' : isBest ? 'border-ink-200 opacity-30 cursor-not-allowed' : 'border-ink-300 hover:border-rose-400'
@@ -105,15 +105,15 @@ export function MaxDiffQ({ question, value = {}, onChange }) {
       </div>
 
       {/* Trial navigation */}
-      <div className="flex items-center justify-between mt-3">
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-2 mt-3">
         <button onClick={() => setTrial(t => Math.max(0, t - 1))} disabled={trial === 0}
-          className="text-xs text-ink-500 hover:text-ink-700 disabled:opacity-30 flex items-center gap-1">
+          className="text-xs text-ink-500 hover:text-ink-700 disabled:opacity-30 flex items-center gap-1 self-start sm:self-auto">
           ← Previous
         </button>
-        {!allDone && <span className="text-xs text-ink-400">Complete all trials before proceeding</span>}
-        {allDone && <span className="text-xs text-emerald-600 font-semibold">✓ All trials complete</span>}
+        {!allDone && <span className="text-xs text-ink-400 text-center">Complete all trials before proceeding</span>}
+        {allDone && <span className="text-xs text-emerald-600 font-semibold text-center">✓ All trials complete</span>}
         <button onClick={() => setTrial(t => Math.min(total - 1, t + 1))} disabled={trial === total - 1}
-          className="text-xs text-ink-500 hover:text-ink-700 disabled:opacity-30 flex items-center gap-1">
+          className="text-xs text-ink-500 hover:text-ink-700 disabled:opacity-30 flex items-center gap-1 self-end sm:self-auto">
           Next →
         </button>
       </div>

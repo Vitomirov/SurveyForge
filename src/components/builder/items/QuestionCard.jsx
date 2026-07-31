@@ -38,7 +38,7 @@ function TokenPicker({ availableQuestions, onInsert }) {
         ⟨Q⟩ Pipe answer
       </button>
       {open && (
-        <div className="absolute right-0 top-8 z-30 bg-white border border-ink-200 rounded-xl shadow-xl py-1.5 w-72 max-h-56 overflow-y-auto">
+        <div className="absolute right-0 sm:right-0 left-0 sm:left-auto top-8 z-30 bg-white border border-ink-200 rounded-xl shadow-xl py-1.5 w-full sm:w-72 max-h-56 overflow-y-auto">
           <p className="text-xs font-semibold text-ink-400 uppercase tracking-wider px-3 pb-1.5 pt-0.5">
             Insert answer from…
           </p>
@@ -97,7 +97,7 @@ export const QuestionCard = memo(function QuestionCard({
       <div className={`card transition-all duration-150 ${isActive ? 'border-brand-400 shadow-md shadow-brand-100' : 'hover:border-ink-300'}`}>
 
         {/* ── Header ────────────────────────────────────────────────── */}
-        <div className="flex items-start gap-3 p-4 cursor-pointer" onClick={() => onActivateItem(question.id)}>
+        <div className="flex items-start gap-2 sm:gap-3 p-3 sm:p-4 cursor-pointer" onClick={() => onActivateItem(question.id)}>
 
           {/* Drag handle */}
           <div {...attributes} {...listeners} className="drag-handle mt-0.5 text-ink-200 hover:text-ink-400 transition-colors" onClick={e => e.stopPropagation()}>

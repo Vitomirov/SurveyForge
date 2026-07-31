@@ -23,7 +23,7 @@ export function OpenTextEditor({ question, dispatch }) {
       {/* Input Type */}
       <div>
         <SectionLabel>Input Type</SectionLabel>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           {[
             { key: false, title: 'Single line', desc: 'Short answer, one line' },
             { key: true,  title: 'Multiline',   desc: 'Longer, paragraph response' },
@@ -60,7 +60,7 @@ export function OpenTextEditor({ question, dispatch }) {
       <Divider label="Input Validation" />
       <div>
         <SectionLabel>Validation type</SectionLabel>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           {VALIDATION_TYPES.map(vt => (
             <button
               key={vt.value}
@@ -79,7 +79,7 @@ export function OpenTextEditor({ question, dispatch }) {
 
         {/* Number range */}
         {val.type === 'number' && (
-          <div className="mt-3 grid grid-cols-2 gap-3">
+          <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="text-xs text-ink-500 mb-1 block">Min value</label>
               <input
@@ -115,7 +115,7 @@ export function OpenTextEditor({ question, dispatch }) {
 
       {/* Character Limits */}
       <Divider label="Character Limits" />
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <label className="text-xs text-ink-500 mb-1 block">Min characters</label>
           <input

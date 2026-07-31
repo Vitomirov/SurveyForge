@@ -214,31 +214,31 @@ export function SurveyPreview({ survey, items, onClose, isPublic = false }) {
   return (
     <div className="min-h-screen bg-ink-50 flex flex-col">
       {/* Header */}
-      <header className="bg-white border-b border-ink-200 sticky top-0 z-30">
-        <div className="max-w-screen-xl mx-auto px-6 h-14 flex items-center gap-3">
+      <header className="bg-white border-b border-ink-200 sticky top-0 z-30 safe-top">
+        <div className="max-w-screen-xl mx-auto px-4 sm:px-6 min-h-14 py-2 sm:py-0 flex items-center gap-2 sm:gap-3">
           {survey?.companyLogo && (
-            <img src={survey.companyLogo} alt="Logo" className="h-7 w-auto max-w-[120px] object-contain shrink-0" />
+            <img src={survey.companyLogo} alt="Logo" className="h-6 sm:h-7 w-auto max-w-[100px] sm:max-w-[120px] object-contain shrink-0" />
           )}
-          <h1 className="text-sm font-semibold text-ink-800 flex-1 truncate">{survey?.title || 'Survey'}</h1>
+          <h1 className="text-sm font-semibold text-ink-800 flex-1 truncate min-w-0">{survey?.title || 'Survey'}</h1>
           {fpEnabled && (
             <span
               title={fpStatus === 'done' ? 'Fingerprint data collected for this session' : 'Collecting fingerprint…'}
-              className={`text-xs font-semibold px-2.5 py-1 rounded-full shrink-0 flex items-center gap-1 ${
+              className={`text-xs font-semibold px-2 sm:px-2.5 py-1 rounded-full shrink-0 flex items-center gap-1 ${
                 fpStatus === 'done'
                   ? 'text-violet-600 bg-violet-50 border border-violet-200'
                   : 'text-ink-400 bg-ink-50 border border-ink-200'
               }`}
             >
-              <Fingerprint size={11} /> {fpStatus === 'done' ? 'FP captured' : 'FP collecting…'}
+              <Fingerprint size={11} /> <span className="hidden sm:inline">{fpStatus === 'done' ? 'FP captured' : 'FP collecting…'}</span>
             </span>
           )}
           {!isPublic && (
             <>
-              <span className="text-xs font-semibold text-amber-600 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-full shrink-0">
+              <span className="text-xs font-semibold text-amber-600 bg-amber-50 border border-amber-200 px-2 sm:px-2.5 py-1 rounded-full shrink-0 hidden sm:inline-flex">
                 👁 Preview Mode
               </span>
-              <button onClick={onClose} className="flex items-center gap-1.5 text-sm text-ink-500 hover:text-ink-800 font-medium px-3 py-1.5 hover:bg-ink-50 rounded-lg transition-all shrink-0">
-                <X size={15} /> Exit Preview
+              <button onClick={onClose} className="flex items-center gap-1.5 text-sm text-ink-500 hover:text-ink-800 font-medium px-2 sm:px-3 py-1.5 hover:bg-ink-50 rounded-lg transition-all shrink-0">
+                <X size={15} /> <span className="hidden sm:inline">Exit Preview</span>
               </button>
             </>
           )}
@@ -247,7 +247,7 @@ export function SurveyPreview({ survey, items, onClose, isPublic = false }) {
 
       {/* Progress bar */}
       {totalPages > 1 && !terminated && !submitted && !showCover && (
-        <div className="bg-white border-b border-ink-100 px-6 py-2">
+        <div className="bg-white border-b border-ink-100 px-4 sm:px-6 py-2">
           <div className="max-w-2xl mx-auto">
             <div className="flex justify-between text-xs text-ink-400 mb-1.5">
               <span>Page {currentPage + 1} of {totalPages}</span>
@@ -271,8 +271,8 @@ export function SurveyPreview({ survey, items, onClose, isPublic = false }) {
         <CompletionScreen onReset={reset} onDownload={() => persistAndDownload('complete', null, true)} isPublic={isPublic} />
       ) : (
         <>
-          <div className="flex-1 py-8 px-6">
-            <div className="max-w-2xl mx-auto space-y-5">
+          <div className="flex-1 py-6 sm:py-8 px-4 sm:px-6">
+            <div className="max-w-2xl mx-auto space-y-4 sm:space-y-5">
               {currentPageBreakTitle && (
                 <div className="text-center mb-2">
                   <h2 className="text-lg font-semibold text-ink-700">{currentPageBreakTitle}</h2>
@@ -284,7 +284,7 @@ export function SurveyPreview({ survey, items, onClose, isPublic = false }) {
                 if (item.itemType === 'text_block') {
                   const piped = pipedDisplayByItemId[item.id] || {}
                   return (
-                    <div key={item.id} className="bg-white rounded-2xl border border-emerald-100 p-6">
+                    <div key={item.id} className="bg-white rounded-2xl border border-emerald-100 p-4 sm:p-6">
                       {item.title && (
                         <p className="text-base font-semibold text-ink-800 mb-3">{piped.title}</p>
                       )}
@@ -313,19 +313,19 @@ export function SurveyPreview({ survey, items, onClose, isPublic = false }) {
                 const piped = pipedDisplayByItemId[q.id]
                 const error = errors[q.id]
                 return (
-                  <div key={q.id} className={`bg-white rounded-2xl border-2 p-6 transition-all duration-200 ${error ? 'border-rose-300 shadow-sm shadow-rose-100' : 'border-ink-100 hover:border-ink-200'}`}>
-                    <div className="mb-4 flex items-start gap-3">
-                      <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-brand-50 text-brand-600 text-sm font-bold shrink-0 mt-0.5">
+                  <div key={q.id} className={`bg-white rounded-2xl border-2 p-4 sm:p-6 transition-all duration-200 ${error ? 'border-rose-300 shadow-sm shadow-rose-100' : 'border-ink-100 hover:border-ink-200'}`}>
+                    <div className="mb-3 sm:mb-4 flex items-start gap-2 sm:gap-3">
+                      <span className="inline-flex items-center justify-center w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-brand-50 text-brand-600 text-xs sm:text-sm font-bold shrink-0 mt-0.5">
                         {qNum}
                       </span>
-                      <div className="flex-1">
-                        <p className="text-base font-semibold text-ink-800 leading-snug">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm sm:text-base font-semibold text-ink-800 leading-snug">
                           {piped?.text || <span className="text-ink-300 italic">Untitled question</span>}
                           {q.required && <span className="text-rose-500 ml-1">*</span>}
                         </p>
                       </div>
                     </div>
-                    <div className="ml-10">
+                    <div className="sm:ml-10">
                       <QuestionRenderer
                         question={q}
                         value={responses[q.id]}
@@ -350,21 +350,21 @@ export function SurveyPreview({ survey, items, onClose, isPublic = false }) {
           </div>
 
           {/* Navigation */}
-          <div className="bg-white border-t border-ink-100 px-6 py-4 sticky bottom-0">
-            <div className="max-w-2xl mx-auto flex items-center justify-between">
-              <button onClick={() => { setCurrentPage(p => Math.max(0, p-1)); window.scrollTo({top:0,behavior:'smooth'}) }} disabled={currentPage === 0} className="flex items-center gap-2 text-sm font-medium text-ink-500 hover:text-ink-700 disabled:opacity-30 disabled:cursor-not-allowed transition-all">
+          <div className="bg-white border-t border-ink-100 px-4 sm:px-6 py-3 sm:py-4 sticky bottom-0 safe-bottom">
+            <div className="max-w-2xl mx-auto flex items-center justify-between gap-2">
+              <button onClick={() => { setCurrentPage(p => Math.max(0, p-1)); window.scrollTo({top:0,behavior:'smooth'}) }} disabled={currentPage === 0} className="flex items-center gap-1 sm:gap-2 text-sm font-medium text-ink-500 hover:text-ink-700 disabled:opacity-30 disabled:cursor-not-allowed transition-all shrink-0">
                 <ChevronLeft size={16} /> Back
               </button>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
                 <button
                   onClick={() => persistAndDownload('partial')}
                   title="Save this partial response to the export store"
-                  className="text-xs font-medium text-ink-400 hover:text-ink-600 px-3 py-1.5 border border-ink-200 hover:border-ink-300 rounded-lg transition-all"
+                  className="hidden sm:inline-flex text-xs font-medium text-ink-400 hover:text-ink-600 px-3 py-1.5 border border-ink-200 hover:border-ink-300 rounded-lg transition-all"
                 >
                   Save partial
                 </button>
-                <button onClick={handleNext} className="btn-primary px-8">
-                  {currentPage === totalPages - 1 ? <><Check size={15} /> Submit</> : <>Next <ChevronRight size={15} /></>}
+                <button onClick={handleNext} className="btn-primary px-4 sm:px-8 shrink-0">
+                  {currentPage === totalPages - 1 ? <><Check size={15} /> <span className="hidden sm:inline">Submit</span></> : <>Next <ChevronRight size={15} /></>}
                 </button>
               </div>
             </div>

@@ -33,7 +33,7 @@ export function VisibilityEditor({ itemId, vis, availableQuestions, dispatch }) 
       {enabled && (
         <div className="p-3 space-y-3">
           {/* Mode selector */}
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <button
               onClick={() => setMode('show_if')}
               className={`p-2.5 rounded-lg border-2 text-left transition-all ${

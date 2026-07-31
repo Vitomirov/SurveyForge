@@ -119,7 +119,7 @@ export function CascadeEditor({ question, dispatch }) {
       {/* Level labels */}
       <div>
         <SectionLabel>Dropdown labels</SectionLabel>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
           {cfg.levelLabels.map((label, i) => (
             <div key={i}>
               <label className="text-xs text-ink-400 mb-1 block">Level {i + 1}</label>

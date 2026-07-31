@@ -10,6 +10,7 @@
   body {
     @apply bg-ink-50 text-ink-900 font-sans antialiased;
     font-size: 14px;
+    -webkit-tap-highlight-color: transparent;
   }
 
   ::-webkit-scrollbar {
@@ -139,4 +140,12 @@
 }
 .question-enter {
   animation: slideIn 0.2s ease forwards;
+}
+
+/* Safe area insets for notched phones */
+.safe-top {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }

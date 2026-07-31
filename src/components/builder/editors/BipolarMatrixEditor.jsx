@@ -129,7 +129,7 @@ export function BipolarMatrixEditor({ question, dispatch }) {
   return (
     <div className="space-y-4">
       {/* Labels */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <label className="text-xs font-semibold text-rose-500 mb-1 block">Left side label</label>
           <input
@@ -189,7 +189,7 @@ export function BipolarMatrixEditor({ question, dispatch }) {
       </div>
 
       {/* Columns side by side */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {/* Left columns */}
         <div>
           <p className="text-xs font-semibold text-rose-500 uppercase tracking-wider mb-2">Left columns</p>

@@ -127,15 +127,15 @@ function StatsBar({ surveys }) {
   ]
 
   return (
-    <div className="grid grid-cols-5 gap-3 mb-6">
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3 mb-4 sm:mb-6">
       {cards.map(card => (
-        <div key={card.label} className="card px-4 py-3 flex items-center gap-3">
+        <div key={card.label} className="card px-3 sm:px-4 py-2.5 sm:py-3 flex items-center gap-2 sm:gap-3">
           <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${card.color}`}>
             <card.icon size={18} />
           </div>
           <div>
-            <p className="text-xl font-bold text-ink-800 leading-none">{card.value}</p>
-            <p className="text-xs text-ink-400 mt-0.5">{card.label}</p>
+            <p className="text-lg sm:text-xl font-bold text-ink-800 leading-none">{card.value}</p>
+            <p className="text-[11px] sm:text-xs text-ink-400 mt-0.5 leading-tight">{card.label}</p>
           </div>
         </div>
       ))}
@@ -337,19 +337,19 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
   return (
     <div className="min-h-screen bg-ink-50 flex flex-col">
       {/* Header */}
-      <header className="bg-white border-b border-ink-200 sticky top-0 z-30">
-        <div className="max-w-screen-xl mx-auto px-6 h-14 flex items-center gap-4">
+      <header className="bg-white border-b border-ink-200 sticky top-0 z-30 safe-top">
+        <div className="max-w-screen-xl mx-auto px-4 sm:px-6 min-h-14 py-2 sm:py-0 flex items-center gap-2 sm:gap-4 flex-wrap sm:flex-nowrap">
           <div className="flex items-center gap-2 shrink-0">
             <div className="w-7 h-7 bg-brand-600 rounded-lg flex items-center justify-center">
               <Layers size={14} className="text-white" />
             </div>
             <span className="font-bold text-ink-800 tracking-tight">{APP_NAME}</span>
           </div>
-          <div className="w-px h-5 bg-ink-100" />
-          <span className="text-sm font-semibold text-ink-600">Survey Dashboard</span>
-          <div className="ml-auto flex items-center gap-2">
+          <div className="hidden sm:block w-px h-5 bg-ink-100" />
+          <span className="hidden sm:inline text-sm font-semibold text-ink-600">Survey Dashboard</span>
+          <div className="ml-auto flex items-center gap-1 sm:gap-2">
             {session && (
-              <span className="text-xs text-ink-400 hidden md:block">
+              <span className="text-xs text-ink-400 hidden lg:block">
                 Signed in as <strong className="text-ink-600">{session.name || session.username}</strong>
                 {session.organizationName && (
                   <> · <strong className="text-ink-600">{session.organizationName}</strong></>
@@ -358,30 +358,30 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
             )}
             <button
               onClick={() => { setShowSettings(true); refresh() }}
-              className="btn-ghost"
+              className="btn-ghost px-2 sm:px-3"
               title="Platform settings — manage clients, topics, users"
             >
-              <Settings size={15} /> Settings
+              <Settings size={15} /> <span className="hidden sm:inline">Settings</span>
             </button>
             {onLogout && (
-              <button onClick={onLogout} className="btn-ghost text-ink-400" title={AUTH_COPY.signOut}>
+              <button onClick={onLogout} className="btn-ghost text-ink-400 px-2 sm:px-3" title={AUTH_COPY.signOut}>
                 <LogOut size={15} />
               </button>
             )}
-            <button onClick={onNewSurvey} className="btn-primary">
-              <Plus size={15} /> New Survey
+            <button onClick={onNewSurvey} className="btn-primary px-3 sm:px-4">
+              <Plus size={15} /> <span className="hidden sm:inline">New Survey</span>
             </button>
           </div>
         </div>
       </header>
 
-      <div className="flex-1 max-w-screen-xl mx-auto w-full px-6 py-6">
+      <div className="flex-1 max-w-screen-xl mx-auto w-full px-4 sm:px-6 py-4 sm:py-6">
         <StatsBar surveys={surveys} />
 
         {/* Filters bar */}
-        <div className="card p-3 mb-4 flex items-center gap-3 flex-wrap">
+        <div className="card p-3 mb-4 flex items-center gap-2 sm:gap-3 flex-wrap">
           {/* Search */}
-          <div className="flex items-center gap-2 bg-ink-50 rounded-lg px-3 py-1.5 flex-1 min-w-48">
+          <div className="flex items-center gap-2 bg-ink-50 rounded-lg px-3 py-1.5 w-full sm:flex-1 sm:min-w-48">
             <Search size={14} className="text-ink-400 shrink-0" />
             <input
               type="text"
@@ -403,12 +403,12 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
             { label: 'Type', value: filterType, setter: setFilterType,
               options: SURVEY_TYPES.map(t => ({ value: t.id, label: t.label })) },
           ].map(f => (
-            <div key={f.label} className="flex items-center gap-1.5">
-              <Filter size={12} className="text-ink-400" />
+            <div key={f.label} className="flex items-center gap-1.5 w-[calc(50%-0.25rem)] sm:w-auto">
+              <Filter size={12} className="text-ink-400 hidden sm:block" />
               <select
                 value={f.value}
                 onChange={e => f.setter(e.target.value)}
-                className={`text-sm border rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand-400 ${
+                className={`text-sm border rounded-lg px-2 py-1.5 w-full sm:w-auto focus:outline-none focus:ring-2 focus:ring-brand-400 ${
                   f.value ? 'border-brand-400 bg-brand-50 text-brand-700' : 'border-ink-200 text-ink-600'
                 }`}
               >
@@ -427,7 +427,7 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
             </button>
           )}
 
-          <span className="text-xs text-ink-400 ml-auto shrink-0">
+          <span className="text-xs text-ink-400 w-full sm:w-auto sm:ml-auto shrink-0 text-right sm:text-left">
             {displayed.length} of {surveys.length}
           </span>
         </div>
@@ -452,10 +452,83 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
           </div>
         )}
 
-        {/* Table */}
+        {/* Survey list — cards on mobile, table on md+ */}
         {!apiLoading && surveys.length > 0 && (
-          <div className="card overflow-hidden">
-            <table className="w-full text-sm">
+          <>
+            {/* Mobile cards */}
+            <div className="md:hidden space-y-3">
+              {displayed.length === 0 && (
+                <div className="card p-8 text-center text-sm text-ink-400">
+                  No surveys match the current filters.
+                </div>
+              )}
+              {displayed.map(entry => {
+                const sv     = entry.survey || {}
+                const qCount = entry.questionCount ??
+                  (entry.items || []).filter(i => i.itemType === 'question').length
+                const rc     = responseCounts[sv.id] || { total: 0, complete: 0 }
+                return (
+                  <div
+                    key={sv.id}
+                    className="card p-4 active:bg-ink-50 transition-colors"
+                    onClick={() => handleOpenSurvey(entry)}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap mb-1">
+                          <span className="text-xs font-mono font-semibold text-ink-500 bg-ink-100 px-1.5 py-0.5 rounded">
+                            {sv.surveyCode || '—'}
+                          </span>
+                          <StatusBadge statusId={sv.status || 'draft'} />
+                        </div>
+                        <p className="font-semibold text-ink-800 truncate">
+                          {sv.title || DEFAULT_SURVEY_TITLE}
+                        </p>
+                        {sv.internalName && (
+                          <p className="text-xs text-ink-400 truncate mt-0.5">{sv.internalName}</p>
+                        )}
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-xs text-ink-500">
+                          <span>{qCount} question{qCount !== 1 ? 's' : ''}</span>
+                          {clientMap[sv.clientId] && <span>{clientMap[sv.clientId]}</span>}
+                          {sv.topicId && <span>{topicMap[sv.topicId]}</span>}
+                          {sv.surveyType && (
+                            <span className="font-medium text-brand-600 bg-brand-50 px-1.5 py-0.5 rounded">
+                              {typeMap[sv.surveyType]}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center justify-between mt-3 pt-3 border-t border-ink-100">
+                          <div className="flex items-center gap-3 text-xs text-ink-500">
+                            {rc.total > 0 ? (
+                              <span><strong className="text-ink-700">{rc.total}</strong> responses</span>
+                            ) : (
+                              <span className="text-ink-300">No data</span>
+                            )}
+                            <span className="flex items-center gap-1">
+                              <Clock size={11} className="text-ink-300" />
+                              {fmtDate(sv.updatedAt)}
+                            </span>
+                          </div>
+                          <div onClick={e => e.stopPropagation()}>
+                            <SurveyMenu
+                              surveyId={sv.id}
+                              onOpen={() => handleOpenSurvey(entry)}
+                              onPreview={() => handlePreviewSurvey(entry)}
+                              onDuplicate={() => handleDuplicate(sv.id)}
+                              onDelete={() => setDeleteId(sv.id)}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+
+            {/* Desktop table */}
+            <div className="hidden md:block card overflow-hidden overflow-x-auto">
+            <table className="w-full text-sm min-w-[720px]">
               <thead>
                 <tr className="border-b border-ink-100 bg-ink-50/60">
                   {[
@@ -580,7 +653,8 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
                 })}
               </tbody>
             </table>
-          </div>
+            </div>
+          </>
         )}
       </div>
 

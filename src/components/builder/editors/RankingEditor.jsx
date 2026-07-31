@@ -71,7 +71,7 @@ export function RankingEditor({ question, dispatch }) {
 
       {/* Rank all vs top N */}
       <div className="space-y-2">
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           <button onClick={() => updateCfg({ rankAll: true })}
             className={`p-3 rounded-xl border-2 text-left transition-all ${cfg.rankAll ? 'border-brand-500 bg-brand-50' : 'border-ink-200 hover:border-ink-300'}`}>
             <p className={`text-sm font-semibold ${cfg.rankAll ? 'text-brand-700' : 'text-ink-700'}`}>Rank all</p>

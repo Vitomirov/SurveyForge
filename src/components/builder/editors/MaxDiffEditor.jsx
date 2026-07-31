@@ -47,7 +47,7 @@ export function MaxDiffEditor({ question, dispatch }) {
   return (
     <div className="space-y-4">
       {/* Labels */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <label className="text-xs text-ink-500 mb-1 block font-medium">Best label</label>
           <input type="text" value={cfg.bestLabel} onChange={e => updateCfg({ bestLabel: e.target.value })}

@@ -93,7 +93,7 @@ export function SliderEditor({ question, dispatch }) {
       {/* Range config */}
       <div>
         <SectionLabel>Scale range</SectionLabel>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div>
             <label className="text-xs text-ink-500 mb-1 block">Minimum</label>
             <input

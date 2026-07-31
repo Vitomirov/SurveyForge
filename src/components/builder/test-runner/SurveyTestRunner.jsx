@@ -63,10 +63,10 @@ export function SurveyTestRunner({ survey, items, onClose }) {
         </div>
 
         {/* Body */}
-        <div className="flex flex-1 min-h-0">
+        <div className="flex flex-col md:flex-row flex-1 min-h-0">
 
           {/* Left: Branch selector */}
-          <div className="w-72 shrink-0 border-r border-ink-100 flex flex-col">
+          <div className="w-full md:w-72 shrink-0 border-b md:border-b-0 md:border-r border-ink-100 flex flex-col max-h-[35vh] md:max-h-none">
             <div className="px-4 py-3 border-b border-ink-100">
               <p className="text-xs font-bold text-ink-500 uppercase tracking-wider flex items-center gap-1.5">
                 <GitBranch size={11} /> Detected branches

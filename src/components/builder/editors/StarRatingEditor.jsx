@@ -122,7 +122,7 @@ export function StarRatingEditor({ question, dispatch }) {
       </div>
 
       {/* Labels */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <label className="text-xs text-ink-500 mb-1 block">Min label (1 {ICONS[cfg.icon]?.filled})</label>
           <input type="text" value={cfg.minLabel} onChange={e => update({ minLabel: e.target.value })}
