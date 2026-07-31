@@ -17,6 +17,39 @@ export function loadResponses(surveyId) {
   }
 }
 
+/** Load responses without sorting (cheaper for counting). */
+function loadResponsesUnsorted(surveyId) {
+  try {
+    const raw = localStorage.getItem(responsesKey(surveyId))
+    return raw ? JSON.parse(raw) : []
+  } catch {
+    return []
+  }
+}
+
+/**
+ * Count responses per survey in a single pass per survey (no sort, no filter passes).
+ * @param {string[]} surveyIds
+ * @returns {Record<string, { total: number, complete: number, terminated: number, partial: number }>}
+ */
+export function countResponsesForSurveys(surveyIds) {
+  const result = {}
+  for (const surveyId of surveyIds) {
+    const counts = { total: 0, complete: 0, terminated: 0, partial: 0 }
+    try {
+      const arr = loadResponsesUnsorted(surveyId)
+      counts.total = arr.length
+      for (const r of arr) {
+        if (r.status === 'complete') counts.complete++
+        else if (r.status === 'terminated') counts.terminated++
+        else if (r.status === 'partial') counts.partial++
+      }
+    } catch { /* keep zero counts */ }
+    result[surveyId] = counts
+  }
+  return result
+}
+
 /**
  * Save a single response. If a response with the same ID already exists
  * it is replaced (useful for updating a partial → complete status).

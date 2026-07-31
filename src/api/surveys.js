@@ -5,7 +5,9 @@ export async function getSurvey(id) {
 }
 
 export async function patchSurvey(id, { survey, items, revision }) {
-  const body = { survey, items }
+  const body = {}
+  if (survey !== undefined) body.survey = survey
+  if (items !== undefined) body.items = items
   if (revision != null) body.revision = revision
   return apiFetch(`/api/surveys/${encodeURIComponent(id)}`, {
     method: 'PATCH',

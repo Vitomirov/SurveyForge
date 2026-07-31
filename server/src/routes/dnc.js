@@ -42,11 +42,10 @@ export async function registerDncRoutes(app) {
       emails.map(normalizeEmail).filter(e => e.includes('@'))
     )]
 
-    for (const email of normalized) {
-      await app.prisma.dncEntry.upsert({
-        where: { surveyId_email: { surveyId: survey.id, email } },
-        create: { surveyId: survey.id, email },
-        update: {},
+    if (normalized.length) {
+      await app.prisma.dncEntry.createMany({
+        data: normalized.map(email => ({ surveyId: survey.id, email })),
+        skipDuplicates: true,
       })
     }
 

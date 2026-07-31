@@ -19,6 +19,15 @@ async function getResponses(surveyId, { page = 1, limit = 50 } = {}) {
   return apiFetch(`/api/surveys/${encodeURIComponent(surveyId)}/responses?${qs}`)
 }
 
+export async function fetchResponseStats(surveyId) {
+  return apiFetch(`/api/surveys/${encodeURIComponent(surveyId)}/responses/stats`)
+}
+
+/** Fetch a single page of responses (max 200 per page). */
+export async function fetchResponsesPage(surveyId, page = 1, limit = 200) {
+  return getResponses(surveyId, { page, limit })
+}
+
 /** Load all responses for export (paginated fetch). */
 export async function fetchAllResponses(surveyId) {
   const limit = 200

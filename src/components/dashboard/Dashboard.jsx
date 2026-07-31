@@ -23,7 +23,7 @@ import {
   loadClients, loadTopics,
   SURVEY_TYPES, SURVEY_STATUSES,
 } from '@/utils/platformStore'
-import { loadResponses } from '@/utils/responseStore'
+import { countResponsesForSurveys } from '@/utils/responseStore'
 import { InlineLoader } from '@/components/ui'
 import { prefetchBuilder, prefetchPreview } from '@/utils/routePrefetch'
 
@@ -225,16 +225,8 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
         })
       )
     }
-    return Object.fromEntries(
-      surveys.map(s => {
-        const all = loadResponses(s.survey?.id || s.id)
-        return [s.survey?.id || s.id, {
-          total:      all.length,
-          complete:   all.filter(r => r.status === 'complete').length,
-          terminated: all.filter(r => r.status === 'terminated').length,
-          partial:    all.filter(r => r.status === 'partial').length,
-        }]
-      })
+    return countResponsesForSurveys(
+      surveys.map(s => s.survey?.id || s.id)
     )
   }, [useApi, surveys, tick])
 

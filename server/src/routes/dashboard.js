@@ -1,6 +1,5 @@
-function surveyMeta(row) {
+function surveyMeta(row, questionCount = 0) {
   const survey = row.survey
-  const items = Array.isArray(row.items) ? row.items : []
   return {
     id:           row.id,
     title:        survey?.title ?? 'Untitled Survey',
@@ -11,7 +10,7 @@ function surveyMeta(row) {
     clientId:     survey?.clientId ?? '',
     topicId:      survey?.topicId ?? '',
     surveyType:   survey?.surveyType ?? '',
-    questionCount: items.filter(i => i?.itemType === 'question').length,
+    questionCount,
   }
 }
 
@@ -34,10 +33,27 @@ export async function registerDashboardRoutes(app) {
   app.get('/api/dashboard', async (request) => {
     const orgId = request.organizationId
 
-    const rows = await app.prisma.survey.findMany({
-      where: { organizationId: orgId },
-      orderBy: { updatedAt: 'desc' },
-    })
+    const [rows, countRows] = await Promise.all([
+      app.prisma.survey.findMany({
+        where: { organizationId: orgId },
+        orderBy: { updatedAt: 'desc' },
+        select: { id: true, survey: true, updatedAt: true },
+      }),
+      app.prisma.$queryRaw`
+        SELECT s.id,
+          COALESCE((
+            SELECT COUNT(*)::int
+            FROM jsonb_array_elements(s.survey_items) AS elem
+            WHERE elem->>'itemType' = 'question'
+          ), 0) AS "questionCount"
+        FROM surveys s
+        WHERE s.organization_id = ${orgId}
+      `,
+    ])
+
+    const questionCountById = Object.fromEntries(
+      countRows.map(r => [r.id, Number(r.questionCount) || 0])
+    )
 
     const groups = await app.prisma.response.groupBy({
       by: ['surveyId', 'status'],
@@ -53,7 +69,7 @@ export async function registerDashboardRoutes(app) {
 
     return {
       surveys: rows.map(row => ({
-        ...surveyMeta(row),
+        ...surveyMeta(row, questionCountById[row.id] ?? 0),
         stats: statsMap[row.id] || emptyStats(),
       })),
     }

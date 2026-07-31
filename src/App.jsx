@@ -12,7 +12,6 @@ const Dashboard     = lazy(() => import('@/components/dashboard/Dashboard.jsx'))
 const SurveyBuilder = lazy(() => import('@/components/builder/SurveyBuilder.jsx'))
 const SurveyPreview = lazy(() => import('@/components/taker/SurveyPreview.jsx'))
 
-// Start downloading the likely route chunk in parallel with the main bundle.
 prefetchForRoute()
 
 function libraryEntryToState(entry) {

@@ -11,9 +11,10 @@ import {
 } from '@/utils/responseStore'
 import { useApi } from '@/config/api'
 import {
-  fetchAllResponses, deleteResponseApi, clearResponsesApi,
+  fetchAllResponses, fetchResponseStats, fetchResponsesPage,
+  deleteResponseApi, clearResponsesApi,
 } from '@/api/responses'
-import { generateCSV, downloadCSV } from '@/utils/csvExport'
+import { generateCSV, generateCSVFromApiPages, downloadCSV } from '@/utils/csvExport'
 
 const STATUS_META = {
   complete:   { label: 'Complete',    color: 'text-emerald-700 bg-emerald-100 border-emerald-200' },
@@ -269,6 +270,7 @@ export function ExportManager({ survey, items, onClose }) {
   })
   const [tick, setTick] = useState(0)
   const [apiResponses, setApiResponses] = useState([])
+  const [apiStats, setApiStats] = useState(null)
   const [responsesLoading, setResponsesLoading] = useState(useApi)
   const [showHistory, setShowHistory] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
@@ -280,7 +282,12 @@ export function ExportManager({ survey, items, onClose }) {
     if (!useApi || !surveyId) return
     setResponsesLoading(true)
     try {
-      setApiResponses(await fetchAllResponses(surveyId))
+      const [stats, responses] = await Promise.all([
+        fetchResponseStats(surveyId),
+        fetchAllResponses(surveyId),
+      ])
+      setApiStats(stats)
+      setApiResponses(responses)
     } catch (err) {
       console.error('Failed to load responses', err)
     } finally {
@@ -307,11 +314,18 @@ export function ExportManager({ survey, items, onClose }) {
     return parts.length ? parts.join(', ') : 'all responses'
   }
 
-  const handleExport = useCallback(() => {
+  const handleExport = useCallback(async () => {
     if (!filtered.length) return
     setIsExporting(true)
-    setTimeout(() => {
-      const csv = generateCSV(items, filtered, survey)
+    try {
+      const csv = useApi
+        ? await generateCSVFromApiPages(
+            items,
+            survey,
+            filters,
+            (page) => fetchResponsesPage(surveyId, page, 200),
+          )
+        : generateCSV(items, filtered, survey)
       const ts  = new Date().toISOString()
       const filename = `${(survey?.title || 'survey').replace(/\s+/g, '_')}_${ts.slice(0, 10)}.csv`
       downloadCSV(csv, filename)
@@ -323,9 +337,10 @@ export function ExportManager({ survey, items, onClose }) {
         filterDescription: filterDescription(),
       })
       refresh()
+    } finally {
       setIsExporting(false)
-    }, 150)
-  }, [filtered, items, survey, surveyId, filters])
+    }
+  }, [filtered, items, survey, surveyId, filters, useApi])
 
   const handleClearAll = async () => {
     if (useApi) {
@@ -351,10 +366,20 @@ export function ExportManager({ survey, items, onClose }) {
   }
 
   const counts = useMemo(() => {
+    if (useApi && apiStats) {
+      return {
+        complete:   apiStats.complete ?? 0,
+        terminated: apiStats.terminated ?? 0,
+        partial:    apiStats.partial ?? 0,
+        dnc:        apiStats.dnc ?? 0,
+      }
+    }
     const c = { complete: 0, terminated: 0, partial: 0, dnc: 0 }
     allResponses.forEach(r => { if (c[r.status] !== undefined) c[r.status]++ })
     return c
-  }, [allResponses])
+  }, [useApi, apiStats, allResponses])
+
+  const totalResponses = useApi && apiStats ? apiStats.total : allResponses.length
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -368,7 +393,7 @@ export function ExportManager({ survey, items, onClose }) {
           <div className="flex-1">
             <h2 className="text-base font-bold text-ink-800">Response Export Manager</h2>
             <p className="text-xs text-ink-400">
-              {allResponses.length} total response{allResponses.length !== 1 ? 's' : ''} ·{' '}
+              {totalResponses} total response{totalResponses !== 1 ? 's' : ''} ·{' '}
               <span className="text-emerald-600">{counts.complete} complete</span> ·{' '}
               <span className="text-rose-500">{counts.terminated} terminated</span> ·{' '}
               <span className="text-amber-500">{counts.partial} partial</span>

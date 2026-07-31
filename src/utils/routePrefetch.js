@@ -11,8 +11,7 @@ export function prefetchModule(importFn) {
 }
 
 export function parseTakeHash() {
-  const hash = window.location.hash || ''
-  const m = hash.match(/^#\/take\/([^/]+)$/)
+  const m = (window.location.hash || '').match(/^#\/take\/([^/]+)$/)
   return m ? m[1] : null
 }
 

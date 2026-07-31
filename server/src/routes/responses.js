@@ -63,6 +63,28 @@ export async function upsertResponse(app, { surveyId, organizationId, entry }) {
 }
 
 export async function registerResponseRoutes(app) {
+  app.get('/api/surveys/:id/responses/stats', async (request, reply) => {
+    const survey = await assertSurveyInOrg(
+      app.prisma, request.params.id, request.organizationId, reply
+    )
+    if (!survey) return
+
+    const groups = await app.prisma.response.groupBy({
+      by: ['status'],
+      where: { surveyId: survey.id, organizationId: request.organizationId },
+      _count: { _all: true },
+    })
+
+    const stats = { total: 0, complete: 0, terminated: 0, partial: 0, dnc: 0 }
+    for (const row of groups) {
+      const count = row._count._all
+      if (stats[row.status] !== undefined) stats[row.status] = count
+      stats.total += count
+    }
+
+    return stats
+  })
+
   app.get('/api/surveys/:id/responses', async (request, reply) => {
     const survey = await assertSurveyInOrg(
       app.prisma, request.params.id, request.organizationId, reply

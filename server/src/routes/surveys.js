@@ -16,14 +16,19 @@ export async function registerSurveyRoutes(app) {
     const { id } = request.params
     const { survey, items, revision } = request.body ?? {}
 
-    if (!survey || !Array.isArray(items)) {
-      return reply.code(400).send({ error: 'Body must include survey object and items array' })
+    if (survey === undefined && items === undefined) {
+      return reply.code(400).send({ error: 'Body must include survey object and/or items array' })
     }
-    if (survey.id && survey.id !== id) {
+    if (survey !== undefined && typeof survey !== 'object') {
+      return reply.code(400).send({ error: 'survey must be an object when provided' })
+    }
+    if (items !== undefined && !Array.isArray(items)) {
+      return reply.code(400).send({ error: 'items must be an array when provided' })
+    }
+    if (survey?.id && survey.id !== id) {
       return reply.code(400).send({ error: 'Survey id in body must match URL' })
     }
 
-    const surveyData = { ...survey, id, updatedAt: new Date().toISOString() }
     const existing = await app.prisma.survey.findFirst({
       where: { id, organizationId: request.organizationId },
     })
@@ -37,11 +42,28 @@ export async function registerSurveyRoutes(app) {
         })
       }
 
+      const surveyUnchanged = survey === undefined
+        || JSON.stringify(survey) === JSON.stringify(existing.survey)
+      const itemsUnchanged = items === undefined
+        || JSON.stringify(items) === JSON.stringify(existing.items)
+
+      if (surveyUnchanged && itemsUnchanged) {
+        return {
+          id:        existing.id,
+          revision:  existing.revision,
+          updatedAt: existing.updatedAt.toISOString(),
+        }
+      }
+
+      const surveyData = survey !== undefined
+        ? { ...survey, id, updatedAt: new Date().toISOString() }
+        : undefined
+
       const updated = await app.prisma.survey.update({
         where: { id },
         data: {
-          survey: surveyData,
-          items,
+          ...(surveyData !== undefined ? { survey: surveyData } : {}),
+          ...(items !== undefined ? { items } : {}),
           revision: existing.revision + 1,
         },
       })
@@ -52,6 +74,12 @@ export async function registerSurveyRoutes(app) {
         updatedAt: updated.updatedAt.toISOString(),
       }
     }
+
+    if (!survey || !Array.isArray(items)) {
+      return reply.code(400).send({ error: 'New surveys require survey object and items array' })
+    }
+
+    const surveyData = { ...survey, id, updatedAt: new Date().toISOString() }
 
     const created = await app.prisma.survey.create({
       data: {

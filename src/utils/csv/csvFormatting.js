@@ -7,5 +7,10 @@ function cell(value) {
 
 /** Join header/data rows into a UTF-8 BOM CSV string (Excel-friendly). */
 export function rowsToCSV(rows) {
-  return '\uFEFF' + rows.map(row => row.map(cell).join(',')).join('\r\n')
+  return '\uFEFF' + rowsToCSVLines(rows)
+}
+
+/** Join rows without BOM (for incremental CSV building). */
+export function rowsToCSVLines(rows) {
+  return rows.map(row => row.map(cell).join(',')).join('\r\n')
 }
