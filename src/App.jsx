@@ -103,7 +103,7 @@ export default function App() {
   if (publicSurveyId) {
     if (publicError) {
       return (
-        <div className="min-h-screen bg-ink-50 flex items-center justify-center p-6">
+        <div className="min-h-screen bg-surface flex items-center justify-center p-6">
           <div className="max-w-md text-center">
             <div className="text-5xl mb-4">🔍</div>
             <h2 className="text-xl font-bold text-ink-800 mb-2">{SURVEY_NOT_FOUND_TITLE}</h2>
@@ -114,7 +114,7 @@ export default function App() {
     }
     if (!publicEntry) {
       return (
-        <div className="min-h-screen bg-ink-50 flex items-center justify-center">
+        <div className="min-h-screen bg-surface flex items-center justify-center">
           <div className="text-ink-400 text-sm">Loading survey…</div>
         </div>
       )

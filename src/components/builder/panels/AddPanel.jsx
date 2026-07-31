@@ -19,7 +19,7 @@ export function AddPanel({ onAddQuestion, onAddPageBreak, onAddGroup, onAddTermi
                   <button
                     key={qt.type}
                     onClick={() => onAddQuestion(qt.type)}
-                    className="w-full flex items-center gap-2.5 p-2 rounded-lg hover:bg-ink-50 transition-all text-left group border border-transparent hover:border-ink-100"
+                    className="w-full flex items-center gap-2.5 p-2 rounded-lg hover:bg-white hover:shadow-sm transition-all text-left group border border-transparent hover:border-ink-200"
                   >
                     <span className={`p-1.5 rounded-lg ${c.bg} ${c.text} group-hover:scale-110 transition-transform`}>
                       <Icon size={13} />
@@ -40,7 +40,7 @@ export function AddPanel({ onAddQuestion, onAddPageBreak, onAddGroup, onAddTermi
         <SectionLabel>Structure</SectionLabel>
         <button
           onClick={onAddPageBreak}
-          className="w-full flex items-center gap-2.5 p-2 rounded-lg hover:bg-ink-50 transition-all text-left border border-transparent hover:border-ink-100"
+          className="w-full flex items-center gap-2.5 p-2 rounded-lg hover:bg-white hover:shadow-sm transition-all text-left border border-transparent hover:border-ink-200"
         >
           <span className="p-1.5 rounded-lg bg-ink-100 text-ink-500"><Scissors size={13} /></span>
           <div>
@@ -50,7 +50,7 @@ export function AddPanel({ onAddQuestion, onAddPageBreak, onAddGroup, onAddTermi
         </button>
         <button
           onClick={onAddGroup}
-          className="w-full flex items-center gap-2.5 p-2 rounded-lg hover:bg-ink-50 transition-all text-left border border-transparent hover:border-ink-100"
+          className="w-full flex items-center gap-2.5 p-2 rounded-lg hover:bg-white hover:shadow-sm transition-all text-left border border-transparent hover:border-ink-200"
         >
           <span className="p-1.5 rounded-lg bg-ink-800 text-ink-200"><FolderPlus size={13} /></span>
           <div>
@@ -60,7 +60,7 @@ export function AddPanel({ onAddQuestion, onAddPageBreak, onAddGroup, onAddTermi
         </button>
         <button
           onClick={onAddTextBlock}
-          className="w-full flex items-center gap-2.5 p-2 rounded-lg hover:bg-emerald-50 transition-all text-left border border-transparent hover:border-emerald-100"
+          className="w-full flex items-center gap-2.5 p-2 rounded-lg hover:bg-white hover:shadow-sm transition-all text-left border border-transparent hover:border-emerald-200"
         >
           <span className="p-1.5 rounded-lg bg-emerald-100 text-emerald-600"><FileText size={13} /></span>
           <div>
@@ -70,7 +70,7 @@ export function AddPanel({ onAddQuestion, onAddPageBreak, onAddGroup, onAddTermi
         </button>
         <button
           onClick={onAddTerminationBlock}
-          className="w-full flex items-center gap-2.5 p-2 rounded-lg hover:bg-rose-50 transition-all text-left border border-transparent hover:border-rose-100"
+          className="w-full flex items-center gap-2.5 p-2 rounded-lg hover:bg-white hover:shadow-sm transition-all text-left border border-transparent hover:border-rose-200"
         >
           <span className="p-1.5 rounded-lg bg-rose-600 text-white"><Zap size={13} /></span>
           <div>

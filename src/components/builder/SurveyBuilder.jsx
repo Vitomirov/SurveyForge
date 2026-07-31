@@ -20,6 +20,7 @@ import {
 } from '@/components/builder'
 import { AddPanel, StatsPanel, EmptyState } from '@/components/builder/panels'
 import { RichTextEditor } from '@/components/shared'
+import { CopyButton } from '@/components/ui'
 import { useAutosave } from '@/hooks/useAutosave'
 import { useApi } from '@/config/api'
 import { buildItemMeta, buildAvailableQuestionsByIndex, buildGroupQuestionCounts } from '@/utils/builderLayout'
@@ -119,15 +120,15 @@ export function SurveyBuilder({ initialState, initialRevision = null, onBackToDa
   }
 
   return (
-    <div className="min-h-screen bg-ink-50 flex flex-col">
+    <div className="min-h-screen bg-surface flex flex-col">
       {/* ── Top Nav ──────────────────────────────────────────────────── */}
-      <header className="bg-white border-b border-ink-200 sticky top-0 z-30 safe-top">
+      <header className="bg-white border-b border-ink-200 shadow-sm shadow-ink-900/[0.03] sticky top-0 z-30 safe-top">
         <div className="max-w-screen-xl mx-auto px-4 sm:px-6 min-h-14 py-2 sm:py-0 flex items-center gap-2 sm:gap-4">
           <div className="flex items-center gap-2 shrink-0 min-w-0">
             {onBackToDashboard && (
               <button
                 onClick={onBackToDashboard}
-                className="p-1.5 text-ink-400 hover:text-ink-700 hover:bg-ink-100 rounded-lg transition-all"
+                className="p-1.5 text-ink-500 hover:text-ink-800 hover:bg-ink-100 active:bg-ink-200 rounded-lg transition-all focus-ring"
                 title="Back to dashboard"
               >
                 <ArrowLeft size={16} />
@@ -193,7 +194,7 @@ export function SurveyBuilder({ initialState, initialRevision = null, onBackToDa
 
               <button
                 onClick={() => setShowExport(true)}
-                className="inline-flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium px-3 py-1.5 rounded-lg transition-all"
+                className="btn-secondary text-sm px-3 py-1.5"
                 title="Open Export Manager — download response data"
               >
                 <BarChart3 size={14} /> <span className="hidden md:inline">Exports</span>
@@ -229,7 +230,7 @@ export function SurveyBuilder({ initialState, initialRevision = null, onBackToDa
               </button>
               <button
                 onClick={() => setShowExport(true)}
-                className="p-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-all"
+                className="btn-secondary p-2"
                 title="Exports"
               >
                 <BarChart3 size={16} />
@@ -248,19 +249,19 @@ export function SurveyBuilder({ initialState, initialRevision = null, onBackToDa
                     <div className="absolute right-0 top-full mt-1 z-50 bg-white border border-ink-200 rounded-xl shadow-xl py-1 w-48">
                       <button
                         onClick={() => { setShowTest(true); setShowMobileMenu(false) }}
-                        className="w-full flex items-center gap-2 px-3 py-2.5 text-sm hover:bg-ink-50 text-ink-700"
+                        className="w-full flex items-center gap-2 px-3 py-2.5 text-sm hover:bg-ink-100 active:bg-ink-200 text-ink-700 transition-colors"
                       >
                         <PlayCircle size={14} /> Test runner
                       </button>
                       <button
                         onClick={() => { handleExportCSVTemplate(); setShowMobileMenu(false) }}
-                        className="w-full flex items-center gap-2 px-3 py-2.5 text-sm hover:bg-ink-50 text-ink-700"
+                        className="w-full flex items-center gap-2 px-3 py-2.5 text-sm hover:bg-ink-100 active:bg-ink-200 text-ink-700 transition-colors"
                       >
                         <Download size={14} /> CSV template
                       </button>
                       <button
                         onClick={() => { handleSave(); setShowMobileMenu(false) }}
-                        className="w-full flex items-center gap-2 px-3 py-2.5 text-sm hover:bg-ink-50 text-ink-700"
+                        className="w-full flex items-center gap-2 px-3 py-2.5 text-sm hover:bg-ink-100 active:bg-ink-200 text-ink-700 transition-colors"
                       >
                         <Download size={14} /> Save JSON
                       </button>
@@ -279,7 +280,7 @@ export function SurveyBuilder({ initialState, initialRevision = null, onBackToDa
         {/* ── Main list ──────────────────────────────────────────────── */}
         <main className="flex-1 min-w-0">
           {/* Survey header card */}
-          <div className="card p-3 sm:p-4 mb-4 sm:mb-5">
+          <div className="card p-3 sm:p-4 mb-4 sm:mb-5 shadow-md shadow-ink-900/[0.05]">
             <input
               type="text"
               value={state.survey.title}
@@ -306,7 +307,7 @@ export function SurveyBuilder({ initialState, initialRevision = null, onBackToDa
 
             {/* Screen-out message config */}
             <details className="mt-3 border-t border-ink-100 pt-3">
-              <summary className="text-xs font-semibold text-ink-400 uppercase tracking-wider cursor-pointer hover:text-ink-600 select-none flex items-center gap-1.5">
+              <summary className="text-xs font-semibold text-ink-500 uppercase tracking-wider cursor-pointer hover:text-ink-800 select-none flex items-center gap-1.5 transition-colors">
                 <span>⚙</span> Screen-out &amp; closed survey messages
               </summary>
               <div className="mt-3 space-y-4">
@@ -349,21 +350,18 @@ export function SurveyBuilder({ initialState, initialRevision = null, onBackToDa
             {/* Shareable survey URL */}
             {state.survey.id && (
               <div className="mt-3 border-t border-ink-100 pt-3">
-                <p className="text-xs font-semibold text-ink-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                <p className="text-xs font-semibold text-ink-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
                   🔗 Shareable survey URL
                 </p>
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                  <code className="flex-1 text-xs bg-ink-100 text-ink-600 px-2 py-1.5 rounded-lg truncate font-mono min-w-0">
+                  <code className="flex-1 text-xs bg-surface-muted border border-ink-200 text-ink-700 px-3 py-2 rounded-lg truncate font-mono min-w-0">
                     {`${window.location.origin}${window.location.pathname}#/take/${state.survey.id}`}
                   </code>
-                  <button
-                    onClick={() => navigator.clipboard?.writeText(`${window.location.origin}${window.location.pathname}#/take/${state.survey.id}`)}
-                    className="text-xs font-medium text-brand-600 hover:text-brand-700 px-2.5 py-1.5 border border-brand-200 hover:bg-brand-50 rounded-lg transition-all shrink-0"
-                  >
-                    Copy
-                  </button>
+                  <CopyButton
+                    text={`${window.location.origin}${window.location.pathname}#/take/${state.survey.id}`}
+                  />
                 </div>
-                <p className="text-xs text-ink-400 mt-1.5">
+                <p className="text-xs text-ink-500 mt-1.5">
                   Status: <strong>{state.survey.status || 'draft'}</strong>
                   {state.survey.status !== 'live' && (
                     <span className="text-amber-600"> — set status to Live to accept responses</span>
@@ -495,19 +493,19 @@ export function SurveyBuilder({ initialState, initialRevision = null, onBackToDa
             <div className="mt-4 flex items-center justify-center gap-2 flex-wrap">
               <button
                 onClick={() => dispatch({ type: 'ADD_QUESTION', qtype: 'single_select' })}
-                className="flex items-center gap-2 text-sm text-ink-400 hover:text-brand-600 font-medium px-4 py-2 border border-dashed border-ink-200 hover:border-brand-300 rounded-xl transition-all"
+                className="flex items-center gap-2 text-sm text-ink-500 hover:text-brand-700 hover:bg-white font-medium px-4 py-2 border border-dashed border-ink-300 hover:border-brand-400 rounded-xl transition-all hover:shadow-sm active:scale-[0.98]"
               >
                 <Plus size={15} /> Add question
               </button>
               <button
                 onClick={() => dispatch({ type: 'ADD_PAGE_BREAK' })}
-                className="flex items-center gap-2 text-sm text-ink-400 hover:text-ink-700 font-medium px-4 py-2 border border-dashed border-ink-200 hover:border-ink-300 rounded-xl transition-all"
+                className="flex items-center gap-2 text-sm text-ink-500 hover:text-ink-800 hover:bg-white font-medium px-4 py-2 border border-dashed border-ink-300 hover:border-ink-400 rounded-xl transition-all hover:shadow-sm active:scale-[0.98]"
               >
                 <Scissors size={15} /> Page break
               </button>
               <button
                 onClick={() => dispatch({ type: 'ADD_TEXT_BLOCK' })}
-                className="flex items-center gap-2 text-sm text-ink-400 hover:text-emerald-600 font-medium px-4 py-2 border border-dashed border-ink-200 hover:border-emerald-300 rounded-xl transition-all"
+                className="flex items-center gap-2 text-sm text-ink-500 hover:text-emerald-700 hover:bg-white font-medium px-4 py-2 border border-dashed border-ink-300 hover:border-emerald-400 rounded-xl transition-all hover:shadow-sm active:scale-[0.98]"
               >
                 <FileText size={15} /> Text / Media
               </button>
@@ -531,7 +529,7 @@ export function SurveyBuilder({ initialState, initialRevision = null, onBackToDa
       {/* Mobile FAB — open add panel */}
       <button
         onClick={() => setShowMobilePanel(true)}
-        className="lg:hidden fixed bottom-6 right-4 z-20 w-14 h-14 bg-brand-600 hover:bg-brand-700 text-white rounded-full shadow-lg flex items-center justify-center transition-all active:scale-95 safe-bottom"
+        className="lg:hidden fixed bottom-6 right-4 z-20 w-14 h-14 bg-brand-600 hover:bg-brand-700 active:bg-brand-700 text-white rounded-full shadow-lg shadow-brand-900/25 hover:shadow-xl flex items-center justify-center transition-all active:scale-95 focus-ring safe-bottom"
         title="Add question or structure"
       >
         <Plus size={24} />
@@ -546,7 +544,7 @@ export function SurveyBuilder({ initialState, initialRevision = null, onBackToDa
               <h3 className="text-sm font-bold text-ink-800">Add to survey</h3>
               <button
                 onClick={() => setShowMobilePanel(false)}
-                className="p-2 text-ink-400 hover:text-ink-700 hover:bg-ink-100 rounded-lg"
+                className="p-2 text-ink-500 hover:text-ink-800 hover:bg-ink-100 active:bg-ink-200 rounded-lg transition-all focus-ring"
               >
                 <X size={18} />
               </button>

@@ -70,7 +70,7 @@ export const PageBreakItem = memo(function PageBreakItem({
       {isActive && (
         <div className="ml-8 mr-8 mb-2 mt-1">
           {summary && (
-            <p className="text-xs text-violet-500 italic mb-1.5 px-1">{summary}</p>
+            <p className="text-xs text-violet-800 italic mb-1.5 px-1">{summary}</p>
           )}
           <VisibilityEditor
             itemId={item.id}

@@ -9,28 +9,28 @@ import {
 // ─── Theme tokens per variant ───────────────────────────────────────────────
 const THEMES = {
   visibility: {
-    border:           'border-violet-800/40',
-    joinBar:          'bg-violet-950/30',
+    border:           'border-violet-300',
+    joinBar:          'bg-violet-100/90',
     joinAnd:          'bg-violet-700 text-white border-violet-600 hover:bg-violet-800',
-    panel:            'bg-violet-950/20',
-    label:            'text-violet-400',
-    heading:          'text-violet-400',
-    delete:           'text-violet-600 hover:text-violet-400',
-    select:           'bg-violet-950/40 border-violet-800/50 text-violet-100 focus:ring-violet-500',
-    input:            'bg-violet-950/40 border-violet-800/50 text-violet-100 placeholder:text-violet-700 focus:ring-violet-500',
-    optionBorder:     'border-violet-800 group-hover:border-violet-500',
-    optionSelected:   'border-violet-400 bg-violet-500',
-    optionText:       'text-violet-200',
-    optionEmpty:      'text-violet-600',
-    hint:             'text-violet-600',
-    previewBg:        'bg-violet-950/90',
-    previewHeading:   'text-violet-300',
-    previewText:      'text-violet-200',
-    previewEm:        'text-violet-300',
-    previewEmpty:     'text-violet-300',
-    addBtn:           'text-violet-600 hover:text-violet-700 border-violet-300 hover:border-violet-500',
-    summaryEm:        'text-violet-300',
-    summaryEmpty:     'text-violet-300',
+    panel:            'bg-white',
+    label:            'text-violet-800 font-medium',
+    heading:          'text-violet-900',
+    delete:           'text-violet-600 hover:text-violet-900 hover:bg-violet-100 rounded',
+    select:           'bg-white border-violet-300 text-violet-950 focus:ring-violet-500',
+    input:            'bg-white border-violet-300 text-violet-950 placeholder:text-violet-500 focus:ring-violet-500',
+    optionBorder:     'border-violet-400 group-hover:border-violet-600',
+    optionSelected:   'border-violet-700 bg-violet-700',
+    optionText:       'text-violet-900',
+    optionEmpty:      'text-violet-700',
+    hint:             'text-violet-800',
+    previewBg:        'bg-violet-100 border border-violet-200',
+    previewHeading:   'text-violet-900',
+    previewText:      'text-violet-950',
+    previewEm:        'text-violet-800 font-semibold not-italic',
+    previewEmpty:     'text-violet-700 italic',
+    addBtn:           'text-violet-800 hover:text-violet-950 border-violet-400 hover:border-violet-600 hover:bg-violet-50',
+    summaryEm:        'text-violet-800 font-semibold not-italic',
+    summaryEmpty:     'text-violet-700 italic',
   },
   termination: {
     border:           'border-rose-800/40',
@@ -284,7 +284,7 @@ export function ConditionBuilder({
       )}
 
       {availableQuestions.length > 0 && (
-        <p className={`text-xs ${variant === 'termination' ? 'text-rose-600' : 'text-violet-400'}`}>
+        <p className={`text-xs font-medium ${variant === 'termination' ? 'text-rose-600' : 'text-violet-800'}`}>
           {availableQuestions.length} question{availableQuestions.length !== 1 ? 's' : ''}{' '}
           {variant === 'termination' ? 'available (all questions before this block)' : 'available to reference'}
         </p>

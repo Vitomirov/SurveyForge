@@ -1,3 +1,8 @@
+import { Copy, Check } from 'lucide-react'
+import { useCopyToClipboard } from '@/hooks/useCopyToClipboard'
+
+const FOCUS_RING = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2'
+
 // ─── Toggle Switch ─────────────────────────────────────────────────────────
 export function Toggle({ checked, onChange, label, size = 'md' }) {
   const trackW = size === 'sm' ? 'w-8' : 'w-10'
@@ -15,7 +20,7 @@ export function Toggle({ checked, onChange, label, size = 'md' }) {
           className={`absolute top-0.5 toggle-thumb ${thumbS} bg-white rounded-full shadow-sm ${translate}`}
         />
       </div>
-      {label && <span className="text-xs text-ink-500">{label}</span>}
+      {label && <span className="text-xs text-ink-600">{label}</span>}
     </label>
   )
 }
@@ -23,15 +28,15 @@ export function Toggle({ checked, onChange, label, size = 'md' }) {
 // ─── Icon Button ───────────────────────────────────────────────────────────
 export function IconBtn({ icon: Icon, onClick, title, variant = 'ghost', className = '' }) {
   const variants = {
-    ghost:  'text-ink-400 hover:text-ink-700 hover:bg-ink-100',
-    danger: 'text-ink-400 hover:text-rose-600 hover:bg-rose-50',
-    brand:  'text-brand-600 hover:text-brand-700 hover:bg-brand-50',
+    ghost:  'text-ink-500 hover:text-ink-800 hover:bg-ink-100 active:bg-ink-200',
+    danger: 'text-ink-500 hover:text-rose-600 hover:bg-rose-50 active:bg-rose-100',
+    brand:  'text-brand-600 hover:text-brand-700 hover:bg-brand-50 active:bg-brand-100',
   }
   return (
     <button
       onClick={onClick}
       title={title}
-      className={`p-1.5 rounded-lg transition-all active:scale-90 ${variants[variant]} ${className}`}
+      className={`p-1.5 rounded-lg transition-all active:scale-90 ${FOCUS_RING} ${variants[variant]} ${className}`}
     >
       <Icon size={15} />
     </button>
@@ -49,7 +54,7 @@ export function Divider({ label }) {
   return (
     <div className="flex items-center gap-3 my-3">
       <div className="flex-1 border-t border-ink-100" />
-      <span className="text-xs text-ink-300 font-medium uppercase tracking-wider">{label}</span>
+      <span className="text-xs text-ink-500 font-medium uppercase tracking-wider">{label}</span>
       <div className="flex-1 border-t border-ink-100" />
     </div>
   )
@@ -57,8 +62,8 @@ export function Divider({ label }) {
 
 // ─── Section Label ─────────────────────────────────────────────────────────
 const SECTION_LABEL_BASE = {
-  default: 'text-xs font-semibold text-ink-400 uppercase tracking-wider',
-  bold:    'text-xs font-bold text-ink-500 uppercase tracking-wider',
+  default: 'text-xs font-semibold text-ink-500 uppercase tracking-wider',
+  bold:    'text-xs font-bold text-ink-600 uppercase tracking-wider',
 }
 
 export function SectionLabel({ children, variant = 'default', className = '' }) {
@@ -67,5 +72,21 @@ export function SectionLabel({ children, variant = 'default', className = '' }) 
     <p className={`${SECTION_LABEL_BASE[variant]} ${margin} ${className}`.trim()}>
       {children}
     </p>
+  )
+}
+
+// ─── Copy Button ───────────────────────────────────────────────────────────
+export function CopyButton({ text, label = 'Copy', className = '' }) {
+  const { copy, copied } = useCopyToClipboard()
+
+  return (
+    <button
+      type="button"
+      onClick={() => copy(text)}
+      className={`btn-copy ${copied ? 'btn-copy-success' : ''} ${className}`.trim()}
+    >
+      {copied ? <Check size={13} /> : <Copy size={13} />}
+      {copied ? 'Copied!' : label}
+    </button>
   )
 }

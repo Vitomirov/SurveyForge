@@ -94,13 +94,13 @@ export const QuestionCard = memo(function QuestionCard({
 
   return (
     <div ref={setNodeRef} style={style} className={`question-enter ${isDragging ? 'opacity-40' : ''}`}>
-      <div className={`card transition-all duration-150 ${isActive ? 'border-brand-400 shadow-md shadow-brand-100' : 'hover:border-ink-300'}`}>
+      <div className={`card transition-all duration-150 shadow-sm ${isActive ? 'border-brand-400 shadow-md shadow-brand-100/80' : 'hover:border-ink-300 hover:shadow-md hover:shadow-ink-900/[0.04]'}`}>
 
         {/* ── Header ────────────────────────────────────────────────── */}
         <div className="flex items-start gap-2 sm:gap-3 p-3 sm:p-4 cursor-pointer" onClick={() => onActivateItem(question.id)}>
 
           {/* Drag handle */}
-          <div {...attributes} {...listeners} className="drag-handle mt-0.5 text-ink-200 hover:text-ink-400 transition-colors" onClick={e => e.stopPropagation()}>
+          <div {...attributes} {...listeners} className="drag-handle mt-0.5 text-ink-400 hover:text-ink-600 hover:bg-ink-100 rounded p-0.5 -ml-0.5 transition-colors" onClick={e => e.stopPropagation()}>
             <GripVertical size={16} />
           </div>
 
@@ -144,7 +144,7 @@ export const QuestionCard = memo(function QuestionCard({
               {/* Required */}
               {question.required
                 ? <span className="text-xs text-rose-500 font-medium">Required</span>
-                : <span className="text-xs text-ink-300">Optional</span>
+                : <span className="text-xs text-ink-400">Optional</span>
               }
 
               {/* Badges */}
@@ -153,7 +153,7 @@ export const QuestionCard = memo(function QuestionCard({
               {openTextSet     && <span className="text-xs text-brand-500 bg-brand-50 px-1.5 py-0.5 rounded">💬</span>}
             </div>
 
-            <p className={`text-sm leading-snug ${question.text ? 'text-ink-800' : 'text-ink-300 italic'}`}>
+            <p className={`text-sm leading-snug ${question.text ? 'text-ink-800' : 'text-ink-400 italic'}`}>
               {question.text || 'Untitled question — click to edit'}
             </p>
 
@@ -175,7 +175,7 @@ export const QuestionCard = memo(function QuestionCard({
             <IconBtn icon={Trash2} onClick={() => dispatch({ type: 'DELETE_ITEM', id: question.id })} variant="danger" title="Delete" />
             <div className="w-px h-4 bg-ink-100 mx-0.5" />
             <div className={`transition-transform duration-150 ${isActive ? 'rotate-90' : ''}`}>
-              <ChevronRight size={16} className="text-ink-300" />
+              <ChevronRight size={16} className="text-ink-400" />
             </div>
           </div>
         </div>

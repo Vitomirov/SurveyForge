@@ -84,7 +84,7 @@ export const GroupItem = memo(function GroupItem({
       {isActive && (
         <div className="mt-1.5 mb-1">
           {summary && (
-            <p className="text-xs text-violet-500 italic mb-1.5 px-1">{summary}</p>
+            <p className="text-xs text-violet-800 italic mb-1.5 px-1">{summary}</p>
           )}
           <VisibilityEditor
             itemId={item.id}

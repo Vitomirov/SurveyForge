@@ -156,7 +156,7 @@ export const TextBlockItem = memo(function TextBlockItem({
 
             {/* Visibility logic */}
             <div className="border-t border-ink-100 pt-3">
-              {visSummary && <p className="text-xs text-violet-500 italic mb-1.5">{visSummary}</p>}
+              {visSummary && <p className="text-xs text-violet-800 italic mb-1.5">{visSummary}</p>}
               <VisibilityEditor
                 itemId={item.id}
                 vis={item.visibility}

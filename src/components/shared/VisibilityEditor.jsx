@@ -20,12 +20,12 @@ export function VisibilityEditor({ itemId, vis, availableQuestions, dispatch }) 
     dispatch({ type: 'SET_ITEM_VISIBILITY_MODE', itemId, patch: { enabled: val } })
 
   return (
-    <div className="border border-violet-200 rounded-xl overflow-hidden bg-violet-50/40">
+    <div className="border border-violet-300 rounded-xl overflow-hidden bg-violet-50/60">
       {/* Header / toggle */}
-      <div className="flex items-center justify-between px-3 py-2.5 bg-violet-100/50">
+      <div className="flex items-center justify-between px-3 py-2.5 bg-violet-100/80 border-b border-violet-200/80">
         <div className="flex items-center gap-2">
-          <GitBranch size={13} className="text-violet-500" />
-          <span className="text-sm font-semibold text-violet-800">Conditional visibility</span>
+          <GitBranch size={13} className="text-violet-700" />
+          <span className="text-sm font-semibold text-violet-900">Conditional visibility</span>
         </div>
         <Toggle checked={enabled} onChange={setEnabled} />
       </div>
@@ -44,7 +44,7 @@ export function VisibilityEditor({ itemId, vis, availableQuestions, dispatch }) 
                 <Eye size={12} className={mode === 'show_if' ? 'text-emerald-600' : 'text-ink-400'} />
                 <span className={`text-xs font-bold ${mode === 'show_if' ? 'text-emerald-700' : 'text-ink-600'}`}>Show if</span>
               </div>
-              <p className="text-xs text-ink-400 leading-snug">Only visible when conditions match</p>
+              <p className="text-xs text-ink-500 leading-snug">Only visible when conditions match</p>
             </button>
             <button
               onClick={() => setMode('hide_if')}
@@ -56,7 +56,7 @@ export function VisibilityEditor({ itemId, vis, availableQuestions, dispatch }) 
                 <EyeOff size={12} className={mode === 'hide_if' ? 'text-rose-600' : 'text-ink-400'} />
                 <span className={`text-xs font-bold ${mode === 'hide_if' ? 'text-rose-700' : 'text-ink-600'}`}>Hide if</span>
               </div>
-              <p className="text-xs text-ink-400 leading-snug">Hidden when conditions match</p>
+              <p className="text-xs text-ink-500 leading-snug">Hidden when conditions match</p>
             </button>
           </div>
 

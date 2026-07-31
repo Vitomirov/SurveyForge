@@ -75,7 +75,7 @@ function SurveyMenu({ surveyId, onOpen, onPreview, onDuplicate, onDelete }) {
       <button
         ref={btnRef}
         onClick={handleOpen}
-        className="p-1.5 text-ink-400 hover:text-ink-700 hover:bg-ink-100 rounded-lg transition-all"
+        className="p-1.5 text-ink-500 hover:text-ink-800 hover:bg-ink-100 active:bg-ink-200 rounded-lg transition-all focus-ring"
       >
         <MoreVertical size={15} />
       </button>
@@ -335,9 +335,9 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
   const activeFilters = [filterStatus, filterClient, filterTopic, filterType].filter(Boolean).length
 
   return (
-    <div className="min-h-screen bg-ink-50 flex flex-col">
+    <div className="min-h-screen bg-surface flex flex-col">
       {/* Header */}
-      <header className="bg-white border-b border-ink-200 sticky top-0 z-30 safe-top">
+      <header className="bg-white border-b border-ink-200 shadow-sm shadow-ink-900/[0.03] sticky top-0 z-30 safe-top">
         <div className="max-w-screen-xl mx-auto px-4 sm:px-6 min-h-14 py-2 sm:py-0 flex items-center gap-2 sm:gap-4 flex-wrap sm:flex-nowrap">
           <div className="flex items-center gap-2 shrink-0">
             <div className="w-7 h-7 bg-brand-600 rounded-lg flex items-center justify-center">
