@@ -20,23 +20,6 @@ export function Toggle({ checked, onChange, label, size = 'md' }) {
   )
 }
 
-// ─── Badge ─────────────────────────────────────────────────────────────────
-export function Badge({ children, variant = 'default', className = '' }) {
-  const variants = {
-    default: 'bg-ink-100 text-ink-500',
-    brand:   'bg-brand-100 text-brand-700',
-    amber:   'bg-amber-50 text-amber-600',
-    rose:    'bg-rose-50 text-rose-600',
-    emerald: 'bg-emerald-50 text-emerald-600',
-    violet:  'bg-violet-50 text-violet-600',
-  }
-  return (
-    <span className={`badge ${variants[variant]} ${className}`}>
-      {children}
-    </span>
-  )
-}
-
 // ─── Icon Button ───────────────────────────────────────────────────────────
 export function IconBtn({ icon: Icon, onClick, title, variant = 'ghost', className = '' }) {
   const variants = {

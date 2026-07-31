@@ -10,7 +10,7 @@ import { evalConditionSet } from '@/utils/conditionEngine'
  * visible given the current `responses`. Items with no visibility config,
  * or visibility disabled, are always visible.
  */
-export function isItemVisible(item, responses, allItems) {
+function isItemVisible(item, responses, allItems) {
   const vis = item?.visibility
   if (!vis || !vis.enabled || !vis.conditions?.length) return true
 

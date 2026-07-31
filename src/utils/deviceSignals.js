@@ -175,7 +175,7 @@ export async function collectFingerprint(signals = {}) {
 }
 
 // ─── Default signal config (all keys, default values) ─────────────────────
-export const DEFAULT_FP_SIGNALS = {
+const DEFAULT_FP_SIGNALS = {
   ip:          true,
   browser:     true,
   os:          true,

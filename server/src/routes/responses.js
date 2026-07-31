@@ -1,7 +1,7 @@
 const DEFAULT_LIMIT = 50
 const MAX_LIMIT = 200
 
-export function rowToEntry(row) {
+function rowToEntry(row) {
   const payload = row.payload && typeof row.payload === 'object' ? row.payload : {}
   return {
     id:           row.id,

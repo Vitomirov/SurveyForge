@@ -46,7 +46,3 @@ export async function apiFetch(path, options = {}) {
 
   return body
 }
-
-export function apiEnabled() {
-  return useApi
-}

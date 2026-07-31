@@ -1,10 +1,5 @@
 import { apiFetch } from './client'
 
-export async function listSurveys() {
-  const data = await apiFetch('/api/surveys')
-  return data.surveys
-}
-
 export async function getSurvey(id) {
   return apiFetch(`/api/surveys/${encodeURIComponent(id)}`)
 }

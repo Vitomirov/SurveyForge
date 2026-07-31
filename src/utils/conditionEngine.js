@@ -26,7 +26,7 @@ export function evalTextOperator(answer, operator, textValue) {
 /**
  * Evaluate a single visibility/termination condition against current responses.
  */
-export function evalCondition(cond, responses, allItems) {
+function evalCondition(cond, responses, allItems) {
   const q      = allItems.find(i => i.id === cond.questionId)
   const answer = responses[cond.questionId]
   if (!q || answer === undefined || answer === null || answer === '') return false

@@ -169,9 +169,6 @@ export const getTypeMeta = (type) =>
 export const isChoiceType = (type) =>
   ['single_select', 'multi_select', 'dropdown'].includes(type)
 
-export const isMatrixType = (type) =>
-  ['matrix', 'bipolar_matrix'].includes(type)
-
 export const TYPE_ICONS = {
   single_select:       CircleDot,
   multi_select:        CheckSquare,

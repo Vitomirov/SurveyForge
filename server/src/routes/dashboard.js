@@ -59,5 +59,3 @@ export async function registerDashboardRoutes(app) {
     }
   })
 }
-
-export { surveyMeta, emptyStats }

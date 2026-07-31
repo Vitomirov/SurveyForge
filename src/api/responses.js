@@ -14,7 +14,7 @@ export async function savePublicResponse(surveyId, entry) {
   })
 }
 
-export async function getResponses(surveyId, { page = 1, limit = 50 } = {}) {
+async function getResponses(surveyId, { page = 1, limit = 50 } = {}) {
   const qs = new URLSearchParams({ page: String(page), limit: String(limit) })
   return apiFetch(`/api/surveys/${encodeURIComponent(surveyId)}/responses?${qs}`)
 }

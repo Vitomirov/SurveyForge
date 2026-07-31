@@ -1,29 +1,4 @@
-function surveyMeta(row) {
-  const survey = row.survey
-  const items = Array.isArray(row.items) ? row.items : []
-  return {
-    id:           row.id,
-    title:        survey?.title ?? 'Untitled Survey',
-    status:       survey?.status ?? 'draft',
-    updatedAt:    row.updatedAt.toISOString(),
-    internalName: survey?.internalName ?? '',
-    surveyCode:   survey?.surveyCode ?? '',
-    clientId:     survey?.clientId ?? '',
-    topicId:      survey?.topicId ?? '',
-    surveyType:   survey?.surveyType ?? '',
-    questionCount: items.filter(i => i?.itemType === 'question').length,
-  }
-}
-
 export async function registerSurveyRoutes(app) {
-  app.get('/api/surveys', async (request) => {
-    const rows = await app.prisma.survey.findMany({
-      where: { organizationId: request.organizationId },
-      orderBy: { updatedAt: 'desc' },
-    })
-    return { surveys: rows.map(surveyMeta) }
-  })
-
   app.get('/api/surveys/:id', async (request, reply) => {
     const row = await app.prisma.survey.findFirst({
       where: { id: request.params.id, organizationId: request.organizationId },

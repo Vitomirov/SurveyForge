@@ -28,19 +28,7 @@ export async function loadDNCListAsync(surveyId, { publicMode = false } = {}) {
   return dncCache.get(surveyId)
 }
 
-export function getDNCCount(surveyId) {
-  return loadDNCList(surveyId).length
-}
-
 // ─── Check ─────────────────────────────────────────────────────────────────
-/** Returns true if the email is in the DNC list for this survey. */
-export function isOnDNCList(surveyId, email) {
-  if (!email || !surveyId) return false
-  const normalised = String(email).toLowerCase().trim()
-  if (!normalised || !normalised.includes('@')) return false
-  return loadDNCList(surveyId).includes(normalised)
-}
-
 /** Async DNC check — ensures API cache is loaded before matching. */
 export async function isOnDNCListAsync(surveyId, email, { publicMode = false } = {}) {
   if (!email || !surveyId) return false
@@ -113,8 +101,4 @@ export async function removeDNCEmailAsync(surveyId, email) {
   const list = loadDNCList(surveyId).filter(e => e !== email.toLowerCase().trim())
   dncCache.set(surveyId, list)
   return list
-}
-
-export function invalidateDNCCache(surveyId) {
-  dncCache.delete(surveyId)
 }

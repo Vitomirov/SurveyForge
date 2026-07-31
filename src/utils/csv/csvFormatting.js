@@ -1,5 +1,5 @@
 /** Escape a single cell value for CSV output. */
-export function cell(value) {
+function cell(value) {
   const str = value == null ? '' : String(value).trim()
   if (/[,";\|\r\n]/.test(str)) return '"' + str.replace(/"/g, '""') + '"'
   return str

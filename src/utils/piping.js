@@ -4,7 +4,7 @@
 //   2. Option piping — dynamic option list built from a source question's selections
 
 // ─── Format a single answer for display in piped text ─────────────────────
-export function formatPipedAnswer(question, answer) {
+function formatPipedAnswer(question, answer) {
   if (answer == null || answer === '') return '[not yet answered]'
 
   switch (question?.questionType) {
@@ -62,12 +62,6 @@ export function resolvePipingTokens(text, responses, items) {
   })
 }
 
-// ─── Build human-readable label for a token (used in the picker UI) ────────
-export function tokenLabel(question, qNumber) {
-  const preview = question.text ? question.text.slice(0, 40) + (question.text.length > 40 ? '…' : '') : '(untitled)'
-  return `Q${qNumber}: ${preview}`
-}
-
 // ─── Build token string to insert into text ───────────────────────────────
 export function makeToken(questionId) {
   return `{{qid:${questionId}}}`
@@ -99,7 +93,7 @@ export function buildPipedOptions(question, responses, items) {
 
 // ─── Which question types can be SOURCE for option piping ─────────────────
 // Only types that store a list of selected option IDs are valid sources.
-export const PIPEABLE_SOURCE_TYPES = [
+const PIPEABLE_SOURCE_TYPES = [
   'single_select',
   'multi_select',
   'dropdown',

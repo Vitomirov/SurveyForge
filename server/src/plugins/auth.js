@@ -14,14 +14,6 @@ export async function registerAuth(app, { jwtSecret }) {
     secret: jwtSecret,
   })
 
-  app.decorate('authenticate', async (request, reply) => {
-    try {
-      await request.jwtVerify()
-    } catch {
-      return reply.code(401).send({ error: 'Unauthorized' })
-    }
-  })
-
   app.addHook('onRequest', async (request, reply) => {
     if (!request.url.startsWith('/api')) return
     if (isPublicRoute(request.url)) return
@@ -29,7 +21,6 @@ export async function registerAuth(app, { jwtSecret }) {
     try {
       await request.jwtVerify()
       const payload = request.user
-      request.userId = payload.userId
       request.organizationId = payload.organizationId
     } catch {
       return reply.code(401).send({ error: 'Unauthorized' })

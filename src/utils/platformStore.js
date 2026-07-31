@@ -49,7 +49,7 @@ const newId = () => `pid_${Date.now()}_${Math.random().toString(36).slice(2, 6)}
 
 // ─── Clients ───────────────────────────────────────────────────────────────
 export function loadClients()             { return load(CLIENTS_KEY, DEFAULT_CLIENTS) }
-export function saveClients(clients)      { save(CLIENTS_KEY, clients) }
+function saveClients(clients)      { save(CLIENTS_KEY, clients) }
 export function addClient(name)           {
   const updated = [...loadClients(), { id: newId(), name: name.trim() }]
   saveClients(updated); return updated
@@ -65,7 +65,7 @@ export function deleteClient(id)          {
 
 // ─── Topics ────────────────────────────────────────────────────────────────
 export function loadTopics()              { return load(TOPICS_KEY, DEFAULT_TOPICS) }
-export function saveTopics(topics)        { save(TOPICS_KEY, topics) }
+function saveTopics(topics)        { save(TOPICS_KEY, topics) }
 export function addTopic(name)            {
   const updated = [...loadTopics(), { id: newId(), name: name.trim() }]
   saveTopics(updated); return updated

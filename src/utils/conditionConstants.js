@@ -31,7 +31,3 @@ export const TEXT_OPERATORS = [
 export function getChoiceConditionLabel(value) {
   return CHOICE_CONDITION_TYPES.find(t => t.value === value)?.label || value
 }
-
-export function getTextConditionLabel(value) {
-  return TEXT_CONDITION_TYPES.find(t => t.value === value)?.label || value?.replace(/_/g, ' ')
-}

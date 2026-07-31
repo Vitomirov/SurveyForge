@@ -9,7 +9,7 @@ export function findItemIndex(items, id) {
 }
 
 /** Replace one slot; return the same array when unchanged. */
-export function replaceItemAt(items, index, nextItem) {
+function replaceItemAt(items, index, nextItem) {
   if (items[index] === nextItem) return items
   const next = items.slice()
   next[index] = nextItem
