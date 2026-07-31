@@ -74,6 +74,30 @@ export default function App() {
     }
   }, [publicSurveyId])
 
+  const openBuilder = useCallback((entry = null) => {
+    setBuilderRevision(entry?.revision ?? null)
+    setBuilderState(entry ? libraryEntryToState(entry) : null)
+    setView('builder')
+  }, [])
+
+  const openPreview = useCallback((entry) => {
+    setPreviewEntry(entry)
+    setView('preview')
+  }, [])
+
+  const backToDashboard = useCallback(() => {
+    setBuilderState(null)
+    setBuilderRevision(null)
+    setPreviewEntry(null)
+    setView('dashboard')
+  }, [])
+
+  const handleLogout = () => {
+    logout()
+    setSession(null)
+    setView('dashboard')
+  }
+
   // ── Public survey route — no login required ─────────────────────────────
   if (publicSurveyId) {
     if (publicError) {
@@ -111,30 +135,6 @@ export default function App() {
   if (!session) {
     return <LoginPage onLogin={s => setSession(s)} />
   }
-
-  const handleLogout = () => {
-    logout()
-    setSession(null)
-    setView('dashboard')
-  }
-
-  const openBuilder = useCallback((entry = null) => {
-    setBuilderRevision(entry?.revision ?? null)
-    setBuilderState(entry ? libraryEntryToState(entry) : null)
-    setView('builder')
-  }, [])
-
-  const openPreview = useCallback((entry) => {
-    setPreviewEntry(entry)
-    setView('preview')
-  }, [])
-
-  const backToDashboard = useCallback(() => {
-    setBuilderState(null)
-    setBuilderRevision(null)
-    setPreviewEntry(null)
-    setView('dashboard')
-  }, [])
 
   if (view === 'builder') {
     return (
