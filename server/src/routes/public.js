@@ -1,5 +1,13 @@
 import { upsertResponse } from './responses.js'
 
+async function dncEmailsForSurvey(prisma, surveyRow) {
+  const rows = await prisma.dncEntry.findMany({
+    where: { surveyId: surveyRow.id },
+    orderBy: { email: 'asc' },
+  })
+  return rows.map(r => r.email)
+}
+
 export async function registerPublicRoutes(app) {
   app.get('/api/public/surveys/:id', async (request, reply) => {
     const row = await app.prisma.survey.findUnique({
@@ -16,6 +24,17 @@ export async function registerPublicRoutes(app) {
       survey: row.survey,
       items:  row.items,
     }
+  })
+
+  app.get('/api/public/surveys/:id/dnc', async (request, reply) => {
+    const row = await app.prisma.survey.findUnique({
+      where: { id: request.params.id },
+    })
+    if (!row || row.survey?.status !== 'live') {
+      return reply.code(404).send({ error: 'Survey not found' })
+    }
+
+    return { emails: await dncEmailsForSurvey(app.prisma, row) }
   })
 
   app.post('/api/public/surveys/:id/responses', async (request, reply) => {

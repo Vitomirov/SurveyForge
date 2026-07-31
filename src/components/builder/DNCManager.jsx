@@ -1,18 +1,17 @@
-import { useState, useRef } from 'react'
-import { Upload, Trash2, ShieldOff, AlertTriangle, CheckCircle2, X, Download } from 'lucide-react'
+import { useState, useRef, useEffect } from 'react'
+import { Upload, Trash2, ShieldOff, AlertTriangle, X, Download } from 'lucide-react'
 import {
-  loadDNCList, getDNCCount, parseDNCCsv,
-  importDNCEmails, clearDNCList, removeDNCEmail,
+  loadDNCList, loadDNCListAsync, parseDNCCsv,
+  importDNCEmailsAsync, clearDNCListAsync, removeDNCEmailAsync,
 } from '@/utils/dncStore'
+import { useApi } from '@/config/api'
 
-// ─── Import preview modal ──────────────────────────────────────────────────
-function ImportPreview({ parsed, surveyId, onImported, onCancel }) {
-  const existing = getDNCCount(surveyId)
+function ImportPreview({ parsed, existingList, onImported, onCancel }) {
+  const existing = existingList.length
   const newCount = parsed.emails.length
 
-  const doImport = () => {
-    importDNCEmails(surveyId, parsed.emails)
-    onImported()
+  const doImport = async () => {
+    await onImported(parsed.emails)
   }
 
   return (
@@ -39,12 +38,11 @@ function ImportPreview({ parsed, surveyId, onImported, onCancel }) {
           <div className="flex items-center justify-between p-3 bg-emerald-50 rounded-xl border border-emerald-200">
             <span className="text-sm font-semibold text-emerald-700">New total after import</span>
             <span className="text-sm font-bold text-emerald-700">
-              {new Set([...loadDNCList(surveyId), ...parsed.emails]).size}
+              {new Set([...existingList, ...parsed.emails]).size}
             </span>
           </div>
         </div>
 
-        {/* Preview first 5 */}
         {parsed.emails.length > 0 && (
           <div className="bg-ink-50 rounded-xl p-3 mb-5 max-h-32 overflow-y-auto">
             {parsed.emails.slice(0, 10).map(e => (
@@ -71,40 +69,47 @@ function ImportPreview({ parsed, surveyId, onImported, onCancel }) {
   )
 }
 
-// ─── Main DNCManager ───────────────────────────────────────────────────────
 export function DNCManager({ surveyId }) {
-  const [list,    setList]    = useState(() => loadDNCList(surveyId))
-  const [preview, setPreview] = useState(null)   // parsed CSV waiting for confirm
+  const [list,    setList]    = useState(() => (useApi ? [] : loadDNCList(surveyId)))
+  const [preview, setPreview] = useState(null)
   const [search,  setSearch]  = useState('')
   const fileRef               = useRef(null)
 
-  const refresh = () => setList(loadDNCList(surveyId))
+  const refresh = async () => {
+    if (useApi) setList(await loadDNCListAsync(surveyId))
+    else setList(loadDNCList(surveyId))
+  }
+
+  useEffect(() => {
+    if (!surveyId) return
+    refresh()
+  }, [surveyId])
 
   const handleFile = (file) => {
     if (!file) return
     const reader = new FileReader()
     reader.onload = (e) => {
-      const parsed = parseDNCCsv(e.target.result)
-      setPreview(parsed)
+      setPreview(parseDNCCsv(e.target.result))
     }
     reader.readAsText(file)
   }
 
-  const handleImported = () => {
+  const handleImported = async (emails) => {
+    await importDNCEmailsAsync(surveyId, emails)
     setPreview(null)
-    refresh()
+    await refresh()
     if (fileRef.current) fileRef.current.value = ''
   }
 
-  const handleClearAll = () => {
+  const handleClearAll = async () => {
     if (!window.confirm(`Delete all ${list.length} emails from the DNC list? This cannot be undone.`)) return
-    clearDNCList(surveyId)
-    refresh()
+    await clearDNCListAsync(surveyId)
+    await refresh()
   }
 
-  const handleRemove = (email) => {
-    removeDNCEmail(surveyId, email)
-    refresh()
+  const handleRemove = async (email) => {
+    await removeDNCEmailAsync(surveyId, email)
+    await refresh()
   }
 
   const handleExport = () => {
@@ -167,7 +172,6 @@ export function DNCManager({ surveyId }) {
         </div>
       ) : (
         <div className="space-y-2">
-          {/* Search */}
           <input
             type="text"
             value={search}
@@ -175,7 +179,6 @@ export function DNCManager({ surveyId }) {
             placeholder="Search emails…"
             className="input-base py-1.5 text-sm"
           />
-          {/* List */}
           <div className="max-h-40 overflow-y-auto space-y-0.5 border border-ink-100 rounded-xl p-2 bg-ink-50">
             {filtered.length === 0 && <p className="text-xs text-ink-400 italic p-1">No matches.</p>}
             {filtered.map(email => (
@@ -200,7 +203,7 @@ export function DNCManager({ surveyId }) {
       {preview && (
         <ImportPreview
           parsed={preview}
-          surveyId={surveyId}
+          existingList={list}
           onImported={handleImported}
           onCancel={() => { setPreview(null); if (fileRef.current) fileRef.current.value = '' }}
         />

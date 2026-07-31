@@ -1,10 +1,16 @@
-import { useState } from 'react'
-import { X, Plus, Trash2, Edit3, Check, Settings, Users, Eye, EyeOff } from 'lucide-react'
+import { useState, useEffect, useCallback } from 'react'
+import { X, Plus, Trash2, Edit3, Check, Settings, Eye, EyeOff } from 'lucide-react'
 import {
   loadClients, loadTopics, addClient, updateClient, deleteClient,
   addTopic, updateTopic, deleteTopic,
 } from '@/utils/platformStore'
 import { getUsers, addUser, updateUser, deleteUser } from '@/utils/authStore'
+import { useApi } from '@/config/api'
+import {
+  fetchClients, createClient, updateClientApi, deleteClientApi,
+  fetchTopics, createTopic, updateTopicApi, deleteTopicApi,
+  fetchUsers, createUser, updateUserApi, deleteUserApi,
+} from '@/api/platform'
 
 // ─── Editable list (clients / topics) ─────────────────────────────────────
 function EditableList({ label, items, onAdd, onUpdate, onDelete, placeholder }) {
@@ -60,8 +66,7 @@ function EditableList({ label, items, onAdd, onUpdate, onDelete, placeholder }) 
 }
 
 // ─── User management ────────────────────────────────────────────────────────
-function UserManager() {
-  const [users,     setUsers]     = useState(getUsers)
+function UserManager({ users, setUsers }) {
   const [showForm,  setShowForm]  = useState(false)
   const [showPass,  setShowPass]  = useState(false)
   const [editId,    setEditId]    = useState(null)
@@ -70,9 +75,33 @@ function UserManager() {
 
   const resetForm = () => { setForm({ username: '', password: '', name: '', role: 'editor' }); setError(''); setEditId(null); setShowForm(false) }
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!form.username.trim() || !form.name.trim()) { setError('Username and name are required.'); return }
     if (!editId && !form.password) { setError('Password is required for new users.'); return }
+
+    if (useApi) {
+      try {
+        if (editId) {
+          const patch = { name: form.name.trim(), role: form.role }
+          if (form.password) patch.password = form.password
+          const user = await updateUserApi(editId, patch)
+          setUsers(prev => prev.map(u => u.id === editId ? user : u))
+        } else {
+          const user = await createUser({
+            username: form.username.trim(),
+            password: form.password,
+            name: form.name.trim(),
+            role: form.role,
+          })
+          setUsers(prev => [...prev, user])
+        }
+        resetForm()
+      } catch (err) {
+        setError(err.message || 'Failed to save user.')
+      }
+      return
+    }
+
     if (editId) {
       const patch = { name: form.name.trim(), role: form.role }
       if (form.password) patch.password = form.password
@@ -92,9 +121,19 @@ function UserManager() {
     setShowForm(true)
   }
 
-  const handleDelete = (id) => {
+  const handleDelete = async (id) => {
     if (users.length <= 1) { alert('Cannot delete the last user.'); return }
     if (!window.confirm('Delete this user?')) return
+
+    if (useApi) {
+      try {
+        await deleteUserApi(id)
+        setUsers(prev => prev.filter(u => u.id !== id))
+      } catch (err) {
+        alert(err.message || 'Failed to delete user.')
+      }
+      return
+    }
     setUsers(deleteUser(id))
   }
 
@@ -110,7 +149,6 @@ function UserManager() {
         )}
       </div>
 
-      {/* User list */}
       <div className="space-y-1.5 mb-3">
         {users.map(u => (
           <div key={u.id} className="flex items-center gap-2 group px-2 py-1.5 rounded-lg hover:bg-ink-50">
@@ -129,7 +167,6 @@ function UserManager() {
         ))}
       </div>
 
-      {/* Add / edit form */}
       {showForm && (
         <div className="border border-ink-200 rounded-xl p-3 bg-ink-50 space-y-2.5">
           <p className="text-xs font-semibold text-ink-600">{editId ? 'Edit user' : 'New user'}</p>
@@ -182,12 +219,86 @@ function UserManager() {
 export function PlatformSettings({ onClose }) {
   const [clients, setClients] = useState(loadClients)
   const [topics,  setTopics]  = useState(loadTopics)
+  const [users,   setUsers]   = useState(getUsers)
   const [tab,     setTab]     = useState('lists')
+  const [loading, setLoading] = useState(useApi)
+
+  const loadFromApi = useCallback(async () => {
+    if (!useApi) return
+    setLoading(true)
+    try {
+      const [c, t, u] = await Promise.all([fetchClients(), fetchTopics(), fetchUsers()])
+      setClients(c)
+      setTopics(t)
+      setUsers(u)
+    } catch (err) {
+      console.error('Failed to load platform settings', err)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (useApi) loadFromApi()
+  }, [loadFromApi])
+
+  const handleAddClient = async (name) => {
+    if (useApi) {
+      const client = await createClient(name)
+      setClients(prev => [...prev, client])
+      return
+    }
+    setClients(addClient(name))
+  }
+
+  const handleUpdateClient = async (id, name) => {
+    if (useApi) {
+      const client = await updateClientApi(id, name)
+      setClients(prev => prev.map(c => c.id === id ? client : c))
+      return
+    }
+    setClients(updateClient(id, name))
+  }
+
+  const handleDeleteClient = async (id) => {
+    if (useApi) {
+      await deleteClientApi(id)
+      setClients(prev => prev.filter(c => c.id !== id))
+      return
+    }
+    setClients(deleteClient(id))
+  }
+
+  const handleAddTopic = async (name) => {
+    if (useApi) {
+      const topic = await createTopic(name)
+      setTopics(prev => [...prev, topic])
+      return
+    }
+    setTopics(addTopic(name))
+  }
+
+  const handleUpdateTopic = async (id, name) => {
+    if (useApi) {
+      const topic = await updateTopicApi(id, name)
+      setTopics(prev => prev.map(t => t.id === id ? topic : t))
+      return
+    }
+    setTopics(updateTopic(id, name))
+  }
+
+  const handleDeleteTopic = async (id) => {
+    if (useApi) {
+      await deleteTopicApi(id)
+      setTopics(prev => prev.filter(t => t.id !== id))
+      return
+    }
+    setTopics(deleteTopic(id))
+  }
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
-        {/* Header */}
         <div className="flex items-center gap-3 px-5 py-4 border-b border-ink-100 shrink-0">
           <div className="w-8 h-8 rounded-lg bg-ink-800 flex items-center justify-center">
             <Settings size={16} className="text-white" />
@@ -201,7 +312,6 @@ export function PlatformSettings({ onClose }) {
           </button>
         </div>
 
-        {/* Tabs */}
         <div className="flex border-b border-ink-100 px-5 shrink-0">
           {[['lists', 'Clients & Topics'], ['users', 'Users']].map(([id, label]) => (
             <button key={id} onClick={() => setTab(id)}
@@ -213,23 +323,25 @@ export function PlatformSettings({ onClose }) {
           ))}
         </div>
 
-        {/* Body */}
         <div className="flex-1 overflow-y-auto p-5">
-          {tab === 'lists' && (
+          {loading ? (
+            <p className="text-sm text-ink-400 text-center py-8">Loading settings…</p>
+          ) : tab === 'lists' ? (
             <div className="grid grid-cols-2 gap-8">
               <EditableList label="Clients" items={clients}
-                onAdd={n => setClients(addClient(n))}
-                onUpdate={(id, n) => setClients(updateClient(id, n))}
-                onDelete={id => setClients(deleteClient(id))}
+                onAdd={handleAddClient}
+                onUpdate={handleUpdateClient}
+                onDelete={handleDeleteClient}
                 placeholder="New client name…" />
               <EditableList label="Topics" items={topics}
-                onAdd={n => setTopics(addTopic(n))}
-                onUpdate={(id, n) => setTopics(updateTopic(id, n))}
-                onDelete={id => setTopics(deleteTopic(id))}
+                onAdd={handleAddTopic}
+                onUpdate={handleUpdateTopic}
+                onDelete={handleDeleteTopic}
                 placeholder="New topic…" />
             </div>
+          ) : (
+            <UserManager users={users} setUsers={setUsers} />
           )}
-          {tab === 'users' && <UserManager />}
         </div>
 
         <div className="px-5 pb-5 flex justify-end shrink-0">

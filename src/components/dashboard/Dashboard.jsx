@@ -15,6 +15,7 @@ import {
   metaToLibraryEntry, payloadToLibraryEntry, patchSurvey,
 } from '@/api/surveys'
 import { getDashboard } from '@/api/dashboard'
+import { fetchClients, fetchTopics } from '@/api/platform'
 import {
   loadClients, loadTopics,
   SURVEY_TYPES, SURVEY_STATUSES,
@@ -143,6 +144,8 @@ function StatsBar({ surveys }) {
 export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session, onLogout }) {
   const [tick, setTick]             = useState(0)
   const [apiSurveys, setApiSurveys] = useState([])
+  const [apiClients, setApiClients] = useState([])
+  const [apiTopics,  setApiTopics]  = useState([])
   const [apiLoading, setApiLoading] = useState(useApi)
   const [search, setSearch]         = useState('')
   const [filterStatus, setFilterStatus] = useState('')
@@ -171,6 +174,9 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
         }
       }
       setApiSurveys(data.surveys.map(metaToLibraryEntry))
+      const [clients, topics] = await Promise.all([fetchClients(), fetchTopics()])
+      setApiClients(clients)
+      setApiTopics(topics)
     } catch (err) {
       console.error('Failed to load dashboard', err)
     } finally {
@@ -186,8 +192,14 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
     () => (useApi ? apiSurveys : loadLibrary()),
     [useApi, apiSurveys, tick]
   )
-  const clients = useMemo(() => loadClients(), [tick])
-  const topics  = useMemo(() => loadTopics(),  [tick])
+  const clients = useMemo(
+    () => (useApi ? apiClients : loadClients()),
+    [useApi, apiClients, tick]
+  )
+  const topics = useMemo(
+    () => (useApi ? apiTopics : loadTopics()),
+    [useApi, apiTopics, tick]
+  )
 
   const clientMap = useMemo(() =>
     Object.fromEntries(clients.map(c => [c.id, c.name])), [clients])

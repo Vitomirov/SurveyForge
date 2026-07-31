@@ -8,6 +8,8 @@ import { registerSurveyRoutes } from './routes/surveys.js'
 import { registerDashboardRoutes } from './routes/dashboard.js'
 import { registerResponseRoutes } from './routes/responses.js'
 import { registerMigrateRoutes } from './routes/migrate.js'
+import { registerPlatformRoutes } from './routes/platform.js'
+import { registerDncRoutes } from './routes/dnc.js'
 import { loadConfig } from './config.js'
 
 export async function buildApp() {
@@ -36,6 +38,8 @@ export async function buildApp() {
   await registerDashboardRoutes(app)
   await registerSurveyRoutes(app)
   await registerResponseRoutes(app)
+  await registerPlatformRoutes(app)
+  await registerDncRoutes(app)
   await registerMigrateRoutes(app, { isDev: config.isDev })
 
   return app

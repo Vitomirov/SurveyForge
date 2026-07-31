@@ -1,4 +1,4 @@
-import { fpColumns } from '@/utils/fingerprint'
+import { fpColumns } from '@/utils/deviceSignals'
 import { rowsToCSV } from './csvFormatting'
 import { formatAnswer } from './formatAnswer'
 import { sampleValue, fpSampleValue } from './sampleValue'

@@ -6,8 +6,8 @@ import { generateCSV, downloadCSV } from '@/utils/csvExport'
 import { saveResponse, newResponseId } from '@/utils/responseStore'
 import { useApi } from '@/config/api'
 import { saveResponseApi, savePublicResponse } from '@/api/responses'
-import { collectFingerprint } from '@/utils/fingerprint'
-import { isOnDNCList } from '@/utils/dncStore'
+import { collectFingerprint } from '@/utils/deviceSignals'
+import { isOnDNCListAsync, loadDNCListAsync } from '@/utils/dncStore'
 import { checkTermination, evalBlock, buildBlockCause } from '@/utils/terminationEngine'
 import { validateAnswer } from '@/utils/answerValidation'
 import { buildQuestionNumberById } from '@/utils/questionHelpers'
@@ -41,6 +41,12 @@ export function SurveyPreview({ survey, items, onClose, isPublic = false }) {
     return () => { cancelled = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fpEnabled])
+
+  useEffect(() => {
+    if (!survey?.id || !useApi) return
+    loadDNCListAsync(survey.id, { publicMode: isPublic })
+      .catch(err => console.error('Failed to load DNC list', err))
+  }, [survey?.id, isPublic])
 
   // Build pages + capture termination blocks, fully respecting conditional
   // show/hide logic on questions, page breaks, and groups. Must recompute
@@ -118,14 +124,14 @@ export function SurveyPreview({ survey, items, onClose, isPublic = false }) {
   })
 
   // ── Auto-save to localStorage + optionally download CSV ───────────────
-  const persistAndDownload = (status, terminatedByArg = null, doDownload = false) => {
+  const persistAndDownload = async (status, terminatedByArg = null, doDownload = false) => {
     // ── DNC check — only for completed responses ──────────────────────────
     let finalStatus = status
     if (status === 'complete' && survey?.id) {
       const emailQ = items.find(i => i.itemType === 'question' && i.isEmailField)
       if (emailQ) {
         const emailAnswer = responses[emailQ.id] || ''
-        if (isOnDNCList(survey.id, emailAnswer)) {
+        if (await isOnDNCListAsync(survey.id, emailAnswer, { publicMode: isPublic })) {
           finalStatus = 'dnc'
         }
       }
