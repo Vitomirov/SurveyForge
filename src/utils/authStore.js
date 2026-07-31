@@ -78,6 +78,40 @@ export async function login(username, password) {
   return { ok: true, session }
 }
 
+export async function signup({ organizationName, name, username, password }) {
+  if (useApi) {
+    try {
+      const data = await apiFetch('/api/auth/signup', {
+        method: 'POST',
+        body: JSON.stringify({ organizationName, name, username, password }),
+      })
+      setAuthToken(data.token)
+      writeSessionStorage(data.session)
+      return { ok: true, session: data.session }
+    } catch (err) {
+      return { ok: false, error: err.message || 'Could not create the organization.' }
+    }
+  }
+
+  // Local (offline) mode has no org concept — create the admin user locally.
+  const users = loadUsers()
+  if (users.find(u => u.username.toLowerCase() === username.toLowerCase().trim())) {
+    return { ok: false, error: 'That username is already taken.' }
+  }
+  const user = {
+    id: newId(), username: username.trim(), password,
+    name: name.trim(), role: 'admin',
+  }
+  saveUsers([...users, user])
+  const session = {
+    userId: user.id, username: user.username, name: user.name,
+    role: user.role, organizationName: organizationName?.trim(),
+    loginAt: new Date().toISOString(),
+  }
+  try { localStorage.setItem(SESSION_KEY, JSON.stringify(session)) } catch {}
+  return { ok: true, session }
+}
+
 export function logout() {
   if (useApi) {
     clearAuthToken()

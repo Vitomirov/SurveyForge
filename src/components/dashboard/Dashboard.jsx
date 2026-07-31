@@ -359,6 +359,9 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
             {session && (
               <span className="text-xs text-ink-400 hidden md:block">
                 Signed in as <strong className="text-ink-600">{session.name || session.username}</strong>
+                {session.organizationName && (
+                  <> · <strong className="text-ink-600">{session.organizationName}</strong></>
+                )}
               </span>
             )}
             <button

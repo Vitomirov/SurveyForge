@@ -1,26 +1,54 @@
 import { useState } from 'react'
 import { Layers, Eye, EyeOff, AlertCircle } from 'lucide-react'
-import { login } from '@/utils/authStore'
+import { login, signup } from '@/utils/authStore'
 
 export function LoginPage({ onLogin }) {
+  const [mode, setMode] = useState('login') // 'login' | 'signup'
+
+  const [organizationName, setOrganizationName] = useState('')
+  const [name,     setName]     = useState('')
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
+  const [confirm,  setConfirm]  = useState('')
   const [showPass, setShowPass] = useState(false)
-  const [error, setError]       = useState('')
-  const [loading, setLoading]   = useState(false)
+  const [error,    setError]    = useState('')
+  const [loading,  setLoading]  = useState(false)
+
+  const isSignup = mode === 'signup'
+
+  const switchMode = (next) => {
+    setMode(next)
+    setError('')
+    setPassword('')
+    setConfirm('')
+    setShowPass(false)
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    setError('')
+
+    if (isSignup) {
+      if (!organizationName.trim()) { setError('Please enter an organization name.'); return }
+      if (!name.trim())            { setError('Please enter your full name.'); return }
+      if (!username.trim() || !password) { setError('Please enter a username and password.'); return }
+      if (password.length < 8)     { setError('Password must be at least 8 characters.'); return }
+      if (password !== confirm)    { setError('Passwords do not match.'); return }
+
+      setLoading(true)
+      const result = await signup({ organizationName, name, username, password })
+      setLoading(false)
+      if (result.ok) onLogin(result.session)
+      else setError(result.error)
+      return
+    }
+
     if (!username || !password) { setError('Please enter both username and password.'); return }
     setLoading(true)
-    setError('')
     const result = await login(username, password)
     setLoading(false)
-    if (result.ok) {
-      onLogin(result.session)
-    } else {
-      setError(result.error)
-    }
+    if (result.ok) onLogin(result.session)
+    else setError(result.error)
   }
 
   return (
@@ -39,19 +67,53 @@ export function LoginPage({ onLogin }) {
 
         {/* Card */}
         <div className="card p-6">
-          <h2 className="text-base font-bold text-ink-800 mb-1">Sign in</h2>
-          <p className="text-sm text-ink-400 mb-5">Enter your credentials to access the dashboard.</p>
+          <h2 className="text-base font-bold text-ink-800 mb-1">
+            {isSignup ? 'Create your organization' : 'Sign in'}
+          </h2>
+          <p className="text-sm text-ink-400 mb-5">
+            {isSignup
+              ? 'Set up a new workspace and your admin account.'
+              : 'Enter your credentials to access the dashboard.'}
+          </p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
+            {isSignup && (
+              <>
+                <div>
+                  <label className="text-xs font-semibold text-ink-500 block mb-1.5">Organization name</label>
+                  <input
+                    type="text"
+                    value={organizationName}
+                    onChange={e => setOrganizationName(e.target.value)}
+                    autoFocus
+                    placeholder="Acme Research"
+                    className="input-base"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-ink-500 block mb-1.5">Your full name</label>
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={e => setName(e.target.value)}
+                    autoComplete="name"
+                    placeholder="Jane Smith"
+                    className="input-base"
+                  />
+                </div>
+              </>
+            )}
+
             <div>
               <label className="text-xs font-semibold text-ink-500 block mb-1.5">Username</label>
               <input
                 type="text"
                 value={username}
                 onChange={e => setUsername(e.target.value)}
-                autoFocus
+                autoFocus={!isSignup}
                 autoComplete="username"
-                placeholder="admin"
+                placeholder={isSignup ? 'jsmith' : 'admin'}
                 className="input-base"
               />
             </div>
@@ -63,8 +125,8 @@ export function LoginPage({ onLogin }) {
                   type={showPass ? 'text' : 'password'}
                   value={password}
                   onChange={e => setPassword(e.target.value)}
-                  autoComplete="current-password"
-                  placeholder="••••••••"
+                  autoComplete={isSignup ? 'new-password' : 'current-password'}
+                  placeholder={isSignup ? 'At least 8 characters' : '••••••••'}
                   className="input-base pr-10"
                 />
                 <button
@@ -76,6 +138,20 @@ export function LoginPage({ onLogin }) {
                 </button>
               </div>
             </div>
+
+            {isSignup && (
+              <div>
+                <label className="text-xs font-semibold text-ink-500 block mb-1.5">Confirm password</label>
+                <input
+                  type={showPass ? 'text' : 'password'}
+                  value={confirm}
+                  onChange={e => setConfirm(e.target.value)}
+                  autoComplete="new-password"
+                  placeholder="Re-enter password"
+                  className="input-base"
+                />
+              </div>
+            )}
 
             {error && (
               <div className="flex items-center gap-2 p-3 bg-rose-50 border border-rose-200 rounded-lg">
@@ -89,15 +165,46 @@ export function LoginPage({ onLogin }) {
               disabled={loading}
               className="w-full btn-primary py-2.5 justify-center disabled:opacity-60"
             >
-              {loading ? 'Signing in…' : 'Sign in'}
+              {loading
+                ? (isSignup ? 'Creating…' : 'Signing in…')
+                : (isSignup ? 'Create organization' : 'Sign in')}
             </button>
           </form>
         </div>
 
-        {/* Default credential hint */}
-        <p className="text-center text-xs text-ink-300 mt-4">
-          Default: <span className="font-mono">admin</span> / <span className="font-mono">admin123</span>
+        {/* Mode toggle */}
+        <p className="text-center text-sm text-ink-400 mt-4">
+          {isSignup ? (
+            <>
+              Already have an account?{' '}
+              <button
+                type="button"
+                onClick={() => switchMode('login')}
+                className="font-semibold text-brand-600 hover:text-brand-700"
+              >
+                Sign in
+              </button>
+            </>
+          ) : (
+            <>
+              New here?{' '}
+              <button
+                type="button"
+                onClick={() => switchMode('signup')}
+                className="font-semibold text-brand-600 hover:text-brand-700"
+              >
+                Create an organization
+              </button>
+            </>
+          )}
         </p>
+
+        {/* Default credential hint — sign-in only */}
+        {!isSignup && (
+          <p className="text-center text-xs text-ink-300 mt-2">
+            Default: <span className="font-mono">admin</span> / <span className="font-mono">admin123</span>
+          </p>
+        )}
       </div>
     </div>
   )

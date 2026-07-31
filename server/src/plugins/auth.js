@@ -1,6 +1,6 @@
 import fastifyJwt from '@fastify/jwt'
 
-const PUBLIC_EXACT = new Set(['/api/auth/login'])
+const PUBLIC_EXACT = new Set(['/api/auth/login', '/api/auth/signup'])
 const PUBLIC_PREFIXES = ['/api/public/']
 
 function isPublicRoute(url) {
