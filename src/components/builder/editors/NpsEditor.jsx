@@ -120,3 +120,5 @@ export function NpsEditor({ question, dispatch }) {
     </div>
   )
 }
+
+export default NpsEditor

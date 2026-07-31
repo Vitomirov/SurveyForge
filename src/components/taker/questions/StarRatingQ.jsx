@@ -44,3 +44,5 @@ export function StarRatingQ({ question, value, onChange }) {
     </div>
   )
 }
+
+export default StarRatingQ

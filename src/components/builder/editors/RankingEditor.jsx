@@ -126,3 +126,5 @@ export function RankingEditor({ question, dispatch }) {
     </div>
   )
 }
+
+export default RankingEditor

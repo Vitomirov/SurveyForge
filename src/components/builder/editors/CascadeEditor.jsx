@@ -199,3 +199,5 @@ export function CascadeEditor({ question, dispatch }) {
     </div>
   )
 }
+
+export default CascadeEditor

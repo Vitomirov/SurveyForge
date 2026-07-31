@@ -85,3 +85,5 @@ export function CascadeQ({ question, value = {}, onChange }) {
     </div>
   )
 }
+
+export default CascadeQ

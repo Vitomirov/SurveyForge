@@ -34,3 +34,5 @@ export function SingleSelectQ({ question, value, onChange, companions = {}, onCo
     </div>
   )
 }
+
+export default SingleSelectQ

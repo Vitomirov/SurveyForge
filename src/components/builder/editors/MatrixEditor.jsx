@@ -152,3 +152,5 @@ export function MatrixEditor({ question, dispatch }) {
     </div>
   )
 }
+
+export default MatrixEditor

@@ -42,3 +42,5 @@ export function NpsQ({ question, value, onChange }) {
     </div>
   )
 }
+
+export default NpsQ

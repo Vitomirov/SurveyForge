@@ -42,3 +42,5 @@ export function MultiSelectQ({ question, value = [], onChange, companions = {}, 
     </div>
   )
 }
+
+export default MultiSelectQ

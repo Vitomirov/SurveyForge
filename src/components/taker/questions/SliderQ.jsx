@@ -127,3 +127,5 @@ export function SliderQ({ question, value, onChange }) {
     </div>
   )
 }
+
+export default SliderQ

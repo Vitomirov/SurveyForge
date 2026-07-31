@@ -62,3 +62,5 @@ export function BipolarMatrixQ({ question, value = {}, onChange }) {
     </div>
   )
 }
+
+export default BipolarMatrixQ

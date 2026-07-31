@@ -166,3 +166,5 @@ export function OpenTextEditor({ question, dispatch }) {
     </div>
   )
 }
+
+export default OpenTextEditor

@@ -118,3 +118,5 @@ export function DateEditor({ question, dispatch, surveyDateFormat }) {
     </div>
   )
 }
+
+export default DateEditor

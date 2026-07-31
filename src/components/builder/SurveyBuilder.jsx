@@ -1,4 +1,4 @@
-import { useReducer, useState, useMemo, useCallback, lazy, Suspense } from 'react'
+import { useReducer, useState, useMemo, useCallback, useEffect, lazy, Suspense } from 'react'
 import {
   DndContext, closestCenter, KeyboardSensor, PointerSensor,
   useSensor, useSensors, DragOverlay,
@@ -26,6 +26,9 @@ import { buildItemMeta, buildAvailableQuestionsByIndex, buildGroupQuestionCounts
 import { generateTemplateCSV, downloadCSV } from '@/utils/csvExport'
 import { APP_NAME } from '@/constants/branding'
 import { DEFAULT_DATE_FORMAT, DEFAULT_SCREEN_MESSAGES } from '@/constants/surveyDefaults'
+import { prefetchCommonEditors, prefetchPreview, prefetchModule } from '@/utils/routePrefetch'
+import { isChoiceType } from '@/utils/questionHelpers'
+import { EDITOR_LOADERS, loadChoiceEditor } from '@/components/builder/editors/editorLoaders'
 import {
   Plus, Eye, BarChart3, Layers,
   Scissors, Download, PlayCircle, ArrowLeft, FileText, Menu, X,
@@ -37,6 +40,18 @@ const ExportManager    = lazy(() => import('@/components/builder/ExportManager.j
 
 export function SurveyBuilder({ initialState, initialRevision = null, onBackToDashboard }) {
   const [state, dispatch] = useReducer(surveyReducer, initialState || INITIAL_STATE)
+
+  useEffect(() => {
+    prefetchCommonEditors()
+    const items = initialState?.items ?? []
+    const types = new Set(
+      items.filter(i => i.itemType === 'question').map(i => i.questionType)
+    )
+    for (const type of types) {
+      const loader = isChoiceType(type) ? loadChoiceEditor : EDITOR_LOADERS[type]
+      if (loader) prefetchModule(loader)
+    }
+  }, [initialState])
 
   const { saveStatus } = useAutosave({
     survey: state.survey,
@@ -215,6 +230,8 @@ export function SurveyBuilder({ initialState, initialRevision = null, onBackToDa
 
               <button
                 onClick={() => dispatch({ type: 'SET_PREVIEW', show: true })}
+                onMouseEnter={prefetchPreview}
+                onFocus={prefetchPreview}
                 className="btn-ghost text-xs px-2.5 py-1.5"
               >
                 <Eye size={13} /> <span className="hidden md:inline">Preview</span>
@@ -229,6 +246,8 @@ export function SurveyBuilder({ initialState, initialRevision = null, onBackToDa
             <div className="flex sm:hidden items-center gap-1">
               <button
                 onClick={() => dispatch({ type: 'SET_PREVIEW', show: true })}
+                onMouseEnter={prefetchPreview}
+                onFocus={prefetchPreview}
                 className="btn-ghost p-2"
                 title="Preview"
               >

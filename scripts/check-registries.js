@@ -3,8 +3,8 @@
  * Registry parity check — run before/after refactors that touch question types.
  *
  * Ensures every entry in QUESTION_TYPES is handled by:
- *   - builder: QuestionTypeEditor.jsx  (choice types via isChoiceType + switch)
- *   - taker:   QuestionRenderer.jsx    (switch cases)
+ *   - builder: editorLoaders.js  (choice types via loadChoiceEditor + isChoiceType)
+ *   - taker:   questionLoaders.js
  *
  * Usage: npm run check:registries
  */
@@ -17,21 +17,21 @@ import { QUESTION_TYPES, QUESTION_TYPE_KEYS, isChoiceType, TYPE_COLORS, TYPE_ICO
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const ROOT = join(__dirname, '..')
 
-const BUILDER_REGISTRY = join(ROOT, 'src/components/builder/editors/QuestionTypeEditor.jsx')
-const TAKER_REGISTRY   = join(ROOT, 'src/components/taker/questions/QuestionRenderer.jsx')
+const BUILDER_LOADERS = join(ROOT, 'src/components/builder/editors/editorLoaders.js')
+const TAKER_LOADERS   = join(ROOT, 'src/components/taker/questions/questionLoaders.js')
 
-function extractSwitchCases(source) {
-  const cases = new Set()
-  const re = /case\s+'([^']+)':/g
+function extractLoaderKeys(source) {
+  const keys = new Set()
+  const re = /^\s+([a-z_]+):\s*\(\)\s*=>\s*import/gm
   let match
   while ((match = re.exec(source)) !== null) {
-    cases.add(match[1])
+    keys.add(match[1])
   }
-  return cases
+  return keys
 }
 
 function getBuilderTypes(source) {
-  const types = new Set(extractSwitchCases(source))
+  const types = new Set(extractLoaderKeys(source))
   for (const { type } of QUESTION_TYPES) {
     if (isChoiceType(type)) types.add(type)
   }
@@ -58,11 +58,11 @@ const canonical = new Set(QUESTION_TYPE_KEYS)
 const iconKeys = new Set(Object.keys(TYPE_ICONS))
 const colorKeys = new Set(Object.keys(TYPE_COLORS))
 
-const builderSource = readFileSync(BUILDER_REGISTRY, 'utf8')
-const takerSource   = readFileSync(TAKER_REGISTRY, 'utf8')
+const builderSource = readFileSync(BUILDER_LOADERS, 'utf8')
+const takerSource   = readFileSync(TAKER_LOADERS, 'utf8')
 
 const builderTypes = getBuilderTypes(builderSource)
-const takerTypes   = extractSwitchCases(takerSource)
+const takerTypes   = extractLoaderKeys(takerSource)
 
 console.log('Question type registry parity check')
 console.log('─'.repeat(40))
@@ -82,5 +82,5 @@ if (ok) {
   process.exit(0)
 }
 
-console.error('\nRegistry mismatch — update QuestionTypeEditor, QuestionRenderer, and/or QUESTION_TYPES together.\n')
+console.error('\nRegistry mismatch — update editorLoaders.js, questionLoaders.js, and/or QUESTION_TYPES together.\n')
 process.exit(1)

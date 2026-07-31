@@ -78,3 +78,5 @@ export function RankingQ({ question, value = [], onChange }) {
     </div>
   )
 }
+
+export default RankingQ

@@ -299,3 +299,5 @@ export function SliderEditor({ question, dispatch }) {
     </div>
   )
 }
+
+export default SliderEditor

@@ -1,17 +1,19 @@
 import { useState, useCallback, useEffect, lazy, Suspense } from 'react'
 import { ErrorBoundary } from '@/components/shared/ErrorBoundary'
 import { PageLoader } from '@/components/ui'
-import { INITIAL_STATE } from '@/store/surveyStore'
+import { INITIAL_STATE } from '@/store/initialState'
 import { getSession, logout } from '@/utils/authStore'
-import { loadSurvey } from '@/utils/surveyLibrary'
 import { useApi } from '@/config/api'
-import { getPublicSurvey } from '@/api/surveys'
+import { prefetchForRoute } from '@/utils/routePrefetch'
 import { SURVEY_NOT_FOUND_MESSAGE, SURVEY_NOT_FOUND_TITLE } from '@/constants/errors'
 
 const LoginPage     = lazy(() => import('@/components/auth/LoginPage.jsx'))
 const Dashboard     = lazy(() => import('@/components/dashboard/Dashboard.jsx'))
 const SurveyBuilder = lazy(() => import('@/components/builder/SurveyBuilder.jsx'))
 const SurveyPreview = lazy(() => import('@/components/taker/SurveyPreview.jsx'))
+
+// Start downloading the likely route chunk in parallel with the main bundle.
+prefetchForRoute()
 
 function libraryEntryToState(entry) {
   return {
@@ -25,8 +27,6 @@ function libraryEntryToState(entry) {
   }
 }
 
-// ─── Parse hash for public survey-taking route ──────────────────────────────
-// Format: #/take/SURVEY_ID
 function parseHash() {
   const hash = window.location.hash || ''
   const m    = hash.match(/^#\/take\/([^/]+)$/)
@@ -39,12 +39,14 @@ export default function App() {
   const [builderState, setBuilderState] = useState(null)
   const [builderRevision, setBuilderRevision] = useState(null)
   const [previewEntry, setPreviewEntry] = useState(null)
-  // Public survey-taking state
   const [publicSurveyId, setPublicSurveyId] = useState(() => parseHash())
   const [publicEntry,    setPublicEntry]    = useState(null)
   const [publicError,    setPublicError]    = useState(null)
 
-  // Load survey for public route on mount / hash change
+  useEffect(() => {
+    prefetchForRoute({ session, publicSurveyId })
+  }, [session, publicSurveyId])
+
   useEffect(() => {
     const onHash = () => setPublicSurveyId(parseHash())
     window.addEventListener('hashchange', onHash)
@@ -54,30 +56,38 @@ export default function App() {
   useEffect(() => {
     if (!publicSurveyId) { setPublicEntry(null); setPublicError(null); return }
 
+    let cancelled = false
+
     if (useApi) {
-      let cancelled = false
-      getPublicSurvey(publicSurveyId)
-        .then(data => {
-          if (cancelled) return
-          setPublicEntry({ survey: data.survey, items: data.items || [] })
-          setPublicError(null)
-        })
-        .catch(() => {
-          if (cancelled) return
-          setPublicError(SURVEY_NOT_FOUND_MESSAGE)
-          setPublicEntry(null)
-        })
+      import('@/api/surveys').then(({ getPublicSurvey }) =>
+        getPublicSurvey(publicSurveyId)
+          .then(data => {
+            if (cancelled) return
+            setPublicEntry({ survey: data.survey, items: data.items || [] })
+            setPublicError(null)
+          })
+          .catch(() => {
+            if (cancelled) return
+            setPublicError(SURVEY_NOT_FOUND_MESSAGE)
+            setPublicEntry(null)
+          })
+      )
       return () => { cancelled = true }
     }
 
-    const entry = loadSurvey(publicSurveyId)
-    if (!entry) {
-      setPublicError(SURVEY_NOT_FOUND_MESSAGE)
-      setPublicEntry(null)
-    } else {
-      setPublicEntry(entry)
-      setPublicError(null)
-    }
+    import('@/utils/surveyLibrary').then(({ loadSurvey }) => {
+      if (cancelled) return
+      const entry = loadSurvey(publicSurveyId)
+      if (!entry) {
+        setPublicError(SURVEY_NOT_FOUND_MESSAGE)
+        setPublicEntry(null)
+      } else {
+        setPublicEntry(entry)
+        setPublicError(null)
+      }
+    })
+
+    return () => { cancelled = true }
   }, [publicSurveyId])
 
   const openBuilder = useCallback((entry = null) => {
@@ -98,13 +108,17 @@ export default function App() {
     setView('dashboard')
   }, [])
 
+  const handleLogin = useCallback((s) => {
+    prefetchForRoute({ session: s, publicSurveyId: null })
+    setSession(s)
+  }, [])
+
   const handleLogout = () => {
     logout()
     setSession(null)
     setView('dashboard')
   }
 
-  // ── Public survey route — no login required ─────────────────────────────
   if (publicSurveyId) {
     if (publicError) {
       return (
@@ -120,7 +134,6 @@ export default function App() {
     if (!publicEntry) {
       return <PageLoader label="Loading survey…" />
     }
-    // Survey found — SurveyPreview handles closed/draft status internally
     return (
       <ErrorBoundary title="Survey error">
         <Suspense fallback={<PageLoader label="Loading survey…" />}>
@@ -135,11 +148,10 @@ export default function App() {
     )
   }
 
-  // ── Admin routes — login required ───────────────────────────────────────
   if (!session) {
     return (
       <Suspense fallback={<PageLoader label="Loading…" />}>
-        <LoginPage onLogin={s => setSession(s)} />
+        <LoginPage onLogin={handleLogin} />
       </Suspense>
     )
   }

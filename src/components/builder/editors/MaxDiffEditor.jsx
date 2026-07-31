@@ -155,3 +155,5 @@ export function MaxDiffEditor({ question, dispatch }) {
     </div>
   )
 }
+
+export default MaxDiffEditor

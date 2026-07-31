@@ -150,3 +150,5 @@ export function StarRatingEditor({ question, dispatch }) {
     </div>
   )
 }
+
+export default StarRatingEditor

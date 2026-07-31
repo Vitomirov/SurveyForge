@@ -11,3 +11,5 @@ export function DateQ({ question, value = '', onChange, surveyDateFormat }) {
     </div>
   )
 }
+
+export default DateQ

@@ -143,3 +143,5 @@ export function SemanticDiffEditor({ question, dispatch }) {
     </div>
   )
 }
+
+export default SemanticDiffEditor

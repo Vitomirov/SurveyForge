@@ -137,3 +137,5 @@ export function ConstantSumQ({ question, value = {}, onChange }) {
     </div>
   )
 }
+
+export default ConstantSumQ

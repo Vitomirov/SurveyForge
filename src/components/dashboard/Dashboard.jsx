@@ -25,6 +25,7 @@ import {
 } from '@/utils/platformStore'
 import { loadResponses } from '@/utils/responseStore'
 import { InlineLoader } from '@/components/ui'
+import { prefetchBuilder, prefetchPreview } from '@/utils/routePrefetch'
 
 const PlatformSettings = lazy(() => import('./PlatformSettings.jsx'))
 
@@ -89,10 +90,12 @@ function SurveyMenu({ surveyId, onOpen, onPreview, onDuplicate, onDelete }) {
             style={{ top: pos.top, right: pos.right }}
           >
             <button onClick={() => { setOpen(false); onOpen() }}
+              onMouseEnter={prefetchBuilder}
               className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-ink-50 text-ink-700">
               <Edit3 size={14} /> Open in builder
             </button>
             <button onClick={() => { setOpen(false); onPreview() }}
+              onMouseEnter={prefetchPreview}
               className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-ink-50 text-ink-700">
               <Eye size={14} /> Preview
             </button>
@@ -370,7 +373,12 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
                 <LogOut size={15} />
               </button>
             )}
-            <button onClick={onNewSurvey} className="btn-primary px-3 sm:px-4">
+            <button
+              onClick={onNewSurvey}
+              onMouseEnter={prefetchBuilder}
+              onFocus={prefetchBuilder}
+              className="btn-primary px-3 sm:px-4"
+            >
               <Plus size={15} /> <span className="hidden sm:inline">New Survey</span>
             </button>
           </div>
@@ -448,7 +456,12 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
             </div>
             <h3 className="text-base font-semibold text-ink-700 mb-1">No surveys yet</h3>
             <p className="text-sm text-ink-400 mb-6">Create your first survey to get started.</p>
-            <button onClick={onNewSurvey} className="btn-primary">
+            <button
+              onClick={onNewSurvey}
+              onMouseEnter={prefetchBuilder}
+              onFocus={prefetchBuilder}
+              className="btn-primary"
+            >
               <Plus size={15} /> Create first survey
             </button>
           </div>
@@ -473,6 +486,8 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
                   <div
                     key={sv.id}
                     className="card p-4 active:bg-ink-50 transition-colors"
+                    onMouseEnter={prefetchBuilder}
+                    onFocus={prefetchBuilder}
                     onClick={() => handleOpenSurvey(entry)}
                   >
                     <div className="flex items-start gap-3">
@@ -573,6 +588,8 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
                     <tr
                       key={sv.id}
                       className="border-b border-ink-50 hover:bg-ink-50/50 transition-colors cursor-pointer group"
+                      onMouseEnter={prefetchBuilder}
+                      onFocus={prefetchBuilder}
                       onClick={() => handleOpenSurvey(entry)}
                     >
                       {/* Code */}

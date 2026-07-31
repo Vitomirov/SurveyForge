@@ -216,3 +216,5 @@ export function ImageChoiceEditor({ question, dispatch }) {
     </div>
   )
 }
+
+export default ImageChoiceEditor

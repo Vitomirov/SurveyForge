@@ -241,3 +241,5 @@ export function BipolarMatrixEditor({ question, dispatch }) {
     </div>
   )
 }
+
+export default BipolarMatrixEditor

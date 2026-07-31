@@ -1,0 +1,22 @@
+/** Dynamic import loaders for respondent-facing question components. */
+export const QUESTION_LOADERS = {
+  single_select:       () => import('./SingleSelectQ.jsx'),
+  multi_select:        () => import('./MultiSelectQ.jsx'),
+  dropdown:            () => import('./DropdownQ.jsx'),
+  open_text:           () => import('./OpenTextQ.jsx'),
+  date:                () => import('./DateQ.jsx'),
+  matrix:              () => import('./MatrixQ.jsx'),
+  bipolar_matrix:      () => import('./BipolarMatrixQ.jsx'),
+  maxdiff:             () => import('./MaxDiffQ.jsx'),
+  card_sort:           () => import('./CardSortQ.jsx'),
+  constant_sum:        () => import('./ConstantSumQ.jsx'),
+  slider:              () => import('./SliderQ.jsx'),
+  nps:                 () => import('./NpsQ.jsx'),
+  star_rating:         () => import('./StarRatingQ.jsx'),
+  ranking:             () => import('./RankingQ.jsx'),
+  textbox_list:        () => import('./TextboxListQ.jsx'),
+  semantic_diff:       () => import('./SemanticDiffQ.jsx'),
+  cascade:             () => import('./CascadeQ.jsx'),
+  image_choice_single: () => import('./ImageChoiceQ.jsx'),
+  image_choice_multi:  () => import('./ImageChoiceQ.jsx'),
+}

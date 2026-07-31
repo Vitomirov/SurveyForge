@@ -8,3 +8,5 @@ export function DropdownQ({ question, value, onChange }) {
     </select>
   )
 }
+
+export default DropdownQ

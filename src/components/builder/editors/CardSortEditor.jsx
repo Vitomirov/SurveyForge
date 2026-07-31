@@ -176,3 +176,5 @@ export function CardSortEditor({ question, dispatch }) {
     </div>
   )
 }
+
+export default CardSortEditor

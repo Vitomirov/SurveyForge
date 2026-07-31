@@ -14,3 +14,5 @@ export function OpenTextQ({ question, value = '', onChange }) {
     </div>
   )
 }
+
+export default OpenTextQ

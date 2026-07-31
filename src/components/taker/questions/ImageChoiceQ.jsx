@@ -107,3 +107,5 @@ export function ImageChoiceQ({ question, value, onChange }) {
     </div>
   )
 }
+
+export default ImageChoiceQ

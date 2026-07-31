@@ -94,3 +94,5 @@ export function TextboxListEditor({ question, dispatch }) {
     </div>
   )
 }
+
+export default TextboxListEditor

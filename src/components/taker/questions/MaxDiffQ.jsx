@@ -120,3 +120,5 @@ export function MaxDiffQ({ question, value = {}, onChange }) {
     </div>
   )
 }
+
+export default MaxDiffQ

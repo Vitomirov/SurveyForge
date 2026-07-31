@@ -162,3 +162,5 @@ export function ChoiceEditor({ question, dispatch, focusOptionId, availableQuest
     </div>
   )
 }
+
+export default ChoiceEditor

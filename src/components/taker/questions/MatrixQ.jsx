@@ -48,3 +48,5 @@ export function MatrixQ({ question, value = {}, onChange }) {
     </div>
   )
 }
+
+export default MatrixQ

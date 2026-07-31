@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Layers, Eye, EyeOff, AlertCircle } from 'lucide-react'
 import { login, signup, DEFAULT_CREDENTIALS } from '@/utils/authStore'
+import { prefetchDashboard, prefetchBuilder } from '@/utils/routePrefetch'
 import { AUTH_COPY, AUTH_VALIDATION } from '@/constants/authCopy'
 import { APP_NAME, APP_TAGLINE } from '@/constants/branding'
 
@@ -40,8 +41,11 @@ export function LoginPage({ onLogin }) {
       setLoading(true)
       const result = await signup({ organizationName, name, username, password })
       setLoading(false)
-      if (result.ok) onLogin(result.session)
-      else setError(result.error)
+      if (result.ok) {
+        prefetchDashboard()
+        prefetchBuilder()
+        onLogin(result.session)
+      } else setError(result.error)
       return
     }
 
@@ -49,8 +53,11 @@ export function LoginPage({ onLogin }) {
     setLoading(true)
     const result = await login(username, password)
     setLoading(false)
-    if (result.ok) onLogin(result.session)
-    else setError(result.error)
+    if (result.ok) {
+      prefetchDashboard()
+      prefetchBuilder()
+      onLogin(result.session)
+    } else setError(result.error)
   }
 
   return (

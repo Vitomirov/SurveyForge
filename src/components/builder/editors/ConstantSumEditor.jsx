@@ -143,3 +143,5 @@ export function ConstantSumEditor({ question, dispatch }) {
     </div>
   )
 }
+
+export default ConstantSumEditor

@@ -120,3 +120,5 @@ export function CardSortQ({ question, value = {}, onChange }) {
     </SortDndContext>
   )
 }
+
+export default CardSortQ

@@ -22,3 +22,5 @@ export function TextboxListQ({ question, value = {}, onChange }) {
     </div>
   )
 }
+
+export default TextboxListQ

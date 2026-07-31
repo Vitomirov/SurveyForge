@@ -68,3 +68,5 @@ export function SemanticDiffQ({ question, value = {}, onChange }) {
     </div>
   )
 }
+
+export default SemanticDiffQ

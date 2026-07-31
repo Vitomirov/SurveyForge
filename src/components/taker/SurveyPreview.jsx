@@ -12,6 +12,8 @@ import { isOnDNCListAsync, loadDNCListAsync } from '@/utils/dncStore'
 import { checkTermination, evalBlock, buildBlockCause } from '@/utils/terminationEngine'
 import { validateAnswer } from '@/utils/answerValidation'
 import { buildQuestionNumberById } from '@/utils/questionHelpers'
+import { prefetchModule, prefetchCommonQuestions } from '@/utils/routePrefetch'
+import { QUESTION_LOADERS } from './questions/questionLoaders'
 import { QuestionRenderer } from './questions'
 import { CoverPage, CompletionScreen, TerminationScreen, ClosedSurveyScreen } from './screens'
 
@@ -48,6 +50,17 @@ export function SurveyPreview({ survey, items, onClose, isPublic = false }) {
     loadDNCListAsync(survey.id, { publicMode: isPublic })
       .catch(err => console.error('Failed to load DNC list', err))
   }, [survey?.id, isPublic])
+
+  useEffect(() => {
+    prefetchCommonQuestions()
+    const types = new Set(
+      (items || []).filter(i => i.itemType === 'question').map(i => i.questionType)
+    )
+    for (const type of types) {
+      const loader = QUESTION_LOADERS[type]
+      if (loader) prefetchModule(loader)
+    }
+  }, [items])
 
   // Build pages + capture termination blocks, fully respecting conditional
   // show/hide logic on questions, page breaks, and groups. Must recompute
