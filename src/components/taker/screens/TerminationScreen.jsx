@@ -1,8 +1,10 @@
 import { UserX, Zap, Download } from 'lucide-react'
 
+import { DEFAULT_SCREEN_MESSAGES } from '@/constants/surveyDefaults'
+
 export function TerminationScreen({ settings, terminatedBy, onReset, onDownload, isPublic = false }) {
-  const title   = settings?.terminateTitle   || 'Thank you for your time.'
-  const message = settings?.terminateMessage || 'Unfortunately, you do not qualify for this survey.'
+  const title   = settings?.terminateTitle   || DEFAULT_SCREEN_MESSAGES.terminateTitle
+  const message = settings?.terminateMessage || DEFAULT_SCREEN_MESSAGES.terminateMessage
   return (
     <div className="flex-1 flex items-center justify-center py-12 px-6">
       <div className="max-w-md w-full text-center">

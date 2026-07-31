@@ -11,6 +11,7 @@ import { VisibilityEditor } from '@/components/shared'
 import { makeToken } from '@/utils/piping'
 import { getTypeMeta, TYPE_COLORS, TYPE_ICONS, isChoiceType, QUESTION_TYPES } from '@/utils/questionHelpers'
 import { makeOption } from '@/store/surveyStore'
+import { DEFAULT_DATE_FORMAT } from '@/constants/surveyDefaults'
 
 // ─── Token Picker — insert piping reference into question text ─────────────
 function TokenPicker({ availableQuestions, onInsert }) {
@@ -160,7 +161,7 @@ export const QuestionCard = memo(function QuestionCard({
               <p className="text-xs text-ink-400 mt-0.5">
                 {isChoiceType(question.questionType) && `${optionCount} option${optionCount !== 1 ? 's' : ''}`}
                 {(question.questionType === 'matrix' || question.questionType === 'bipolar_matrix') && `${matrixRows} rows`}
-                {question.questionType === 'date' && (question.dateConfig?.format || surveyDateFormat || 'DD/MM/YYYY')}
+                {question.questionType === 'date' && (question.dateConfig?.format || surveyDateFormat || DEFAULT_DATE_FORMAT)}
                 {question.questionType === 'open_text' && question.openTextConfig?.validation?.type !== 'none' && (
                   `Validation: ${question.openTextConfig.validation.type}`
                 )}

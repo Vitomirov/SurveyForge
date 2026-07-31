@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { Layers, Eye, EyeOff, AlertCircle } from 'lucide-react'
-import { login, signup } from '@/utils/authStore'
+import { login, signup, DEFAULT_CREDENTIALS } from '@/utils/authStore'
+import { AUTH_COPY, AUTH_VALIDATION } from '@/constants/authCopy'
+import { APP_NAME, APP_TAGLINE } from '@/constants/branding'
 
 export function LoginPage({ onLogin }) {
   const [mode, setMode] = useState('login') // 'login' | 'signup'
@@ -29,11 +31,11 @@ export function LoginPage({ onLogin }) {
     setError('')
 
     if (isSignup) {
-      if (!organizationName.trim()) { setError('Please enter an organization name.'); return }
-      if (!name.trim())            { setError('Please enter your full name.'); return }
-      if (!username.trim() || !password) { setError('Please enter a username and password.'); return }
-      if (password.length < 8)     { setError('Password must be at least 8 characters.'); return }
-      if (password !== confirm)    { setError('Passwords do not match.'); return }
+      if (!organizationName.trim()) { setError(AUTH_VALIDATION.orgRequired); return }
+      if (!name.trim())            { setError(AUTH_VALIDATION.nameRequired); return }
+      if (!username.trim() || !password) { setError(AUTH_VALIDATION.credentialsRequired); return }
+      if (password.length < 8)     { setError(AUTH_VALIDATION.passwordMinLength); return }
+      if (password !== confirm)    { setError(AUTH_VALIDATION.passwordsMismatch); return }
 
       setLoading(true)
       const result = await signup({ organizationName, name, username, password })
@@ -43,7 +45,7 @@ export function LoginPage({ onLogin }) {
       return
     }
 
-    if (!username || !password) { setError('Please enter both username and password.'); return }
+    if (!username || !password) { setError(AUTH_VALIDATION.loginRequired); return }
     setLoading(true)
     const result = await login(username, password)
     setLoading(false)
@@ -60,15 +62,15 @@ export function LoginPage({ onLogin }) {
             <Layers size={20} className="text-white" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-ink-900 tracking-tight">SurveyForge</h1>
-            <p className="text-xs text-ink-400">Research Platform</p>
+            <h1 className="text-xl font-bold text-ink-900 tracking-tight">{APP_NAME}</h1>
+            <p className="text-xs text-ink-400">{APP_TAGLINE}</p>
           </div>
         </div>
 
         {/* Card */}
         <div className="card p-6">
           <h2 className="text-base font-bold text-ink-800 mb-1">
-            {isSignup ? 'Create your organization' : 'Sign in'}
+            {isSignup ? AUTH_COPY.createOrgHeading : AUTH_COPY.signIn}
           </h2>
           <p className="text-sm text-ink-400 mb-5">
             {isSignup
@@ -113,7 +115,7 @@ export function LoginPage({ onLogin }) {
                 onChange={e => setUsername(e.target.value)}
                 autoFocus={!isSignup}
                 autoComplete="username"
-                placeholder={isSignup ? 'jsmith' : 'admin'}
+                placeholder={isSignup ? 'jsmith' : DEFAULT_CREDENTIALS.username}
                 className="input-base"
               />
             </div>
@@ -166,8 +168,8 @@ export function LoginPage({ onLogin }) {
               className="w-full btn-primary py-2.5 justify-center disabled:opacity-60"
             >
               {loading
-                ? (isSignup ? 'Creating…' : 'Signing in…')
-                : (isSignup ? 'Create organization' : 'Sign in')}
+                ? (isSignup ? AUTH_COPY.creating : AUTH_COPY.signingIn)
+                : (isSignup ? AUTH_COPY.createOrgButton : AUTH_COPY.signIn)}
             </button>
           </form>
         </div>
@@ -182,7 +184,7 @@ export function LoginPage({ onLogin }) {
                 onClick={() => switchMode('login')}
                 className="font-semibold text-brand-600 hover:text-brand-700"
               >
-                Sign in
+                {AUTH_COPY.signIn}
               </button>
             </>
           ) : (
@@ -193,7 +195,7 @@ export function LoginPage({ onLogin }) {
                 onClick={() => switchMode('signup')}
                 className="font-semibold text-brand-600 hover:text-brand-700"
               >
-                Create an organization
+                {AUTH_COPY.createOrgLink}
               </button>
             </>
           )}
@@ -202,7 +204,7 @@ export function LoginPage({ onLogin }) {
         {/* Default credential hint — sign-in only */}
         {!isSignup && (
           <p className="text-center text-xs text-ink-300 mt-2">
-            Default: <span className="font-mono">admin</span> / <span className="font-mono">admin123</span>
+            Default: <span className="font-mono">{DEFAULT_CREDENTIALS.username}</span> / <span className="font-mono">{DEFAULT_CREDENTIALS.password}</span>
           </p>
         )}
       </div>

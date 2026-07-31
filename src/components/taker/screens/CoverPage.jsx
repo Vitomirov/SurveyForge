@@ -1,3 +1,5 @@
+import { DEFAULT_START_BUTTON_TEXT, DEFAULT_SURVEY_TITLE } from '@/constants/surveyDefaults'
+
 export function CoverPage({ survey, onStart, isPublic = false }) {
   const logoJustify =
     survey?.logoPosition === 'right'  ? 'justify-end'   :
@@ -24,7 +26,7 @@ export function CoverPage({ survey, onStart, isPublic = false }) {
         )}
 
         <h1 className="text-2xl font-bold text-ink-800 mb-3 leading-snug text-center">
-          {survey?.title || 'Untitled Survey'}
+          {survey?.title || DEFAULT_SURVEY_TITLE}
         </h1>
 
         {survey?.description && (
@@ -36,7 +38,7 @@ export function CoverPage({ survey, onStart, isPublic = false }) {
 
         <div className="text-center">
           <button onClick={onStart} className="btn-primary px-8 py-3 text-base">
-            {survey?.startButtonText || 'Start Survey'}
+            {survey?.startButtonText || DEFAULT_START_BUTTON_TEXT}
           </button>
           {!isPublic && (
             <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mt-6 inline-block">

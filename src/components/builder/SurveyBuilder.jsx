@@ -24,6 +24,8 @@ import { useAutosave } from '@/hooks/useAutosave'
 import { useApi } from '@/config/api'
 import { buildItemMeta, buildAvailableQuestionsByIndex, buildGroupQuestionCounts } from '@/utils/builderLayout'
 import { generateTemplateCSV, downloadCSV } from '@/utils/csvExport'
+import { APP_NAME } from '@/constants/branding'
+import { DEFAULT_DATE_FORMAT, DEFAULT_SCREEN_MESSAGES } from '@/constants/surveyDefaults'
 import {
   Plus, Save, Eye, BarChart3, Layers,
   Scissors, Download, PlayCircle, ArrowLeft, FileText,
@@ -139,7 +141,7 @@ export function SurveyBuilder({ initialState, initialRevision = null, onBackToDa
               onKeyDown={e => e.key === 'Enter' && onBackToDashboard?.()}
               className={`font-bold text-ink-800 tracking-tight${onBackToDashboard ? ' cursor-pointer hover:text-brand-600 transition-colors' : ''}`}
             >
-              SurveyForge
+              {APP_NAME}
             </span>
           </div>
           <div className="w-px h-5 bg-ink-100" />
@@ -167,12 +169,12 @@ export function SurveyBuilder({ initialState, initialRevision = null, onBackToDa
             <div className="hidden lg:flex items-center gap-1.5 px-2 py-1 bg-ink-50 rounded-lg mr-1">
               <span className="text-xs text-ink-400">Date:</span>
               <select
-                value={state.survey.defaultDateFormat || 'DD/MM/YYYY'}
+                value={state.survey.defaultDateFormat || DEFAULT_DATE_FORMAT}
                 onChange={e => dispatch({ type: 'SET_SURVEY_FIELD', field: 'defaultDateFormat', value: e.target.value })}
                 className="text-xs bg-transparent border-none outline-none text-ink-600 font-medium font-mono"
               >
                 <option value="MM/DD/YYYY">MM/DD/YYYY</option>
-                <option value="DD/MM/YYYY">DD/MM/YYYY</option>
+                <option value={DEFAULT_DATE_FORMAT}>{DEFAULT_DATE_FORMAT}</option>
                 <option value="YYYY-MM-DD">YYYY-MM-DD</option>
               </select>
             </div>
@@ -257,13 +259,13 @@ export function SurveyBuilder({ initialState, initialRevision = null, onBackToDa
                     <label className="text-xs text-ink-500 mb-1 block">Title</label>
                     <input type="text" value={state.survey.settings?.terminateTitle || ''}
                       onChange={e => dispatch({ type: 'SET_SURVEY_SETTING', key: 'terminateTitle', value: e.target.value })}
-                      placeholder="Thank you for your time." className="input-base text-sm" />
+                      placeholder={DEFAULT_SCREEN_MESSAGES.terminateTitle} className="input-base text-sm" />
                   </div>
                   <div>
                     <label className="text-xs text-ink-500 mb-1 block">Message</label>
                     <textarea rows={2} value={state.survey.settings?.terminateMessage || ''}
                       onChange={e => dispatch({ type: 'SET_SURVEY_SETTING', key: 'terminateMessage', value: e.target.value })}
-                      placeholder="Unfortunately, you do not qualify for this survey."
+                      placeholder={DEFAULT_SCREEN_MESSAGES.terminateMessage}
                       className="input-base text-sm resize-none" />
                   </div>
                 </div>
@@ -274,13 +276,13 @@ export function SurveyBuilder({ initialState, initialRevision = null, onBackToDa
                     <label className="text-xs text-ink-500 mb-1 block">Title</label>
                     <input type="text" value={state.survey.settings?.closedTitle || ''}
                       onChange={e => dispatch({ type: 'SET_SURVEY_SETTING', key: 'closedTitle', value: e.target.value })}
-                      placeholder="This survey is now closed." className="input-base text-sm" />
+                      placeholder={DEFAULT_SCREEN_MESSAGES.closedTitle} className="input-base text-sm" />
                   </div>
                   <div>
                     <label className="text-xs text-ink-500 mb-1 block">Message</label>
                     <textarea rows={2} value={state.survey.settings?.closedMessage || ''}
                       onChange={e => dispatch({ type: 'SET_SURVEY_SETTING', key: 'closedMessage', value: e.target.value })}
-                      placeholder="Thank you for your interest. This survey is no longer accepting responses."
+                      placeholder={DEFAULT_SCREEN_MESSAGES.closedMessage}
                       className="input-base text-sm resize-none" />
                   </div>
                 </div>
@@ -408,7 +410,7 @@ export function SurveyBuilder({ initialState, initialRevision = null, onBackToDa
                           focusOptionId={
                             state.activeItemId === item.id ? state.focusOptionId : null
                           }
-                          surveyDateFormat={state.survey.defaultDateFormat || 'DD/MM/YYYY'}
+                          surveyDateFormat={state.survey.defaultDateFormat || DEFAULT_DATE_FORMAT}
                           availableQuestions={availableQuestions}
                         />
                       </div>

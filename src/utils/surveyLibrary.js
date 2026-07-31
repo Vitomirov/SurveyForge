@@ -1,4 +1,5 @@
 // ─── Multi-survey library (all surveys for this install) ──────────────────
+import { newSurveyId } from '@/store/id'
 const LIBRARY_KEY = 'sf_survey_library'
 
 export function loadLibrary() {
@@ -35,6 +36,20 @@ export function deleteSurvey(id) {
   return updated
 }
 
+/** Build a cloned survey object with a new ID and draft status. */
+export function buildClonedSurvey(originalSurvey) {
+  const now = new Date().toISOString()
+  return {
+    ...JSON.parse(JSON.stringify(originalSurvey)),
+    id: newSurveyId(),
+    internalName: (originalSurvey.internalName || originalSurvey.title) + ' (copy)',
+    surveyCode: originalSurvey.surveyCode ? originalSurvey.surveyCode + '_COPY' : '',
+    status: 'draft',
+    createdAt: now,
+    updatedAt: now,
+  }
+}
+
 /** Duplicate a survey — deep clone with a new ID and code suffix. */
 export function duplicateSurvey(id) {
   const original = loadSurvey(id)
@@ -42,15 +57,7 @@ export function duplicateSurvey(id) {
   const now = new Date().toISOString()
   const clone = {
     ...JSON.parse(JSON.stringify(original)),
-    survey: {
-      ...original.survey,
-      id:           newLibId(),
-      internalName: (original.survey.internalName || original.survey.title) + ' (copy)',
-      surveyCode:   original.survey.surveyCode ? original.survey.surveyCode + '_COPY' : '',
-      status:       'draft',
-      createdAt:    now,
-      updatedAt:    now,
-    },
+    survey: buildClonedSurvey(original.survey),
   }
   clone.id       = clone.survey.id
   clone.savedAt  = now
@@ -67,6 +74,3 @@ export function isSurveyCodeTaken(code, excludeId = null) {
     s.survey?.id !== excludeId
   )
 }
-
-const newLibId = () => crypto.randomUUID?.() ||
-  `sv_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`

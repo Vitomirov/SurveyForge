@@ -6,6 +6,7 @@ import { getSession, logout } from '@/utils/authStore'
 import { loadSurvey } from '@/utils/surveyLibrary'
 import { useApi } from '@/config/api'
 import { getPublicSurvey } from '@/api/surveys'
+import { SURVEY_NOT_FOUND_MESSAGE, SURVEY_NOT_FOUND_TITLE } from '@/constants/errors'
 
 function libraryEntryToState(entry) {
   return {
@@ -58,7 +59,7 @@ export default function App() {
         })
         .catch(() => {
           if (cancelled) return
-          setPublicError('Survey not found. The link may be incorrect or the survey may have been removed.')
+          setPublicError(SURVEY_NOT_FOUND_MESSAGE)
           setPublicEntry(null)
         })
       return () => { cancelled = true }
@@ -66,7 +67,7 @@ export default function App() {
 
     const entry = loadSurvey(publicSurveyId)
     if (!entry) {
-      setPublicError('Survey not found. The link may be incorrect or the survey may have been removed.')
+      setPublicError(SURVEY_NOT_FOUND_MESSAGE)
       setPublicEntry(null)
     } else {
       setPublicEntry(entry)
@@ -105,7 +106,7 @@ export default function App() {
         <div className="min-h-screen bg-ink-50 flex items-center justify-center p-6">
           <div className="max-w-md text-center">
             <div className="text-5xl mb-4">🔍</div>
-            <h2 className="text-xl font-bold text-ink-800 mb-2">Survey not found</h2>
+            <h2 className="text-xl font-bold text-ink-800 mb-2">{SURVEY_NOT_FOUND_TITLE}</h2>
             <p className="text-ink-500">{publicError}</p>
           </div>
         </div>

@@ -1,9 +1,15 @@
+import {
+  DEFAULT_DATE_FORMAT,
+  DEFAULT_SCREEN_MESSAGES,
+  DEFAULT_START_BUTTON_TEXT,
+  DEFAULT_SURVEY_TITLE,
+} from '@/constants/surveyDefaults'
 import { newId } from './id'
 
 export const INITIAL_STATE = {
   survey: {
     id: newId(),
-    title: 'Untitled Survey',
+    title: DEFAULT_SURVEY_TITLE,
     description: '',
     internalName: '',
     surveyCode:   '',
@@ -13,17 +19,14 @@ export const INITIAL_STATE = {
     surveyType:   '',
     coverImage: null,
     showCoverPage: true,
-    startButtonText: 'Start Survey',
+    startButtonText: DEFAULT_START_BUTTON_TEXT,
     companyLogo: null,
     logoPosition: 'left',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     settings: {
       onePerPage: true,
-      terminateTitle:   'Thank you for your time.',
-      terminateMessage: 'Unfortunately, you do not qualify for this survey.',
-      closedTitle:   'This survey is now closed.',
-      closedMessage: 'Thank you for your interest. This survey is no longer accepting responses.',
+      ...DEFAULT_SCREEN_MESSAGES,
       fingerprinting: {
         enabled: false,
         signals: {

@@ -1,4 +1,10 @@
 import { isChoiceType } from '@/utils/questionHelpers'
+import {
+  OPEN_TEXT_PLACEHOLDER,
+  OPEN_TEXT_PLACEHOLDER_UNICODE,
+  SPECIFY_PLACEHOLDER,
+  SPECIFY_PLACEHOLDER_UNICODE,
+} from '@/constants/placeholders'
 import { newId } from './id'
 
 // ─── Factory helpers ───────────────────────────────────────────────────────
@@ -8,7 +14,7 @@ export const makeOption = (text = '') => ({
   anchorPosition: null,
   isExclusive: false,
   terminates: false,
-  openText: { enabled: false, required: false, placeholder: 'Please specify...' },
+  openText: { enabled: false, required: false, placeholder: SPECIFY_PLACEHOLDER },
 })
 
 export const makeMatrixRow = (text = '') => ({ id: newId(), text })
@@ -27,7 +33,7 @@ export const makeImageOption      = (text = '') => ({
   imageAlt:    '',
   terminates:  false,
   isExclusive: false,
-  openText:    { enabled: false, placeholder: 'Please specify…' },
+  openText:    { enabled: false, placeholder: SPECIFY_PLACEHOLDER_UNICODE },
 })
 export const makeSemanticRow      = (leftLabel = '', rightLabel = '') => ({ id: newId(), leftLabel, rightLabel })
 export const makeCascadeItem      = (label = '', level = 0, parentId = null) => ({ id: newId(), label, level, parentId })
@@ -204,7 +210,7 @@ export const makeQuestion = (questionType = 'single_select') => {
         makeTextboxRow('Brand 2'),
         makeTextboxRow('Brand 3'),
       ],
-      placeholder:  'Type your answer…',
+      placeholder:  OPEN_TEXT_PLACEHOLDER_UNICODE,
       instruction:  '',
     },
 

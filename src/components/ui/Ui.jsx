@@ -56,9 +56,15 @@ export function Divider({ label }) {
 }
 
 // ─── Section Label ─────────────────────────────────────────────────────────
-export function SectionLabel({ children }) {
+const SECTION_LABEL_BASE = {
+  default: 'text-xs font-semibold text-ink-400 uppercase tracking-wider',
+  bold:    'text-xs font-bold text-ink-500 uppercase tracking-wider',
+}
+
+export function SectionLabel({ children, variant = 'default', className = '' }) {
+  const margin = variant === 'default' && !className.includes('mb-') ? 'mb-2' : ''
   return (
-    <p className="text-xs font-semibold text-ink-400 uppercase tracking-wider mb-2">
+    <p className={`${SECTION_LABEL_BASE[variant]} ${margin} ${className}`.trim()}>
       {children}
     </p>
   )

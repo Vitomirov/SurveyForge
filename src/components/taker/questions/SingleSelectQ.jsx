@@ -1,3 +1,5 @@
+import { SPECIFY_PLACEHOLDER } from '@/constants/placeholders'
+
 export function SingleSelectQ({ question, value, onChange, companions = {}, onCompanionChange }) {
   if (!question.options?.length) {
     return <p className="text-sm text-ink-400 italic p-3 border border-dashed border-ink-200 rounded-xl">Options will appear here once the source question is answered.</p>
@@ -21,7 +23,7 @@ export function SingleSelectQ({ question, value, onChange, companions = {}, onCo
                   type="text"
                   value={companions[opt.id] || ''}
                   onChange={e => onCompanionChange?.(opt.id, e.target.value)}
-                  placeholder={opt.openText.placeholder || 'Please specify...'}
+                  placeholder={opt.openText.placeholder || SPECIFY_PLACEHOLDER}
                   className="w-full border border-ink-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
                 />
               </div>

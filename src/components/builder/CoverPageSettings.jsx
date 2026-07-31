@@ -1,6 +1,7 @@
 import { useRef } from 'react'
 import { Image as ImageIcon, X, Upload } from 'lucide-react'
 import { Toggle } from '@/components/ui'
+import { DEFAULT_START_BUTTON_TEXT } from '@/constants/surveyDefaults'
 
 const MAX_IMAGE_BYTES = 4 * 1024 * 1024 // 4MB sanity cap for base64 storage
 
@@ -97,7 +98,7 @@ export function CoverPageSettings({ survey, dispatch }) {
               type="text"
               value={survey.startButtonText || ''}
               onChange={e => dispatch({ type: 'SET_SURVEY_FIELD', field: 'startButtonText', value: e.target.value })}
-              placeholder="Start Survey"
+              placeholder={DEFAULT_START_BUTTON_TEXT}
               className="input-base text-sm"
             />
           </div>

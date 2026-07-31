@@ -1,4 +1,5 @@
 import { QUESTION_TYPES, TYPE_COLORS, TYPE_ICONS, QUESTION_TYPE_GROUPS } from '@/utils/questionHelpers'
+import { SectionLabel } from '@/components/ui'
 import { Scissors, FolderPlus, FileText, Zap } from 'lucide-react'
 
 export function AddPanel({ onAddQuestion, onAddPageBreak, onAddGroup, onAddTerminationBlock, onAddTextBlock }) {
@@ -9,7 +10,7 @@ export function AddPanel({ onAddQuestion, onAddPageBreak, onAddGroup, onAddTermi
         const types = QUESTION_TYPES.filter(qt => qt.group === grp)
         return (
           <div key={grp}>
-            <p className="text-xs font-semibold text-ink-400 uppercase tracking-wider mb-2">{grp}</p>
+            <SectionLabel>{grp}</SectionLabel>
             <div className="space-y-1">
               {types.map(qt => {
                 const Icon = TYPE_ICONS[qt.type]
@@ -36,7 +37,7 @@ export function AddPanel({ onAddQuestion, onAddPageBreak, onAddGroup, onAddTermi
       })}
 
       <div className="border-t border-ink-100 pt-3 space-y-1">
-        <p className="text-xs font-semibold text-ink-400 uppercase tracking-wider mb-2">Structure</p>
+        <SectionLabel>Structure</SectionLabel>
         <button
           onClick={onAddPageBreak}
           className="w-full flex items-center gap-2.5 p-2 rounded-lg hover:bg-ink-50 transition-all text-left border border-transparent hover:border-ink-100"

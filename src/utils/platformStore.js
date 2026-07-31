@@ -1,4 +1,5 @@
 // ─── Platform-level settings (shared across all surveys) ──────────────────
+import { newPrefixedId } from '@/store/id'
 // These are the editable lists that survey creators manage: clients and topics.
 // Stored separately from individual surveys so adding a new client is done once.
 
@@ -45,7 +46,7 @@ function save(key, value) {
   try { localStorage.setItem(key, JSON.stringify(value)) } catch { /* noop */ }
 }
 
-const newId = () => `pid_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`
+const newId = () => newPrefixedId('pid')
 
 // ─── Clients ───────────────────────────────────────────────────────────────
 export function loadClients()             { return load(CLIENTS_KEY, DEFAULT_CLIENTS) }

@@ -7,6 +7,7 @@ import { saveResponse, newResponseId } from '@/utils/responseStore'
 import { useApi } from '@/config/api'
 import { saveResponseApi, savePublicResponse } from '@/api/responses'
 import { collectFingerprint } from '@/utils/deviceSignals'
+import { DEFAULT_DATE_FORMAT } from '@/constants/surveyDefaults'
 import { isOnDNCListAsync, loadDNCListAsync } from '@/utils/dncStore'
 import { checkTermination, evalBlock, buildBlockCause } from '@/utils/terminationEngine'
 import { validateAnswer } from '@/utils/answerValidation'
@@ -329,7 +330,7 @@ export function SurveyPreview({ survey, items, onClose, isPublic = false }) {
                         question={q}
                         value={responses[q.id]}
                         onChange={val => handleChange(q, val)}
-                        surveyDateFormat={survey?.defaultDateFormat || 'DD/MM/YYYY'}
+                        surveyDateFormat={survey?.defaultDateFormat || DEFAULT_DATE_FORMAT}
                         companions={companions[q.id] || {}}
                         onCompanionChange={(optId, text) => handleCompanionChange(q.id, optId, text)}
                         responses={responses}

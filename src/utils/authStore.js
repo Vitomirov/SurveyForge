@@ -5,12 +5,16 @@
 import { useApi } from '@/config/api'
 import { apiFetch } from '@/api/client'
 import { setAuthToken, clearAuthToken, getAuthToken } from '@/api/token'
+import { AUTH_ERRORS } from '@/constants/authCopy'
+import { newPrefixedId } from '@/store/id'
 
 const USERS_KEY   = 'sf_users'
 const SESSION_KEY = 'sf_session'
 
+export const DEFAULT_CREDENTIALS = { username: 'admin', password: 'admin123' }
+
 const DEFAULT_USERS = [
-  { id: 'u_admin', username: 'admin', password: 'admin123', role: 'admin', name: 'Admin' },
+  { id: 'u_admin', username: DEFAULT_CREDENTIALS.username, password: DEFAULT_CREDENTIALS.password, role: 'admin', name: 'Admin' },
 ]
 
 function loadUsers() {
@@ -23,8 +27,6 @@ function loadUsers() {
 function saveUsers(users) {
   try { localStorage.setItem(USERS_KEY, JSON.stringify(users)) } catch {}
 }
-
-const newId = () => `u_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`
 
 function readSessionStorage() {
   try {
@@ -60,7 +62,7 @@ export async function login(username, password) {
       writeSessionStorage(data.session)
       return { ok: true, session: data.session }
     } catch (err) {
-      return { ok: false, error: err.message || 'Invalid username or password.' }
+      return { ok: false, error: err.message || AUTH_ERRORS.invalidCredentials }
     }
   }
 
@@ -69,7 +71,7 @@ export async function login(username, password) {
     u => u.username.toLowerCase() === username.toLowerCase().trim() &&
          u.password === password
   )
-  if (!user) return { ok: false, error: 'Invalid username or password.' }
+  if (!user) return { ok: false, error: AUTH_ERRORS.invalidCredentials }
   const session = {
     userId: user.id, username: user.username, name: user.name,
     role: user.role, loginAt: new Date().toISOString(),
@@ -89,17 +91,17 @@ export async function signup({ organizationName, name, username, password }) {
       writeSessionStorage(data.session)
       return { ok: true, session: data.session }
     } catch (err) {
-      return { ok: false, error: err.message || 'Could not create the organization.' }
+      return { ok: false, error: err.message || AUTH_ERRORS.signupFailed }
     }
   }
 
   // Local (offline) mode has no org concept — create the admin user locally.
   const users = loadUsers()
   if (users.find(u => u.username.toLowerCase() === username.toLowerCase().trim())) {
-    return { ok: false, error: 'That username is already taken.' }
+    return { ok: false, error: AUTH_ERRORS.usernameTakenSignup }
   }
   const user = {
-    id: newId(), username: username.trim(), password,
+    id: newPrefixedId('u'), username: username.trim(), password,
     name: name.trim(), role: 'admin',
   }
   saveUsers([...users, user])
@@ -127,8 +129,8 @@ export function getUsers()              { return loadUsers() }
 export function addUser({ username, password, name, role = 'editor' }) {
   const users = loadUsers()
   if (users.find(u => u.username.toLowerCase() === username.toLowerCase()))
-    return { ok: false, error: 'Username already exists.' }
-  const newUser = { id: newId(), username: username.trim(), password, name: name.trim(), role }
+    return { ok: false, error: AUTH_ERRORS.usernameTakenAdmin }
+  const newUser = { id: newPrefixedId('u'), username: username.trim(), password, name: name.trim(), role }
   saveUsers([...users, newUser])
   return { ok: true, user: newUser }
 }

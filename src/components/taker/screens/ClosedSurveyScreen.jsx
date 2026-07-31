@@ -1,6 +1,8 @@
+import { DEFAULT_SCREEN_MESSAGES } from '@/constants/surveyDefaults'
+
 export function ClosedSurveyScreen({ settings }) {
-  const title   = settings?.closedTitle   || 'This survey is now closed.'
-  const message = settings?.closedMessage || 'Thank you for your interest. This survey is no longer accepting responses.'
+  const title   = settings?.closedTitle   || DEFAULT_SCREEN_MESSAGES.closedTitle
+  const message = settings?.closedMessage || DEFAULT_SCREEN_MESSAGES.closedMessage
   return (
     <div className="min-h-screen bg-ink-50 flex items-center justify-center p-6">
       <div className="max-w-md w-full text-center">

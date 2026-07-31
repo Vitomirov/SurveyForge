@@ -1,4 +1,5 @@
 import { Divider, SectionLabel } from '@/components/ui'
+import { DEFAULT_DATE_FORMAT } from '@/constants/surveyDefaults'
 
 const DATE_FORMATS = [
   { value: 'MM/DD/YYYY', label: 'MM/DD/YYYY', example: '06/25/2025', region: 'US' },
@@ -8,7 +9,7 @@ const DATE_FORMATS = [
 
 export function DateEditor({ question, dispatch, surveyDateFormat }) {
   const cfg = question.dateConfig
-  const effectiveFormat = cfg.format === 'inherit' ? (surveyDateFormat || 'DD/MM/YYYY') : cfg.format
+  const effectiveFormat = cfg.format === 'inherit' ? (surveyDateFormat || DEFAULT_DATE_FORMAT) : cfg.format
 
   const update = (patch) =>
     dispatch({ type: 'UPDATE_ITEM', id: question.id, patch: { dateConfig: { ...cfg, ...patch } } })
@@ -21,7 +22,7 @@ export function DateEditor({ question, dispatch, surveyDateFormat }) {
 
         {/* Inherit toggle */}
         <button
-          onClick={() => update({ format: cfg.format === 'inherit' ? surveyDateFormat || 'DD/MM/YYYY' : 'inherit' })}
+          onClick={() => update({ format: cfg.format === 'inherit' ? surveyDateFormat || DEFAULT_DATE_FORMAT : 'inherit' })}
           className={`w-full flex items-center justify-between p-2.5 rounded-lg border mb-2 transition-all ${
             cfg.format === 'inherit'
               ? 'border-brand-400 bg-brand-50'
@@ -30,7 +31,7 @@ export function DateEditor({ question, dispatch, surveyDateFormat }) {
         >
           <div className="text-left">
             <p className="text-sm font-medium text-ink-700">Inherit survey default</p>
-            <p className="text-xs text-ink-400">Currently: <span className="font-mono font-medium">{surveyDateFormat || 'DD/MM/YYYY'}</span></p>
+            <p className="text-xs text-ink-400">Currently: <span className="font-mono font-medium">{surveyDateFormat || DEFAULT_DATE_FORMAT}</span></p>
           </div>
           <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${cfg.format === 'inherit' ? 'border-brand-500 bg-brand-500' : 'border-ink-300'}`}>
             {cfg.format === 'inherit' && <div className="w-2 h-2 rounded-full bg-white" />}

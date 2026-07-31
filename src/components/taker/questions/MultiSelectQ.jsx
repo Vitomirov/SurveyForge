@@ -1,4 +1,5 @@
 import { Check } from 'lucide-react'
+import { SPECIFY_PLACEHOLDER } from '@/constants/placeholders'
 
 export function MultiSelectQ({ question, value = [], onChange, companions = {}, onCompanionChange }) {
   const toggle = (optId, isExclusive) => {
@@ -27,7 +28,7 @@ export function MultiSelectQ({ question, value = [], onChange, companions = {}, 
                   type="text"
                   value={companions[opt.id] || ''}
                   onChange={e => onCompanionChange?.(opt.id, e.target.value)}
-                  placeholder={opt.openText.placeholder || 'Please specify...'}
+                  placeholder={opt.openText.placeholder || SPECIFY_PLACEHOLDER}
                   className="w-full border border-ink-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
                 />
               </div>

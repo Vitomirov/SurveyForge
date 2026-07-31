@@ -7,9 +7,12 @@ import {
   PlayCircle, PauseCircle, Edit3, Eye, LogOut,
 } from 'lucide-react'
 import {
-  loadLibrary, deleteSurvey, duplicateSurvey,
+  loadLibrary, deleteSurvey, duplicateSurvey, buildClonedSurvey,
 } from '@/utils/surveyLibrary'
 import { useApi } from '@/config/api'
+import { APP_NAME } from '@/constants/branding'
+import { AUTH_COPY } from '@/constants/authCopy'
+import { DEFAULT_SURVEY_TITLE } from '@/constants/surveyDefaults'
 import {
   getSurvey, deleteSurveyApi, migrateLocalLibrary,
   metaToLibraryEntry, payloadToLibraryEntry, patchSurvey,
@@ -302,20 +305,9 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
     }
     try {
       const full = await getSurvey(id)
-      const now = new Date().toISOString()
-      const newId = crypto.randomUUID?.() ||
-        `sv_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
-      const cloneSurvey = {
-        ...JSON.parse(JSON.stringify(full.survey)),
-        id: newId,
-        internalName: (full.survey.internalName || full.survey.title || '') + ' (copy)',
-        surveyCode: full.survey.surveyCode ? full.survey.surveyCode + '_COPY' : '',
-        status: 'draft',
-        createdAt: now,
-        updatedAt: now,
-      }
+      const cloneSurvey = buildClonedSurvey(full.survey)
       const cloneItems = JSON.parse(JSON.stringify(full.items || []))
-      await patchSurvey(newId, { survey: cloneSurvey, items: cloneItems })
+      await patchSurvey(cloneSurvey.id, { survey: cloneSurvey, items: cloneItems })
       refresh()
     } catch (err) {
       console.error('Failed to duplicate survey', err)
@@ -351,7 +343,7 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
             <div className="w-7 h-7 bg-brand-600 rounded-lg flex items-center justify-center">
               <Layers size={14} className="text-white" />
             </div>
-            <span className="font-bold text-ink-800 tracking-tight">SurveyForge</span>
+            <span className="font-bold text-ink-800 tracking-tight">{APP_NAME}</span>
           </div>
           <div className="w-px h-5 bg-ink-100" />
           <span className="text-sm font-semibold text-ink-600">Survey Dashboard</span>
@@ -372,7 +364,7 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
               <Settings size={15} /> Settings
             </button>
             {onLogout && (
-              <button onClick={onLogout} className="btn-ghost text-ink-400" title="Sign out">
+              <button onClick={onLogout} className="btn-ghost text-ink-400" title={AUTH_COPY.signOut}>
                 <LogOut size={15} />
               </button>
             )}
@@ -518,7 +510,7 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
                       {/* Title + internal name */}
                       <td className="px-4 py-3">
                         <p className="font-semibold text-ink-800 truncate max-w-xs">
-                          {sv.title || 'Untitled Survey'}
+                          {sv.title || DEFAULT_SURVEY_TITLE}
                         </p>
                         {sv.internalName && (
                           <p className="text-xs text-ink-400 truncate max-w-xs mt-0.5">
