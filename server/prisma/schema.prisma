@@ -1,5 +1,6 @@
 // SurveyForge — multi-organization SaaS schema
 // Same codebase supports single-tenant enterprise deployments via env + isolated DB.
+// DB columns use entity-prefixed names (e.g. organization_name) for clarity in raw SQL.
 
 generator client {
   provider = "prisma-client-js"
@@ -12,9 +13,9 @@ datasource db {
 
 model Organization {
   id        String   @id @default(uuid())
-  name      String
-  settings  Json     @default("{}")
-  createdAt DateTime @default(now()) @map("created_at")
+  name      String   @map("organization_name")
+  settings  Json     @default("{}") @map("organization_settings")
+  createdAt DateTime @default(now()) @map("organization_created_at")
 
   users     User[]
   surveys   Survey[]
@@ -28,13 +29,13 @@ model Organization {
 model User {
   id             String   @id @default(uuid())
   organizationId String   @map("organization_id")
-  email          String
-  username       String?
-  passwordHash   String   @map("password_hash")
-  name           String?
-  role           String   @default("editor")
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @updatedAt @map("updated_at")
+  email          String   @map("user_email")
+  username       String?  @map("user_username")
+  passwordHash   String   @map("user_password_hash")
+  name           String?  @map("user_name")
+  role           String   @default("editor") @map("user_role")
+  createdAt      DateTime @default(now()) @map("user_created_at")
+  updatedAt      DateTime @updatedAt @map("user_updated_at")
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
@@ -46,11 +47,11 @@ model Survey {
   id             String   @id
   organizationId String   @map("organization_id")
   tenantId       String?  @map("tenant_id")
-  survey         Json
-  items          Json     @default("[]")
-  revision       Int      @default(1)
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @updatedAt @map("updated_at")
+  survey         Json     @map("survey_data")
+  items          Json     @default("[]") @map("survey_items")
+  revision       Int      @default(1) @map("survey_revision")
+  createdAt      DateTime @default(now()) @map("survey_created_at")
+  updatedAt      DateTime @updatedAt @map("survey_updated_at")
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   responses    Response[]
@@ -65,9 +66,9 @@ model Response {
   id             String   @id
   surveyId       String   @map("survey_id")
   organizationId String   @map("organization_id")
-  payload        Json
-  status         String
-  timestamp      DateTime @default(now())
+  payload        Json     @map("response_payload")
+  status         String   @map("response_status")
+  timestamp      DateTime @default(now()) @map("response_timestamp")
 
   survey       Survey       @relation(fields: [surveyId], references: [id], onDelete: Cascade)
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -81,8 +82,8 @@ model Response {
 model Client {
   id             String   @id
   organizationId String   @map("organization_id")
-  name           String
-  createdAt      DateTime @default(now()) @map("created_at")
+  name           String   @map("client_name")
+  createdAt      DateTime @default(now()) @map("client_created_at")
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
@@ -93,8 +94,8 @@ model Client {
 model Topic {
   id             String   @id
   organizationId String   @map("organization_id")
-  name           String
-  createdAt      DateTime @default(now()) @map("created_at")
+  name           String   @map("topic_name")
+  createdAt      DateTime @default(now()) @map("topic_created_at")
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
@@ -105,7 +106,7 @@ model Topic {
 model DncEntry {
   id       String @id @default(uuid())
   surveyId String @map("survey_id")
-  email    String
+  email    String @map("dnc_email")
 
   survey Survey @relation(fields: [surveyId], references: [id], onDelete: Cascade)
 

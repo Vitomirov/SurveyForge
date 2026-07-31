@@ -1,4 +1,4 @@
-const DEFAULT_PORT = 3001
+const DEFAULT_PORT = 3003
 
 export function loadConfig() {
   const port = Number(process.env.PORT) || DEFAULT_PORT
