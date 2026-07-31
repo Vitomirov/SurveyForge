@@ -374,3 +374,5 @@ export function SurveyPreview({ survey, items, onClose, isPublic = false }) {
     </div>
   )
 }
+
+export default SurveyPreview

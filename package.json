@@ -11,6 +11,7 @@
     "db:migrate": "npm run db:migrate --prefix server",
     "db:migrate:dev": "npm run db:migrate:dev --prefix server",
     "build": "vite build",
+    "build:analyze": "vite build && node -e \"const fs=require('fs');const d='dist/assets';const files=fs.readdirSync(d).filter(f=>f.endsWith('.js'));console.log('JS chunks:',files.length);files.forEach(f=>console.log(f, (fs.statSync(d+'/'+f).size/1024).toFixed(1)+'KB'))\"",
     "preview": "vite preview",
     "check:registries": "node scripts/check-registries.js",
     "test:phase2": "node --test scripts/phase2.test.mjs",

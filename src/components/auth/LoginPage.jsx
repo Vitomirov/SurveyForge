@@ -211,3 +211,5 @@ export function LoginPage({ onLogin }) {
     </div>
   )
 }
+
+export default LoginPage

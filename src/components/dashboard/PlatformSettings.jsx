@@ -351,3 +351,5 @@ export function PlatformSettings({ onClose }) {
     </div>
   )
 }
+
+export default PlatformSettings

@@ -1,4 +1,4 @@
-import { useReducer, useState, useMemo, useCallback } from 'react'
+import { useReducer, useState, useMemo, useCallback, lazy, Suspense } from 'react'
 import {
   DndContext, closestCenter, KeyboardSensor, PointerSensor,
   useSensor, useSensors, DragOverlay,
@@ -13,14 +13,13 @@ import {
   QuestionCard,
   PageBreakItem, GroupItem, TerminationBlockItem, TextBlockItem,
 } from '@/components/builder/items'
-import { SurveyPreview } from '@/components/taker'
+import { RichTextEditor } from '@/components/shared'
+import { CopyButton, PageLoader, InlineLoader } from '@/components/ui'
 import {
-  SurveyTestRunner, CoverPageSettings, BrandingSettings,
-  FingerprintSettings, DNCManager, SurveyMetadata, ExportManager,
+  CoverPageSettings, BrandingSettings,
+  FingerprintSettings, DNCManager, SurveyMetadata,
 } from '@/components/builder'
 import { AddPanel, StatsPanel, EmptyState } from '@/components/builder/panels'
-import { RichTextEditor } from '@/components/shared'
-import { CopyButton } from '@/components/ui'
 import { useAutosave } from '@/hooks/useAutosave'
 import { useApi } from '@/config/api'
 import { buildItemMeta, buildAvailableQuestionsByIndex, buildGroupQuestionCounts } from '@/utils/builderLayout'
@@ -31,6 +30,11 @@ import {
   Plus, Eye, BarChart3, Layers,
   Scissors, Download, PlayCircle, ArrowLeft, FileText, Menu, X,
 } from 'lucide-react'
+
+const SurveyPreview    = lazy(() => import('@/components/taker/SurveyPreview.jsx'))
+const SurveyTestRunner = lazy(() => import('@/components/builder/test-runner/SurveyTestRunner.jsx'))
+const ExportManager    = lazy(() => import('@/components/builder/ExportManager.jsx'))
+
 export function SurveyBuilder({ initialState, initialRevision = null, onBackToDashboard }) {
   const [state, dispatch] = useReducer(surveyReducer, initialState || INITIAL_STATE)
 
@@ -111,11 +115,13 @@ export function SurveyBuilder({ initialState, initialRevision = null, onBackToDa
   // ── Preview mode ───────────────────────────────────────────────────────
   if (state.showPreview) {
     return (
-      <SurveyPreview
-        survey={state.survey}
-        items={state.items}
-        onClose={() => dispatch({ type: 'SET_PREVIEW', show: false })}
-      />
+      <Suspense fallback={<PageLoader label="Loading preview…" />}>
+        <SurveyPreview
+          survey={state.survey}
+          items={state.items}
+          onClose={() => dispatch({ type: 'SET_PREVIEW', show: false })}
+        />
+      </Suspense>
     )
   }
 
@@ -569,21 +575,35 @@ export function SurveyBuilder({ initialState, initialRevision = null, onBackToDa
 
       {/* ── Test Runner modal ────────────────────────────────────────── */}
       {showTest && (
-        <SurveyTestRunner
-          survey={state.survey}
-          items={state.items}
-          onClose={() => setShowTest(false)}
-        />
+        <Suspense fallback={
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center">
+            <InlineLoader label="Loading test runner…" />
+          </div>
+        }>
+          <SurveyTestRunner
+            survey={state.survey}
+            items={state.items}
+            onClose={() => setShowTest(false)}
+          />
+        </Suspense>
       )}
 
       {/* ── Export Manager modal ─────────────────────────────────────── */}
       {showExport && (
-        <ExportManager
-          survey={state.survey}
-          items={state.items}
-          onClose={() => setShowExport(false)}
-        />
+        <Suspense fallback={
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center">
+            <InlineLoader label="Loading export…" />
+          </div>
+        }>
+          <ExportManager
+            survey={state.survey}
+            items={state.items}
+            onClose={() => setShowExport(false)}
+          />
+        </Suspense>
       )}
     </div>
   )
 }
+
+export default SurveyBuilder

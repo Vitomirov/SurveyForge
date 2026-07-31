@@ -496,3 +496,5 @@ export function ExportManager({ survey, items, onClose }) {
     </div>
   )
 }
+
+export default ExportManager

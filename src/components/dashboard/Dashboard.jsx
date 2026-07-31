@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
+import { useState, useMemo, useEffect, useCallback, useRef, lazy, Suspense } from 'react'
 import React from 'react'
 import {
   Plus, Search, Settings, Filter, MoreVertical,
@@ -24,7 +24,9 @@ import {
   SURVEY_TYPES, SURVEY_STATUSES,
 } from '@/utils/platformStore'
 import { loadResponses } from '@/utils/responseStore'
-import { PlatformSettings } from '@/components/dashboard'
+import { InlineLoader } from '@/components/ui'
+
+const PlatformSettings = lazy(() => import('./PlatformSettings.jsx'))
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
 function fmtDate(iso) {
@@ -683,8 +685,16 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
 
       {/* Platform settings modal */}
       {showSettings && (
-        <PlatformSettings onClose={() => { setShowSettings(false); refresh() }} />
+        <Suspense fallback={
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center">
+            <InlineLoader label="Loading settings…" />
+          </div>
+        }>
+          <PlatformSettings onClose={() => { setShowSettings(false); refresh() }} />
+        </Suspense>
       )}
     </div>
   )
 }
+
+export default Dashboard

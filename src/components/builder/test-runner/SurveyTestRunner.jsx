@@ -208,3 +208,5 @@ export function SurveyTestRunner({ survey, items, onClose }) {
     </div>
   )
 }
+
+export default SurveyTestRunner
