@@ -15,7 +15,7 @@ import { AUTH_COPY } from '@/constants/authCopy'
 import { DEFAULT_SURVEY_TITLE } from '@/constants/surveyDefaults'
 import {
   getSurvey, deleteSurveyApi, migrateLocalLibrary,
-  metaToLibraryEntry, payloadToLibraryEntry, patchSurvey,
+  metaToLibraryEntry, patchSurvey,
 } from '@/api/surveys'
 import { getDashboard } from '@/api/dashboard'
 import { fetchClients, fetchTopics } from '@/api/platform'
@@ -268,31 +268,9 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
   const toggleSort = (field) =>
     setSort(s => s.field === field ? { field, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { field, dir: 'asc' })
 
-  const handleOpenSurvey = async (entry) => {
-    if (!useApi) {
-      onOpenSurvey(entry)
-      return
-    }
-    try {
-      const full = await getSurvey(entry.id || entry.survey?.id)
-      onOpenSurvey(payloadToLibraryEntry(entry.id || entry.survey?.id, full))
-    } catch (err) {
-      console.error('Failed to load survey', err)
-    }
-  }
-
-  const handlePreviewSurvey = async (entry) => {
-    if (!useApi) {
-      onPreviewSurvey(entry)
-      return
-    }
-    try {
-      const full = await getSurvey(entry.id || entry.survey?.id)
-      onPreviewSurvey(payloadToLibraryEntry(entry.id || entry.survey?.id, full))
-    } catch (err) {
-      console.error('Failed to load survey for preview', err)
-    }
-  }
+  // Navigation only — the route owner loads the full survey for the target view.
+  const handleOpenSurvey    = (entry) => onOpenSurvey(entry.id || entry.survey?.id)
+  const handlePreviewSurvey = (entry) => onPreviewSurvey(entry.id || entry.survey?.id)
 
   const handleDuplicate = async (id) => {
     if (!useApi) {

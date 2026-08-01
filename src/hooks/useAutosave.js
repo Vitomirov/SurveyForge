@@ -88,9 +88,14 @@ export function useAutosave({
       return
     }
 
+    // The API creates the survey on its first PATCH, which needs the whole document.
+    const body = revisionRef.current == null
+      ? { survey: payload.survey, items: payload.items }
+      : patch
+
     setSaveStatus('saving')
     saveChainRef.current = saveChainRef.current
-      .then(() => saveToApi(payload.survey.id, patch, revisionRef))
+      .then(() => saveToApi(payload.survey.id, body, revisionRef))
       .then(() => {
         lastSavedRef.current = snapshotPayload(payload.survey, payload.items)
         setSaveStatus('saved')

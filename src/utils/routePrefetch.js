@@ -1,4 +1,5 @@
 import { getSession } from '@/utils/authStore'
+import { parseTakeHash } from '@/utils/appRoute'
 
 const started = new Set()
 
@@ -8,11 +9,6 @@ export function prefetchModule(importFn) {
   if (started.has(key)) return
   started.add(key)
   importFn()
-}
-
-export function parseTakeHash() {
-  const m = (window.location.hash || '').match(/^#\/take\/([^/]+)$/)
-  return m ? m[1] : null
 }
 
 /** Prefetch the route chunk(s) most likely needed next. */
