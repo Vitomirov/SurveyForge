@@ -1,14 +1,18 @@
 # SurveyForge — full stack (Postgres + API + web UI).
 #
-# Quick start:
-#   docker compose up --build -d
+# Partner / fast start (pull pre-built images from Docker Hub):
+#   docker compose pull
+#   docker compose up -d
 #   open http://localhost:8080
+#
+# Developer (rebuild locally):
+#   docker compose up --build -d
+#
+# Publish images to Docker Hub (after `docker login`):
+#   ./scripts/publish-docker.sh
 #
 # Database only (local npm dev with `npm run dev:all`):
 #   docker compose up postgres -d
-#
-# If `docker compose ps` is empty after `up -d`, check Docker context:
-#   docker context ls && docker context use default
 
 services:
   postgres:
@@ -29,6 +33,7 @@ services:
       retries: 5
 
   api:
+    image: ${DOCKERHUB_USER:-vitomirov}/surveyforge-api:${IMAGE_TAG:-latest}
     build:
       context: .
       dockerfile: server/Dockerfile
@@ -45,6 +50,7 @@ services:
       - '3003'
 
   web:
+    image: ${DOCKERHUB_USER:-vitomirov}/surveyforge-web:${IMAGE_TAG:-latest}
     build:
       context: .
       dockerfile: Dockerfile
