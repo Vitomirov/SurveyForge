@@ -1,3 +1,19 @@
+import { normalizeSurveyPlatformIds } from '../lib/platformIds.js'
+
+async function loadPlatformLists(prisma, organizationId) {
+  const [clients, topics] = await Promise.all([
+    prisma.client.findMany({
+      where: { organizationId },
+      select: { id: true, name: true },
+    }),
+    prisma.topic.findMany({
+      where: { organizationId },
+      select: { id: true, name: true },
+    }),
+  ])
+  return { clients, topics }
+}
+
 export async function registerSurveyRoutes(app) {
   app.get('/api/surveys/:id', async (request, reply) => {
     const row = await app.prisma.survey.findFirst({
@@ -55,8 +71,14 @@ export async function registerSurveyRoutes(app) {
         }
       }
 
+      const { clients, topics } = await loadPlatformLists(app.prisma, request.organizationId)
+
       const surveyData = survey !== undefined
-        ? { ...survey, id, updatedAt: new Date().toISOString() }
+        ? normalizeSurveyPlatformIds(
+          { ...survey, id, updatedAt: new Date().toISOString() },
+          clients,
+          topics,
+        )
         : undefined
 
       const updated = await app.prisma.survey.update({
@@ -79,7 +101,13 @@ export async function registerSurveyRoutes(app) {
       return reply.code(400).send({ error: 'New surveys require survey object and items array' })
     }
 
-    const surveyData = { ...survey, id, updatedAt: new Date().toISOString() }
+    const { clients, topics } = await loadPlatformLists(app.prisma, request.organizationId)
+
+    const surveyData = normalizeSurveyPlatformIds(
+      { ...survey, id, updatedAt: new Date().toISOString() },
+      clients,
+      topics,
+    )
 
     const created = await app.prisma.survey.create({
       data: {

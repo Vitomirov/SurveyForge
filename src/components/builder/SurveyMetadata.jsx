@@ -4,6 +4,8 @@ import {
   SURVEY_TYPES, SURVEY_STATUSES,
   loadClients, loadTopics,
 } from '@/utils/platformStore'
+import { fetchClients, fetchTopics } from '@/api/platform'
+import { useApi } from '@/config/api'
 import { isSurveyCodeTaken } from '@/utils/surveyLibrary'
 
 const CODE_RE = /^[A-Z0-9_-]{1,20}$/i
@@ -13,10 +15,23 @@ export function SurveyMetadata({ survey, dispatch }) {
   const [topics,  setTopics]  = useState(loadTopics)
   const [codeError, setCodeError] = useState('')
 
-  // Reload platform lists when the panel opens
+  // Reload platform lists when the panel opens (API lists when backend is enabled)
   useEffect(() => {
-    setClients(loadClients())
-    setTopics(loadTopics())
+    if (!useApi) {
+      setClients(loadClients())
+      setTopics(loadTopics())
+      return
+    }
+    let cancelled = false
+    Promise.all([fetchClients(), fetchTopics()])
+      .then(([c, t]) => {
+        if (!cancelled) {
+          setClients(c)
+          setTopics(t)
+        }
+      })
+      .catch(err => console.error('Failed to load platform lists', err))
+    return () => { cancelled = true }
   }, [])
 
   const set = (field, value) =>

@@ -45,6 +45,8 @@ export function metaToLibraryEntry(meta) {
       surveyCode:   meta.surveyCode,
       clientId:     meta.clientId,
       topicId:      meta.topicId,
+      clientName:   meta.clientName,
+      topicName:    meta.topicName,
       surveyType:   meta.surveyType,
     },
     items: [],

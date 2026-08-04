@@ -1,5 +1,11 @@
-function surveyMeta(row, questionCount = 0) {
+import { resolveClientRecord, resolveTopicRecord } from '../lib/platformIds.js'
+
+function surveyMeta(row, questionCount = 0, { clients = [], topics = [] } = {}) {
   const survey = row.survey
+  const clientId = survey?.clientId ?? ''
+  const topicId = survey?.topicId ?? ''
+  const client = resolveClientRecord(clientId, clients)
+  const topic = resolveTopicRecord(topicId, topics)
   return {
     id:           row.id,
     title:        survey?.title ?? 'Untitled Survey',
@@ -7,8 +13,10 @@ function surveyMeta(row, questionCount = 0) {
     updatedAt:    row.updatedAt.toISOString(),
     internalName: survey?.internalName ?? '',
     surveyCode:   survey?.surveyCode ?? '',
-    clientId:     survey?.clientId ?? '',
-    topicId:      survey?.topicId ?? '',
+    clientId:     client?.id ?? clientId,
+    topicId:      topic?.id ?? topicId,
+    clientName:   client?.name ?? '',
+    topicName:    topic?.name ?? '',
     surveyType:   survey?.surveyType ?? '',
     questionCount,
   }
@@ -33,7 +41,7 @@ export async function registerDashboardRoutes(app) {
   app.get('/api/dashboard', async (request) => {
     const orgId = request.organizationId
 
-    const [rows, countRows] = await Promise.all([
+    const [rows, countRows, clients, topics] = await Promise.all([
       app.prisma.survey.findMany({
         where: { organizationId: orgId },
         orderBy: { updatedAt: 'desc' },
@@ -49,6 +57,14 @@ export async function registerDashboardRoutes(app) {
         FROM surveys s
         WHERE s.organization_id = ${orgId}
       `,
+      app.prisma.client.findMany({
+        where: { organizationId: orgId },
+        select: { id: true, name: true },
+      }),
+      app.prisma.topic.findMany({
+        where: { organizationId: orgId },
+        select: { id: true, name: true },
+      }),
     ])
 
     const questionCountById = Object.fromEntries(
@@ -69,7 +85,7 @@ export async function registerDashboardRoutes(app) {
 
     return {
       surveys: rows.map(row => ({
-        ...surveyMeta(row, questionCountById[row.id] ?? 0),
+        ...surveyMeta(row, questionCountById[row.id] ?? 0, { clients, topics }),
         stats: statsMap[row.id] || emptyStats(),
       })),
     }
