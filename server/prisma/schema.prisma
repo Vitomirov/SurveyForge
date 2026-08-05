@@ -38,6 +38,7 @@ model User {
   updatedAt      DateTime @updatedAt @map("user_updated_at")
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  surveys      Survey[]     @relation("SurveyCreator")
 
   @@unique([organizationId, email])
   @@map("users")
@@ -46,6 +47,7 @@ model User {
 model Survey {
   id             String   @id
   organizationId String   @map("organization_id")
+  createdById    String?  @map("survey_created_by_id")
   tenantId       String?  @map("tenant_id")
   survey         Json     @map("survey_data")
   items          Json     @default("[]") @map("survey_items")
@@ -54,11 +56,13 @@ model Survey {
   updatedAt      DateTime @updatedAt @map("survey_updated_at")
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy    User?        @relation("SurveyCreator", fields: [createdById], references: [id], onDelete: SetNull)
   responses    Response[]
   dncEntries   DncEntry[]
 
   @@index([organizationId])
   @@index([organizationId, updatedAt(sort: Desc)])
+  @@index([organizationId, createdById])
   @@map("surveys")
 }
 

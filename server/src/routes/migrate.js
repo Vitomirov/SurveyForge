@@ -1,4 +1,6 @@
 /** Dev-only: import localStorage library snapshots into Postgres. */
+import { surveyScope } from '../lib/authz.js'
+
 export async function registerMigrateRoutes(app, { isDev }) {
   if (!isDev) return
 
@@ -10,6 +12,7 @@ export async function registerMigrateRoutes(app, { isDev }) {
 
     let imported = 0
     let skipped = 0
+    const scope = surveyScope(request)
 
     for (const entry of surveys) {
       const id = entry?.id || entry?.survey?.id
@@ -22,19 +25,36 @@ export async function registerMigrateRoutes(app, { isDev }) {
       }
       const items = Array.isArray(entry.items) ? entry.items : []
 
-      await app.prisma.survey.upsert({
-        where: { id },
-        create: {
+      const accessible = await app.prisma.survey.findFirst({
+        where: { id, ...scope },
+      })
+
+      if (accessible) {
+        await app.prisma.survey.update({
+          where: { id },
+          data: {
+            survey: surveyData,
+            items,
+            revision: { increment: 1 },
+          },
+        })
+        imported++
+        continue
+      }
+
+      const foreign = await app.prisma.survey.findFirst({
+        where: { id, organizationId: request.organizationId },
+      })
+      if (foreign) { skipped++; continue }
+
+      await app.prisma.survey.create({
+        data: {
           id,
           organizationId: request.organizationId,
+          createdById:    request.auth.userId,
           survey: surveyData,
           items,
           revision: 1,
-        },
-        update: {
-          survey: surveyData,
-          items,
-          revision: { increment: 1 },
         },
       })
       imported++

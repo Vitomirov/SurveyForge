@@ -1,4 +1,7 @@
 import { normalizeSurveyPlatformIds } from '../lib/platformIds.js'
+import { ownerFromSurvey, CREATOR_SELECT } from '../lib/surveyOwner.js'
+import { surveyScope } from '../lib/authz.js'
+import { findAccessibleSurvey } from '../lib/surveyAccess.js'
 
 async function loadPlatformLists(prisma, organizationId) {
   const [clients, topics] = await Promise.all([
@@ -17,7 +20,8 @@ async function loadPlatformLists(prisma, organizationId) {
 export async function registerSurveyRoutes(app) {
   app.get('/api/surveys/:id', async (request, reply) => {
     const row = await app.prisma.survey.findFirst({
-      where: { id: request.params.id, organizationId: request.organizationId },
+      where: { id: request.params.id, ...surveyScope(request) },
+      include: { createdBy: { select: CREATOR_SELECT } },
     })
     if (!row) return reply.code(404).send({ error: 'Survey not found' })
 
@@ -25,6 +29,7 @@ export async function registerSurveyRoutes(app) {
       survey:   row.survey,
       items:    row.items,
       revision: row.revision,
+      ...ownerFromSurvey(row),
     }
   })
 
@@ -46,7 +51,7 @@ export async function registerSurveyRoutes(app) {
     }
 
     const existing = await app.prisma.survey.findFirst({
-      where: { id, organizationId: request.organizationId },
+      where: { id, ...surveyScope(request) },
     })
 
     if (existing) {
@@ -97,6 +102,13 @@ export async function registerSurveyRoutes(app) {
       }
     }
 
+    const foreign = await app.prisma.survey.findFirst({
+      where: { id, organizationId: request.organizationId },
+    })
+    if (foreign) {
+      return reply.code(404).send({ error: 'Survey not found' })
+    }
+
     if (!survey || !Array.isArray(items)) {
       return reply.code(400).send({ error: 'New surveys require survey object and items array' })
     }
@@ -113,6 +125,7 @@ export async function registerSurveyRoutes(app) {
       data: {
         id,
         organizationId: request.organizationId,
+        createdById:    request.auth.userId,
         survey: surveyData,
         items,
         revision: 1,
@@ -127,10 +140,10 @@ export async function registerSurveyRoutes(app) {
   })
 
   app.delete('/api/surveys/:id', async (request, reply) => {
-    const existing = await app.prisma.survey.findFirst({
-      where: { id: request.params.id, organizationId: request.organizationId },
-    })
-    if (!existing) return reply.code(404).send({ error: 'Survey not found' })
+    const existing = await findAccessibleSurvey(
+      app.prisma, request, request.params.id, reply
+    )
+    if (!existing) return
 
     await app.prisma.survey.delete({ where: { id: request.params.id } })
     return { ok: true }

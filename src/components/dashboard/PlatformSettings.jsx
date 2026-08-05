@@ -11,6 +11,7 @@ import {
   fetchTopics, createTopic, updateTopicApi, deleteTopicApi,
   fetchUsers, createUser, updateUserApi, deleteUserApi,
 } from '@/api/platform'
+import { roleLabel } from '@/utils/permissions'
 
 // ─── Editable list (clients / topics) ─────────────────────────────────────
 function EditableList({ label, items, onAdd, onUpdate, onDelete, placeholder }) {
@@ -157,7 +158,7 @@ function UserManager({ users, setUsers }) {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-ink-700 truncate">{u.name}</p>
-              <p className="text-xs text-ink-400">@{u.username} · {u.role}</p>
+              <p className="text-xs text-ink-400">@{u.username} · {roleLabel(u.role)}</p>
             </div>
             <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
               <button onClick={() => startEdit(u)} className="p-1.5 text-ink-400 hover:text-ink-600 hover:bg-ink-100 rounded-lg"><Edit3 size={13} /></button>
@@ -200,7 +201,7 @@ function UserManager({ users, setUsers }) {
               <label className="text-xs text-ink-500 mb-1 block">Role</label>
               <select value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value }))} className="input-base py-1.5 text-sm">
                 <option value="admin">Admin</option>
-                <option value="editor">Editor</option>
+                <option value="editor">User</option>
               </select>
             </div>
           </div>

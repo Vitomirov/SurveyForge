@@ -1,13 +1,4 @@
-async function assertSurveyInOrg(prisma, surveyId, organizationId, reply) {
-  const survey = await prisma.survey.findFirst({
-    where: { id: surveyId, organizationId },
-  })
-  if (!survey) {
-    reply.code(404).send({ error: 'Survey not found' })
-    return null
-  }
-  return survey
-}
+import { findAccessibleSurvey } from '../lib/surveyAccess.js'
 
 function normalizeEmail(email) {
   return String(email || '').toLowerCase().trim()
@@ -15,8 +6,8 @@ function normalizeEmail(email) {
 
 export async function registerDncRoutes(app) {
   app.get('/api/surveys/:id/dnc', async (request, reply) => {
-    const survey = await assertSurveyInOrg(
-      app.prisma, request.params.id, request.organizationId, reply
+    const survey = await findAccessibleSurvey(
+      app.prisma, request, request.params.id, reply
     )
     if (!survey) return
 
@@ -28,8 +19,8 @@ export async function registerDncRoutes(app) {
   })
 
   app.post('/api/surveys/:id/dnc', async (request, reply) => {
-    const survey = await assertSurveyInOrg(
-      app.prisma, request.params.id, request.organizationId, reply
+    const survey = await findAccessibleSurvey(
+      app.prisma, request, request.params.id, reply
     )
     if (!survey) return
 
@@ -54,8 +45,8 @@ export async function registerDncRoutes(app) {
   })
 
   app.delete('/api/surveys/:id/dnc', async (request, reply) => {
-    const survey = await assertSurveyInOrg(
-      app.prisma, request.params.id, request.organizationId, reply
+    const survey = await findAccessibleSurvey(
+      app.prisma, request, request.params.id, reply
     )
     if (!survey) return
 
@@ -64,8 +55,8 @@ export async function registerDncRoutes(app) {
   })
 
   app.delete('/api/surveys/:id/dnc/:email', async (request, reply) => {
-    const survey = await assertSurveyInOrg(
-      app.prisma, request.params.id, request.organizationId, reply
+    const survey = await findAccessibleSurvey(
+      app.prisma, request, request.params.id, reply
     )
     if (!survey) return
 

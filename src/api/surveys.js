@@ -53,6 +53,8 @@ export function metaToLibraryEntry(meta) {
     revision: null,
     questionCount: meta.questionCount ?? 0,
     stats: meta.stats ?? { total: 0, complete: 0, terminated: 0, partial: 0 },
+    ownerId:   meta.ownerId ?? null,
+    ownerName: meta.ownerName ?? '',
   }
 }
 
@@ -63,5 +65,7 @@ export function payloadToLibraryEntry(id, payload) {
     survey: payload.survey,
     items:  payload.items || [],
     revision: payload.revision,
+    ownerId:   payload.ownerId ?? null,
+    ownerName: payload.ownerName ?? '',
   }
 }

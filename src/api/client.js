@@ -1,5 +1,7 @@
 import { useApi } from '@/config/api'
 import { getAuthToken, clearAuthToken } from '@/api/token'
+import { notifyAuthInvalidated } from '@/api/authEvents'
+import { AUTH_ERRORS } from '@/constants/authCopy'
 
 export class ApiError extends Error {
   constructor(message, { status, body } = {}) {
@@ -35,10 +37,15 @@ export async function apiFetch(path, options = {}) {
   if (res.status === 401 && useApi) {
     clearAuthToken()
     try { sessionStorage.removeItem('sf_session') } catch { /* noop */ }
+    notifyAuthInvalidated(body?.code || 'UNAUTHORIZED')
   }
 
   if (!res.ok) {
-    throw new ApiError(body?.error || res.statusText || 'Request failed', {
+    const message = body?.error || res.statusText || 'Request failed'
+    if (res.status === 403 && body?.code === 'FORBIDDEN') {
+      throw new ApiError(message || AUTH_ERRORS.forbidden, { status: res.status, body })
+    }
+    throw new ApiError(message, {
       status: res.status,
       body,
     })

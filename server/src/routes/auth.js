@@ -107,4 +107,23 @@ export async function registerAuthRoutes(app) {
     const session = buildSession(user, user.organization?.name)
     return { token: signToken(app, session), session }
   })
+
+  /** Current caller — role and profile always read from the database. */
+  app.get('/api/auth/me', async (request) => {
+    const { user, organizationId, role, userId } = request.auth
+    const org = await app.prisma.organization.findUnique({
+      where: { id: organizationId },
+      select: { name: true },
+    })
+    return {
+      session: {
+        userId,
+        organizationId,
+        organizationName: org?.name ?? null,
+        username:         user.username || user.email,
+        name:             user.name || user.username || user.email,
+        role,
+      },
+    }
+  })
 }

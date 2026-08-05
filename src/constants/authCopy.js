@@ -24,4 +24,7 @@ export const AUTH_ERRORS = {
   signupFailed:        'Could not create the organization.',
   usernameTakenSignup: 'That username is already taken.',
   usernameTakenAdmin:  'Username already exists.',
+  sessionExpired:      'Session expired. Please sign in again.',
+  sessionInvalid:      'Session is no longer valid. Please sign in again.',
+  forbidden:           'You don\'t have permission to do that.',
 }

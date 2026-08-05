@@ -1,3 +1,5 @@
+import { findAccessibleSurvey } from '../lib/surveyAccess.js'
+
 const DEFAULT_LIMIT = 50
 const MAX_LIMIT = 200
 
@@ -36,17 +38,6 @@ function entryToDbFields(entry, surveyId, organizationId) {
   }
 }
 
-async function assertSurveyInOrg(prisma, surveyId, organizationId, reply) {
-  const survey = await prisma.survey.findFirst({
-    where: { id: surveyId, organizationId },
-  })
-  if (!survey) {
-    reply.code(404).send({ error: 'Survey not found' })
-    return null
-  }
-  return survey
-}
-
 export async function upsertResponse(app, { surveyId, organizationId, entry }) {
   const data = entryToDbFields(entry, surveyId, organizationId)
   if (!data) return null
@@ -64,8 +55,8 @@ export async function upsertResponse(app, { surveyId, organizationId, entry }) {
 
 export async function registerResponseRoutes(app) {
   app.get('/api/surveys/:id/responses/stats', async (request, reply) => {
-    const survey = await assertSurveyInOrg(
-      app.prisma, request.params.id, request.organizationId, reply
+    const survey = await findAccessibleSurvey(
+      app.prisma, request, request.params.id, reply
     )
     if (!survey) return
 
@@ -86,8 +77,8 @@ export async function registerResponseRoutes(app) {
   })
 
   app.get('/api/surveys/:id/responses', async (request, reply) => {
-    const survey = await assertSurveyInOrg(
-      app.prisma, request.params.id, request.organizationId, reply
+    const survey = await findAccessibleSurvey(
+      app.prisma, request, request.params.id, reply
     )
     if (!survey) return
 
@@ -116,8 +107,8 @@ export async function registerResponseRoutes(app) {
   })
 
   app.post('/api/surveys/:id/responses', async (request, reply) => {
-    const survey = await assertSurveyInOrg(
-      app.prisma, request.params.id, request.organizationId, reply
+    const survey = await findAccessibleSurvey(
+      app.prisma, request, request.params.id, reply
     )
     if (!survey) return
 
@@ -136,8 +127,8 @@ export async function registerResponseRoutes(app) {
   })
 
   app.delete('/api/surveys/:id/responses/:responseId', async (request, reply) => {
-    const survey = await assertSurveyInOrg(
-      app.prisma, request.params.id, request.organizationId, reply
+    const survey = await findAccessibleSurvey(
+      app.prisma, request, request.params.id, reply
     )
     if (!survey) return
 
@@ -155,8 +146,8 @@ export async function registerResponseRoutes(app) {
   })
 
   app.delete('/api/surveys/:id/responses', async (request, reply) => {
-    const survey = await assertSurveyInOrg(
-      app.prisma, request.params.id, request.organizationId, reply
+    const survey = await findAccessibleSurvey(
+      app.prisma, request, request.params.id, reply
     )
     if (!survey) return
 

@@ -1,6 +1,9 @@
 import { hashPassword } from '../lib/password.js'
+import { requireRole } from '../lib/authz.js'
+import { ROLES, isAdminRole } from '../lib/roles.js'
 
 const newId = (prefix) => `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`
+const adminOnly = requireRole(ROLES.ADMIN)
 
 function userResponse(user) {
   return {
@@ -12,8 +15,14 @@ function userResponse(user) {
   }
 }
 
+async function countAdmins(prisma, organizationId) {
+  return prisma.user.count({
+    where: { organizationId, role: ROLES.ADMIN },
+  })
+}
+
 export async function registerPlatformRoutes(app) {
-  // ─── Clients ───────────────────────────────────────────────────────────
+  // ─── Clients (read: all authenticated; write: admin) ───────────────────
   app.get('/api/platform/clients', async (request) => {
     const rows = await app.prisma.client.findMany({
       where: { organizationId: request.organizationId },
@@ -22,7 +31,7 @@ export async function registerPlatformRoutes(app) {
     return { clients: rows.map(r => ({ id: r.id, name: r.name })) }
   })
 
-  app.post('/api/platform/clients', async (request, reply) => {
+  app.post('/api/platform/clients', { preHandler: adminOnly }, async (request, reply) => {
     const { name } = request.body ?? {}
     if (!name?.trim()) return reply.code(400).send({ error: 'Name is required' })
 
@@ -36,7 +45,7 @@ export async function registerPlatformRoutes(app) {
     return { client: { id: row.id, name: row.name } }
   })
 
-  app.patch('/api/platform/clients/:id', async (request, reply) => {
+  app.patch('/api/platform/clients/:id', { preHandler: adminOnly }, async (request, reply) => {
     const { name } = request.body ?? {}
     if (!name?.trim()) return reply.code(400).send({ error: 'Name is required' })
 
@@ -52,7 +61,7 @@ export async function registerPlatformRoutes(app) {
     return { client: { id: row.id, name: row.name } }
   })
 
-  app.delete('/api/platform/clients/:id', async (request, reply) => {
+  app.delete('/api/platform/clients/:id', { preHandler: adminOnly }, async (request, reply) => {
     const existing = await app.prisma.client.findFirst({
       where: { id: request.params.id, organizationId: request.organizationId },
     })
@@ -62,7 +71,7 @@ export async function registerPlatformRoutes(app) {
     return { ok: true }
   })
 
-  // ─── Topics ────────────────────────────────────────────────────────────
+  // ─── Topics (read: all authenticated; write: admin) ──────────────────
   app.get('/api/platform/topics', async (request) => {
     const rows = await app.prisma.topic.findMany({
       where: { organizationId: request.organizationId },
@@ -71,7 +80,7 @@ export async function registerPlatformRoutes(app) {
     return { topics: rows.map(r => ({ id: r.id, name: r.name })) }
   })
 
-  app.post('/api/platform/topics', async (request, reply) => {
+  app.post('/api/platform/topics', { preHandler: adminOnly }, async (request, reply) => {
     const { name } = request.body ?? {}
     if (!name?.trim()) return reply.code(400).send({ error: 'Name is required' })
 
@@ -85,7 +94,7 @@ export async function registerPlatformRoutes(app) {
     return { topic: { id: row.id, name: row.name } }
   })
 
-  app.patch('/api/platform/topics/:id', async (request, reply) => {
+  app.patch('/api/platform/topics/:id', { preHandler: adminOnly }, async (request, reply) => {
     const { name } = request.body ?? {}
     if (!name?.trim()) return reply.code(400).send({ error: 'Name is required' })
 
@@ -101,7 +110,7 @@ export async function registerPlatformRoutes(app) {
     return { topic: { id: row.id, name: row.name } }
   })
 
-  app.delete('/api/platform/topics/:id', async (request, reply) => {
+  app.delete('/api/platform/topics/:id', { preHandler: adminOnly }, async (request, reply) => {
     const existing = await app.prisma.topic.findFirst({
       where: { id: request.params.id, organizationId: request.organizationId },
     })
@@ -111,8 +120,8 @@ export async function registerPlatformRoutes(app) {
     return { ok: true }
   })
 
-  // ─── Users ─────────────────────────────────────────────────────────────
-  app.get('/api/platform/users', async (request) => {
+  // ─── Users (admin only) ────────────────────────────────────────────────
+  app.get('/api/platform/users', { preHandler: adminOnly }, async (request) => {
     const rows = await app.prisma.user.findMany({
       where: { organizationId: request.organizationId },
       orderBy: { name: 'asc' },
@@ -120,8 +129,8 @@ export async function registerPlatformRoutes(app) {
     return { users: rows.map(userResponse) }
   })
 
-  app.post('/api/platform/users', async (request, reply) => {
-    const { username, password, name, role = 'editor' } = request.body ?? {}
+  app.post('/api/platform/users', { preHandler: adminOnly }, async (request, reply) => {
+    const { username, password, name, role = ROLES.EDITOR } = request.body ?? {}
     if (!username?.trim() || !name?.trim() || !password) {
       return reply.code(400).send({ error: 'Username, name, and password are required.' })
     }
@@ -147,12 +156,22 @@ export async function registerPlatformRoutes(app) {
     return { user: userResponse(row) }
   })
 
-  app.patch('/api/platform/users/:id', async (request, reply) => {
+  app.patch('/api/platform/users/:id', { preHandler: adminOnly }, async (request, reply) => {
     const { name, password, role } = request.body ?? {}
     const existing = await app.prisma.user.findFirst({
       where: { id: request.params.id, organizationId: request.organizationId },
     })
     if (!existing) return reply.code(404).send({ error: 'User not found' })
+
+    if (role && role !== existing.role && isAdminRole(existing.role)) {
+      const admins = await countAdmins(app.prisma, request.organizationId)
+      if (admins <= 1) {
+        return reply.code(400).send({
+          error: 'Cannot demote the last admin.',
+          code: 'LAST_ADMIN',
+        })
+      }
+    }
 
     const data = {}
     if (name?.trim()) data.name = name.trim()
@@ -165,7 +184,7 @@ export async function registerPlatformRoutes(app) {
     return { user: userResponse(row) }
   })
 
-  app.delete('/api/platform/users/:id', async (request, reply) => {
+  app.delete('/api/platform/users/:id', { preHandler: adminOnly }, async (request, reply) => {
     const count = await app.prisma.user.count({
       where: { organizationId: request.organizationId },
     })
@@ -177,6 +196,26 @@ export async function registerPlatformRoutes(app) {
       where: { id: request.params.id, organizationId: request.organizationId },
     })
     if (!existing) return reply.code(404).send({ error: 'User not found' })
+
+    if (isAdminRole(existing.role)) {
+      const admins = await countAdmins(app.prisma, request.organizationId)
+      if (admins <= 1) {
+        return reply.code(400).send({
+          error: 'Cannot remove the last admin.',
+          code: 'LAST_ADMIN',
+        })
+      }
+    }
+
+    const ownedSurveys = await app.prisma.survey.count({
+      where: { organizationId: request.organizationId, createdById: existing.id },
+    })
+    if (ownedSurveys > 0) {
+      return reply.code(400).send({
+        error: 'User owns surveys. Reassign or delete their surveys first.',
+        code: 'USER_OWNS_SURVEYS',
+      })
+    }
 
     await app.prisma.user.delete({ where: { id: existing.id } })
     return { ok: true }

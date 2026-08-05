@@ -11,7 +11,7 @@ import {
 } from '@/utils/surveyLibrary'
 import { useApi } from '@/config/api'
 import { APP_NAME } from '@/constants/branding'
-import { AUTH_COPY } from '@/constants/authCopy'
+import { AUTH_COPY, AUTH_ERRORS } from '@/constants/authCopy'
 import { DEFAULT_SURVEY_TITLE } from '@/constants/surveyDefaults'
 import {
   getSurvey, deleteSurveyApi, migrateLocalLibrary,
@@ -25,8 +25,11 @@ import {
 } from '@/utils/platformStore'
 import { countResponsesForSurveys } from '@/utils/responseStore'
 import { resolveClientName, resolveTopicName } from '@/utils/platformResolve'
-import { InlineLoader } from '@/components/ui'
+import { InlineLoader, useToast } from '@/components/ui'
 import { prefetchBuilder, prefetchPreview } from '@/utils/routePrefetch'
+import {
+  canManagePlatform, canSeeAllSurveys, filterSurveysForSession, roleLabel,
+} from '@/utils/permissions'
 
 const PlatformSettings = lazy(() => import('./PlatformSettings.jsx'))
 
@@ -151,6 +154,8 @@ function StatsBar({ surveys }) {
 
 // ─── Main Dashboard ────────────────────────────────────────────────────────
 export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session, onLogout }) {
+  const { toast } = useToast()
+  const isAdmin = canSeeAllSurveys(session)
   const [tick, setTick]             = useState(0)
   const [apiSurveys, setApiSurveys] = useState([])
   const [apiClients, setApiClients] = useState([])
@@ -161,6 +166,7 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
   const [filterClient, setFilterClient] = useState('')
   const [filterTopic,  setFilterTopic]  = useState('')
   const [filterType,   setFilterType]   = useState('')
+  const [filterOwner,  setFilterOwner]  = useState('')
   const [sort, setSort]             = useState({ field: 'updatedAt', dir: 'desc' })
   const [showSettings, setShowSettings] = useState(false)
   const [deleteId, setDeleteId]     = useState(null)
@@ -188,19 +194,22 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
       setApiTopics(topics)
     } catch (err) {
       console.error('Failed to load dashboard', err)
+      if (err.status === 403) {
+        toast({ message: AUTH_ERRORS.forbidden, type: 'error' })
+      }
     } finally {
       setApiLoading(false)
     }
-  }, [])
+  }, [toast])
 
   useEffect(() => {
     if (useApi) refresh({ allowMigrate: true })
   }, [refresh])
 
-  const surveys = useMemo(
-    () => (useApi ? apiSurveys : loadLibrary()),
-    [useApi, apiSurveys, tick]
-  )
+  const surveys = useMemo(() => {
+    const raw = useApi ? apiSurveys : loadLibrary()
+    return useApi ? raw : filterSurveysForSession(raw, session)
+  }, [useApi, apiSurveys, tick, session])
   const clients = useMemo(
     () => (useApi ? apiClients : loadClients()),
     [useApi, apiClients, tick]
@@ -228,6 +237,15 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
     [topics, topicMap]
   )
   const typeMap   = Object.fromEntries(SURVEY_TYPES.map(t => [t.id, t.label]))
+
+  const ownerOptions = useMemo(() => {
+    if (!isAdmin) return []
+    const map = new Map()
+    for (const entry of surveys) {
+      if (entry.ownerId) map.set(entry.ownerId, entry.ownerName || 'Unknown')
+    }
+    return [...map.entries()].sort((a, b) => a[1].localeCompare(b[1]))
+  }, [surveys, isAdmin])
 
   // Response counts per survey
   const responseCounts = useMemo(() => {
@@ -259,6 +277,7 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
     if (filterClient) list = list.filter(s => s.survey?.clientId === filterClient)
     if (filterTopic)  list = list.filter(s => s.survey?.topicId  === filterTopic)
     if (filterType)   list = list.filter(s => s.survey?.surveyType === filterType)
+    if (filterOwner)  list = list.filter(s => s.ownerId === filterOwner)
 
     list.sort((a, b) => {
       let av = '', bv = ''
@@ -267,6 +286,7 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
         case 'code':       av = a.survey?.surveyCode || ''; bv = b.survey?.surveyCode || ''; break
         case 'status':     av = a.survey?.status || ''; bv = b.survey?.status || ''; break
         case 'client':     av = displayClient(a.survey); bv = displayClient(b.survey); break
+        case 'owner':      av = a.ownerName || ''; bv = b.ownerName || ''; break
         case 'responses':  av = responseCounts[a.survey?.id]?.total || 0; bv = responseCounts[b.survey?.id]?.total || 0; break
         case 'updatedAt':  av = a.survey?.updatedAt || ''; bv = b.survey?.updatedAt || ''; break
         default: av = a.survey?.updatedAt || ''; bv = b.survey?.updatedAt || ''
@@ -277,12 +297,30 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
       return sort.dir === 'asc' ? cmp : -cmp
     })
     return list
-  }, [surveys, search, filterStatus, filterClient, filterTopic, filterType, sort, responseCounts, clientMap, displayClient])
+  }, [surveys, search, filterStatus, filterClient, filterTopic, filterType, filterOwner, sort, responseCounts, clientMap, displayClient])
 
   const toggleSort = (field) =>
     setSort(s => s.field === field ? { field, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { field, dir: 'asc' })
 
-  // Navigation only — the route owner loads the full survey for the target view.
+  const tableColumns = useMemo(() => {
+    const cols = [
+      { field: 'code',      label: 'Code',         w: 'w-28' },
+      { field: 'title',     label: 'Survey',       w: 'flex-1' },
+      { field: 'status',    label: 'Status',       w: 'w-24' },
+      { field: 'client',    label: 'Client',       w: 'w-24' },
+      { field: null,        label: 'Topic / Type', w: 'w-36' },
+    ]
+    if (isAdmin) cols.push({ field: 'owner', label: 'Created by', w: 'w-28' })
+    cols.push(
+      { field: 'responses', label: 'Responses',    w: 'w-28' },
+      { field: 'updatedAt', label: 'Modified',     w: 'w-28' },
+      { field: null,        label: '',              w: 'w-10' },
+    )
+    return cols
+  }, [isAdmin])
+
+  const activeFilters = [filterStatus, filterClient, filterTopic, filterType, filterOwner].filter(Boolean).length
+
   const handleOpenSurvey    = (entry) => onOpenSurvey(entry.id || entry.survey?.id)
   const handlePreviewSurvey = (entry) => onPreviewSurvey(entry.id || entry.survey?.id)
 
@@ -300,6 +338,7 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
       refresh()
     } catch (err) {
       console.error('Failed to duplicate survey', err)
+      if (err.status === 403) toast({ message: AUTH_ERRORS.forbidden, type: 'error' })
     }
   }
 
@@ -313,6 +352,7 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
         refresh()
       } catch (err) {
         console.error('Failed to delete survey', err)
+        if (err.status === 403) toast({ message: AUTH_ERRORS.forbidden, type: 'error' })
       }
       return
     }
@@ -320,8 +360,6 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
     setDeleteId(null)
     refresh()
   }
-
-  const activeFilters = [filterStatus, filterClient, filterTopic, filterType].filter(Boolean).length
 
   return (
     <div className="min-h-screen bg-surface flex flex-col">
@@ -343,15 +381,20 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
                 {session.organizationName && (
                   <> · <strong className="text-ink-600">{session.organizationName}</strong></>
                 )}
+                {session.role && (
+                  <> · <span className="text-ink-500">{roleLabel(session.role)}</span></>
+                )}
               </span>
             )}
-            <button
-              onClick={() => { setShowSettings(true); refresh() }}
-              className="btn-ghost px-2 sm:px-3"
-              title="Platform settings — manage clients, topics, users"
-            >
-              <Settings size={15} /> <span className="hidden sm:inline">Settings</span>
-            </button>
+            {canManagePlatform(session) && (
+              <button
+                onClick={() => { setShowSettings(true); refresh() }}
+                className="btn-ghost px-2 sm:px-3"
+                title="Platform settings — manage clients, topics, users"
+              >
+                <Settings size={15} /> <span className="hidden sm:inline">Settings</span>
+              </button>
+            )}
             {onLogout && (
               <button onClick={onLogout} className="btn-ghost text-ink-400 px-2 sm:px-3" title={AUTH_COPY.signOut}>
                 <LogOut size={15} />
@@ -396,6 +439,10 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
               options: topics.map(t => ({ value: t.id, label: t.name })) },
             { label: 'Type', value: filterType, setter: setFilterType,
               options: SURVEY_TYPES.map(t => ({ value: t.id, label: t.label })) },
+            ...(isAdmin ? [{
+              label: 'Owner', value: filterOwner, setter: setFilterOwner,
+              options: ownerOptions.map(([id, name]) => ({ value: id, label: name })),
+            }] : []),
           ].map(f => (
             <div key={f.label} className="flex items-center gap-1.5 w-[calc(50%-0.25rem)] sm:w-auto">
               <Filter size={12} className="text-ink-400 hidden sm:block" />
@@ -414,7 +461,13 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
 
           {activeFilters > 0 && (
             <button
-              onClick={() => { setFilterStatus(''); setFilterClient(''); setFilterTopic(''); setFilterType('') }}
+              onClick={() => {
+                setFilterStatus('')
+                setFilterClient('')
+                setFilterTopic('')
+                setFilterType('')
+                setFilterOwner('')
+              }}
               className="text-xs text-rose-500 hover:text-rose-700 px-2 py-1 hover:bg-rose-50 rounded-lg transition-all"
             >
               Clear {activeFilters} filter{activeFilters !== 1 ? 's' : ''}
@@ -497,6 +550,9 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
                               {typeMap[sv.surveyType]}
                             </span>
                           )}
+                          {isAdmin && entry.ownerName && (
+                            <span className="text-ink-400">by {entry.ownerName}</span>
+                          )}
                         </div>
                         <div className="flex items-center justify-between mt-3 pt-3 border-t border-ink-100">
                           <div className="flex items-center gap-3 text-xs text-ink-500">
@@ -532,16 +588,7 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
             <table className="w-full text-sm min-w-[720px]">
               <thead>
                 <tr className="border-b border-ink-100 bg-ink-50/60">
-                  {[
-                    { field: 'code',      label: 'Code',        w: 'w-28' },
-                    { field: 'title',     label: 'Survey',      w: 'flex-1' },
-                    { field: 'status',    label: 'Status',      w: 'w-24' },
-                    { field: 'client',    label: 'Client',      w: 'w-24' },
-                    { field: null,        label: 'Topic / Type', w: 'w-36' },
-                    { field: 'responses', label: 'Responses',   w: 'w-28' },
-                    { field: 'updatedAt', label: 'Modified',    w: 'w-28' },
-                    { field: null,        label: '',             w: 'w-10' },
-                  ].map((col, i) => (
+                  {tableColumns.map((col, i) => (
                     <th
                       key={i}
                       onClick={col.field ? () => toggleSort(col.field) : undefined}
@@ -558,7 +605,7 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
               <tbody>
                 {displayed.length === 0 && (
                   <tr>
-                    <td colSpan={8} className="text-center py-8 text-sm text-ink-400">
+                    <td colSpan={tableColumns.length} className="text-center py-8 text-sm text-ink-400">
                       No surveys match the current filters.
                     </td>
                   </tr>
@@ -622,6 +669,12 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
                           )}
                         </div>
                       </td>
+
+                      {isAdmin && (
+                        <td className="px-4 py-3 text-xs text-ink-600">
+                          {entry.ownerName || <span className="text-ink-300">—</span>}
+                        </td>
+                      )}
 
                       {/* Responses */}
                       <td className="px-4 py-3">
@@ -687,7 +740,7 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
       )}
 
       {/* Platform settings modal */}
-      {showSettings && (
+      {showSettings && canManagePlatform(session) && (
         <Suspense fallback={
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center">
             <InlineLoader label="Loading settings…" />

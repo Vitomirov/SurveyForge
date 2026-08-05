@@ -25,7 +25,7 @@ export async function buildApp() {
   })
 
   await registerPrisma(app)
-  await registerAuth(app, { jwtSecret: config.jwtSecret })
+  await registerAuth(app, { jwtSecret: config.jwtSecret, jwtExpiresIn: config.jwtExpiresIn })
 
   app.get('/health', async () => ({
     ok: true,

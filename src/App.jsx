@@ -1,9 +1,11 @@
 import { useState, useEffect, lazy, Suspense } from 'react'
 import { ErrorBoundary } from '@/components/shared/ErrorBoundary'
-import { PageLoader } from '@/components/ui'
+import { PageLoader, useToast } from '@/components/ui'
 import { INITIAL_STATE } from '@/store/initialState'
 import { newSurveyId } from '@/store/id'
 import { getSession, logout } from '@/utils/authStore'
+import { onAuthInvalidated } from '@/api/authEvents'
+import { AUTH_ERRORS } from '@/constants/authCopy'
 import { useApi } from '@/config/api'
 import { prefetchForRoute } from '@/utils/routePrefetch'
 import { useRoute, nav } from '@/utils/appRoute'
@@ -80,9 +82,22 @@ function builderState(id, entry) {
 
 export default function App() {
   const [session, setSession] = useState(getSession)
+  const { toast }             = useToast()
   const { view, id }          = useRoute()
   const isPublic              = view === 'take'
   const { status, entry }     = useSurveyEntry(view, isPublic || session ? id : null)
+
+  useEffect(() => {
+    return onAuthInvalidated((code) => {
+      logout()
+      setSession(null)
+      nav('dashboard')
+      const message = code === 'TOKEN_EXPIRED'
+        ? AUTH_ERRORS.sessionExpired
+        : AUTH_ERRORS.sessionInvalid
+      toast({ message, type: 'error', duration: 4500 })
+    })
+  }, [toast])
 
   useEffect(() => {
     prefetchForRoute({ session, publicSurveyId: isPublic ? id : null })
