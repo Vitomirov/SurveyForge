@@ -57,19 +57,31 @@ export async function countVendorNotifications(prisma) {
     include: { organization: { select: { id: true, name: true } } },
   })
 
+  if (threads.length === 0) {
+    return { unreadMessages: 0, organizations: [] }
+  }
+
+  // Single grouped count across all threads: each thread's unread cutoff is its
+  // own `vendorLastReadAt`, expressed as one branch of the OR (2 queries total,
+  // independent of org count).
+  const grouped = await prisma.supportMessage.groupBy({
+    by: ['threadId'],
+    where: {
+      author: { role: ROLES.ADMIN },
+      OR: threads.map(t => ({
+        threadId: t.id,
+        ...(t.vendorLastReadAt ? { createdAt: { gt: t.vendorLastReadAt } } : {}),
+      })),
+    },
+    _count: { _all: true },
+  })
+
+  const countByThread = new Map(grouped.map(g => [g.threadId, g._count._all]))
+
   let unreadMessages = 0
   const organizations = []
-
   for (const thread of threads) {
-    const count = await prisma.supportMessage.count({
-      where: {
-        threadId: thread.id,
-        author: { role: ROLES.ADMIN },
-        ...(thread.vendorLastReadAt
-          ? { createdAt: { gt: thread.vendorLastReadAt } }
-          : {}),
-      },
-    })
+    const count = countByThread.get(thread.id) ?? 0
     if (count > 0) {
       unreadMessages += count
       organizations.push({

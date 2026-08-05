@@ -132,16 +132,17 @@ export async function registerVendorRoutes(app) {
   })
 
   app.get('/api/vendor/organizations', { preHandler: requirePlatformOwner }, async () => {
-    const orgs = await app.prisma.organization.findMany({
-      orderBy: { name: 'asc' },
-      include: {
-        subscription: true,
-        supportThread: true,
-        _count: { select: { users: true, surveys: true } },
-      },
-    })
+    const [orgs, notifications] = await Promise.all([
+      app.prisma.organization.findMany({
+        orderBy: { name: 'asc' },
+        include: {
+          subscription: true,
+          _count: { select: { users: true, surveys: true } },
+        },
+      }),
+      countVendorNotifications(app.prisma),
+    ])
 
-    const notifications = await countVendorNotifications(app.prisma)
     const unreadByOrg = new Map(
       notifications.organizations.map(o => [o.organizationId, o.unreadMessages])
     )

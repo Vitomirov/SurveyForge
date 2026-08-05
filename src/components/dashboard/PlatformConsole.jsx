@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import {
-  X, Building2, ChevronLeft, MessageSquare, Send, Plus,
+  Building2, ChevronLeft, MessageSquare, Send, Plus,
 } from 'lucide-react'
 import { useApi } from '@/config/api'
 import { AUTH_BILLING, AUTH_ERRORS } from '@/constants/authCopy'
@@ -13,7 +13,8 @@ import {
   postVendorSupportMessage,
   markVendorThreadSeen,
 } from '@/api/vendor'
-import { InlineLoader, useToast } from '@/components/ui'
+import { InlineLoader, Modal, StatusPill, useToast } from '@/components/ui'
+import { formatMoney, formatDate } from '@/utils/format'
 
 const PLANS = [
   { id: 'starter', name: 'Starter' },
@@ -22,15 +23,6 @@ const PLANS = [
 ]
 
 const STATUSES = ['trialing', 'active', 'past_due', 'canceled']
-
-function fmtMoney(cents, currency = 'USD') {
-  return new Intl.NumberFormat(undefined, { style: 'currency', currency }).format(cents / 100)
-}
-
-function fmtDate(iso) {
-  if (!iso) return '—'
-  return new Date(iso).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })
-}
 
 function OrgDetail({ orgId, onBack, onNotificationsChange }) {
   const { toast } = useToast()
@@ -144,7 +136,7 @@ function OrgDetail({ orgId, onBack, onNotificationsChange }) {
       <div className="mb-6">
         <h3 className="font-semibold text-ink-800">{organization.name}</h3>
         <p className="text-xs text-ink-400">
-          {organization.userCount} users · {organization.surveyCount} surveys · joined {fmtDate(organization.createdAt)}
+          {organization.userCount} users · {organization.surveyCount} surveys · joined {formatDate(organization.createdAt)}
         </p>
       </div>
 
@@ -165,7 +157,7 @@ function OrgDetail({ orgId, onBack, onNotificationsChange }) {
           </label>
         </div>
         <p className="text-xs text-ink-400">
-          Current: {subscription.planName} · {fmtMoney(subscription.priceCents)} · renews {fmtDate(subscription.currentPeriodEnd)}
+          Current: {subscription.planName} · {formatMoney(subscription.priceCents)} · renews {formatDate(subscription.currentPeriodEnd)}
         </p>
         <button type="button" onClick={saveSubscription} disabled={saving} className="btn-primary text-sm px-4">
           {saving ? 'Saving…' : 'Save subscription'}
@@ -203,9 +195,11 @@ function OrgDetail({ orgId, onBack, onNotificationsChange }) {
         {invoices?.length > 0 && (
           <div className="mt-4 border-t border-ink-50 pt-3 space-y-2">
             {invoices.slice(0, 6).map(inv => (
-              <div key={inv.id} className="flex justify-between text-sm">
-                <span className="text-ink-600">{inv.description || fmtDate(inv.createdAt)}</span>
-                <span className="font-medium">{fmtMoney(inv.amountCents)} · {inv.status}</span>
+              <div key={inv.id} className="flex justify-between items-center text-sm">
+                <span className="text-ink-600">{inv.description || formatDate(inv.createdAt)}</span>
+                <span className="flex items-center gap-2 font-medium">
+                  {formatMoney(inv.amountCents)} <StatusPill status={inv.status} />
+                </span>
               </div>
             ))}
           </div>
@@ -222,7 +216,7 @@ function OrgDetail({ orgId, onBack, onNotificationsChange }) {
             <p className="text-xs text-ink-400 text-center py-4">No messages yet.</p>
           ) : support.messages.map(msg => (
             <div key={msg.id} className="text-sm">
-              <p className="text-xs text-ink-400">{msg.author.name} · {fmtDate(msg.createdAt)}</p>
+              <p className="text-xs text-ink-400">{msg.author.name} · {formatDate(msg.createdAt)}</p>
               <p className="text-ink-700 whitespace-pre-wrap">{msg.body}</p>
             </div>
           ))}
@@ -269,82 +263,72 @@ export function PlatformConsole({ onClose, onNotificationsChange }) {
   useEffect(() => { loadOrgs() }, [loadOrgs])
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl w-full max-w-4xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
-        <div className="flex items-center gap-3 px-5 py-4 border-b border-ink-100 shrink-0">
-          <div className="w-8 h-8 rounded-lg bg-violet-600 flex items-center justify-center">
-            <Building2 size={16} className="text-white" />
+    <Modal
+      icon={Building2}
+      iconClass="bg-violet-600"
+      title={AUTH_BILLING.platformHeading}
+      subtitle={AUTH_BILLING.platformSubtitle}
+      onClose={onClose}
+      maxWidth="max-w-4xl"
+    >
+      {selectedId ? (
+        <OrgDetail
+          orgId={selectedId}
+          onBack={() => { setSelectedId(null); loadOrgs(); onNotificationsChange?.() }}
+          onNotificationsChange={onNotificationsChange}
+        />
+      ) : loading ? (
+        <InlineLoader label="Loading organizations…" />
+      ) : orgs.length === 0 ? (
+        <p className="text-sm text-ink-400 text-center py-12">No organizations yet.</p>
+      ) : (
+        <>
+          <p className="text-xs text-ink-400 mb-3">{AUTH_BILLING.selectOrg}</p>
+          <div className="border border-ink-100 rounded-xl overflow-x-auto">
+            <table className="w-full text-sm min-w-[640px]">
+              <thead>
+                <tr className="bg-ink-50/80 text-xs text-ink-500 uppercase">
+                  <th className="text-left px-3 py-2.5 font-semibold">Organization</th>
+                  <th className="text-left px-3 py-2.5 font-semibold">Plan</th>
+                  <th className="text-left px-3 py-2.5 font-semibold">Status</th>
+                  <th className="text-right px-3 py-2.5 font-semibold">Users</th>
+                  <th className="text-right px-3 py-2.5 font-semibold">Surveys</th>
+                  <th className="text-right px-3 py-2.5 font-semibold">Support</th>
+                </tr>
+              </thead>
+              <tbody>
+                {orgs.map(org => (
+                  <tr
+                    key={org.id}
+                    className="border-t border-ink-50 hover:bg-violet-50/40 cursor-pointer transition-colors"
+                    onClick={() => setSelectedId(org.id)}
+                  >
+                    <td className="px-3 py-3 font-medium text-ink-800">{org.name}</td>
+                    <td className="px-3 py-3 text-ink-600">{org.subscription?.planName ?? '—'}</td>
+                    <td className="px-3 py-3">
+                      {org.subscription?.status
+                        ? <StatusPill status={org.subscription.status} />
+                        : <span className="text-ink-300">—</span>}
+                    </td>
+                    <td className="px-3 py-3 text-right text-ink-600">{org.userCount}</td>
+                    <td className="px-3 py-3 text-right text-ink-600">{org.surveyCount}</td>
+                    <td className="px-3 py-3 text-right">
+                      {org.unreadMessages > 0 ? (
+                        <span className="inline-flex min-w-[20px] h-5 px-1.5 rounded-full bg-rose-500 text-white text-xs font-bold items-center justify-center">
+                          {org.unreadMessages > 9 ? '9+' : org.unreadMessages}
+                        </span>
+                      ) : (
+                        <span className="text-ink-300">—</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-          <div className="flex-1">
-            <h2 className="text-base font-bold text-ink-800">{AUTH_BILLING.platformHeading}</h2>
-            <p className="text-xs text-ink-400">{AUTH_BILLING.platformSubtitle}</p>
-          </div>
-          <button type="button" onClick={onClose} className="p-2 text-ink-400 hover:text-ink-700 hover:bg-ink-100 rounded-lg">
-            <X size={18} />
-          </button>
-        </div>
-
-        <div className="flex-1 overflow-y-auto p-5">
-          {selectedId ? (
-            <OrgDetail
-              orgId={selectedId}
-              onBack={() => { setSelectedId(null); loadOrgs(); onNotificationsChange?.() }}
-              onNotificationsChange={onNotificationsChange}
-            />
-          ) : loading ? (
-            <InlineLoader label="Loading organizations…" />
-          ) : orgs.length === 0 ? (
-            <p className="text-sm text-ink-400 text-center py-12">No organizations yet.</p>
-          ) : (
-            <>
-              <p className="text-xs text-ink-400 mb-3">{AUTH_BILLING.selectOrg}</p>
-              <div className="border border-ink-100 rounded-xl overflow-x-auto">
-                <table className="w-full text-sm min-w-[640px]">
-                  <thead>
-                    <tr className="bg-ink-50/80 text-xs text-ink-500 uppercase">
-                      <th className="text-left px-3 py-2.5 font-semibold">Organization</th>
-                      <th className="text-left px-3 py-2.5 font-semibold">Plan</th>
-                      <th className="text-left px-3 py-2.5 font-semibold">Status</th>
-                      <th className="text-right px-3 py-2.5 font-semibold">Users</th>
-                      <th className="text-right px-3 py-2.5 font-semibold">Surveys</th>
-                      <th className="text-right px-3 py-2.5 font-semibold">Support</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {orgs.map(org => (
-                      <tr
-                        key={org.id}
-                        className="border-t border-ink-50 hover:bg-violet-50/40 cursor-pointer transition-colors"
-                        onClick={() => setSelectedId(org.id)}
-                      >
-                        <td className="px-3 py-3 font-medium text-ink-800">{org.name}</td>
-                        <td className="px-3 py-3 text-ink-600">{org.subscription?.planName ?? '—'}</td>
-                        <td className="px-3 py-3 text-ink-600 capitalize">{org.subscription?.status?.replace('_', ' ') ?? '—'}</td>
-                        <td className="px-3 py-3 text-right text-ink-600">{org.userCount}</td>
-                        <td className="px-3 py-3 text-right text-ink-600">{org.surveyCount}</td>
-                        <td className="px-3 py-3 text-right">
-                          {org.unreadMessages > 0 ? (
-                            <span className="inline-flex min-w-[20px] h-5 px-1.5 rounded-full bg-rose-500 text-white text-xs font-bold items-center justify-center">
-                              {org.unreadMessages > 9 ? '9+' : org.unreadMessages}
-                            </span>
-                          ) : (
-                            <span className="text-ink-300">—</span>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </>
-          )}
-        </div>
-
-        <div className="px-5 pb-5 flex justify-end shrink-0">
-          <button type="button" onClick={onClose} className="btn-primary px-6">Done</button>
-        </div>
-      </div>
-    </div>
+        </>
+      )}
+    </Modal>
   )
 }
 
