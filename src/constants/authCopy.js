@@ -28,3 +28,15 @@ export const AUTH_ERRORS = {
   sessionInvalid:      'Session is no longer valid. Please sign in again.',
   forbidden:           'You don\'t have permission to do that.',
 }
+
+export const AUTH_TEAM = {
+  heading:             'Team performance',
+  subtitle:            'Survey activity by employee',
+  surveysBuilt:        'Surveys built',
+  responses:           'Responses',
+  completion:          'Completion',
+  lastActive:          'Last active',
+  noActivity:          'No activity yet',
+  credentialsOnce:     'Copy these credentials now — the password will not be shown again.',
+  passwordResetOnce:   'New password set — copy it now. It will not be shown again.',
+}

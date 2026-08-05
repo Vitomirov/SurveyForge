@@ -4,7 +4,7 @@ import {
   Plus, Search, Settings, Filter, MoreVertical,
   Copy, Trash2, ExternalLink, ChevronUp, ChevronDown,
   Layers, BarChart3, Clock, CheckCircle2, XCircle,
-  PlayCircle, PauseCircle, Edit3, Eye, LogOut,
+  PlayCircle, PauseCircle, Edit3, Eye, LogOut, Users,
 } from 'lucide-react'
 import {
   loadLibrary, deleteSurvey, duplicateSurvey, buildClonedSurvey,
@@ -32,6 +32,7 @@ import {
 } from '@/utils/permissions'
 
 const PlatformSettings = lazy(() => import('./PlatformSettings.jsx'))
+const TeamPanel        = lazy(() => import('./TeamPanel.jsx'))
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
 function fmtDate(iso) {
@@ -169,6 +170,7 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
   const [filterOwner,  setFilterOwner]  = useState('')
   const [sort, setSort]             = useState({ field: 'updatedAt', dir: 'desc' })
   const [showSettings, setShowSettings] = useState(false)
+  const [showTeam, setShowTeam]         = useState(false)
   const [deleteId, setDeleteId]     = useState(null)
   const migrateAttemptedRef = useRef(false)
 
@@ -387,13 +389,22 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
               </span>
             )}
             {canManagePlatform(session) && (
-              <button
-                onClick={() => { setShowSettings(true); refresh() }}
-                className="btn-ghost px-2 sm:px-3"
-                title="Platform settings — manage clients, topics, users"
-              >
-                <Settings size={15} /> <span className="hidden sm:inline">Settings</span>
-              </button>
+              <>
+                <button
+                  onClick={() => setShowTeam(true)}
+                  className="btn-ghost px-2 sm:px-3"
+                  title="Team performance — surveys and responses by employee"
+                >
+                  <Users size={15} /> <span className="hidden sm:inline">Team</span>
+                </button>
+                <button
+                  onClick={() => { setShowSettings(true); refresh() }}
+                  className="btn-ghost px-2 sm:px-3"
+                  title="Platform settings — manage clients, topics, users"
+                >
+                  <Settings size={15} /> <span className="hidden sm:inline">Settings</span>
+                </button>
+              </>
             )}
             {onLogout && (
               <button onClick={onLogout} className="btn-ghost text-ink-400 px-2 sm:px-3" title={AUTH_COPY.signOut}>
@@ -747,6 +758,16 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
           </div>
         }>
           <PlatformSettings onClose={() => { setShowSettings(false); refresh() }} />
+        </Suspense>
+      )}
+
+      {showTeam && canManagePlatform(session) && (
+        <Suspense fallback={
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center">
+            <InlineLoader label="Loading team…" />
+          </div>
+        }>
+          <TeamPanel onClose={() => setShowTeam(false)} />
         </Suspense>
       )}
     </div>

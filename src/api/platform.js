@@ -56,19 +56,17 @@ export async function fetchUsers() {
 }
 
 export async function createUser(body) {
-  const data = await apiFetch('/api/platform/users', {
+  return apiFetch('/api/platform/users', {
     method: 'POST',
     body: JSON.stringify(body),
   })
-  return data.user
 }
 
 export async function updateUserApi(id, body) {
-  const data = await apiFetch(`/api/platform/users/${encodeURIComponent(id)}`, {
+  return apiFetch(`/api/platform/users/${encodeURIComponent(id)}`, {
     method: 'PATCH',
     body: JSON.stringify(body),
   })
-  return data.user
 }
 
 export async function deleteUserApi(id) {

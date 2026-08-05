@@ -153,7 +153,10 @@ export async function registerPlatformRoutes(app) {
         role,
       },
     })
-    return { user: userResponse(row) }
+    return {
+      user: userResponse(row),
+      temporaryPassword: password,
+    }
   })
 
   app.patch('/api/platform/users/:id', { preHandler: adminOnly }, async (request, reply) => {
@@ -181,7 +184,9 @@ export async function registerPlatformRoutes(app) {
     }
 
     const row = await app.prisma.user.update({ where: { id: existing.id }, data })
-    return { user: userResponse(row) }
+    const result = { user: userResponse(row) }
+    if (password) result.temporaryPassword = password
+    return result
   })
 
   app.delete('/api/platform/users/:id', { preHandler: adminOnly }, async (request, reply) => {

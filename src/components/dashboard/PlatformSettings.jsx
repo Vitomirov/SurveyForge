@@ -12,6 +12,7 @@ import {
   fetchUsers, createUser, updateUserApi, deleteUserApi,
 } from '@/api/platform'
 import { roleLabel } from '@/utils/permissions'
+import { AUTH_TEAM } from '@/constants/authCopy'
 
 // ─── Editable list (clients / topics) ─────────────────────────────────────
 function EditableList({ label, items, onAdd, onUpdate, onDelete, placeholder }) {
@@ -73,8 +74,14 @@ function UserManager({ users, setUsers }) {
   const [editId,    setEditId]    = useState(null)
   const [form,      setForm]      = useState({ username: '', password: '', name: '', role: 'editor' })
   const [error,     setError]     = useState('')
+  const [revealed,  setRevealed]  = useState(null)
 
-  const resetForm = () => { setForm({ username: '', password: '', name: '', role: 'editor' }); setError(''); setEditId(null); setShowForm(false) }
+  const resetForm = () => {
+    setForm({ username: '', password: '', name: '', role: 'editor' })
+    setError('')
+    setEditId(null)
+    setShowForm(false)
+  }
 
   const handleSubmit = async () => {
     if (!form.username.trim() || !form.name.trim()) { setError('Username and name are required.'); return }
@@ -85,16 +92,30 @@ function UserManager({ users, setUsers }) {
         if (editId) {
           const patch = { name: form.name.trim(), role: form.role }
           if (form.password) patch.password = form.password
-          const user = await updateUserApi(editId, patch)
-          setUsers(prev => prev.map(u => u.id === editId ? user : u))
+          const data = await updateUserApi(editId, patch)
+          setUsers(prev => prev.map(u => u.id === editId ? data.user : u))
+          if (data.temporaryPassword) {
+            setRevealed({
+              username: data.user.username,
+              password: data.temporaryPassword,
+              reset: true,
+            })
+          }
         } else {
-          const user = await createUser({
+          const data = await createUser({
             username: form.username.trim(),
             password: form.password,
             name: form.name.trim(),
             role: form.role,
           })
-          setUsers(prev => [...prev, user])
+          setUsers(prev => [...prev, data.user])
+          if (data.temporaryPassword) {
+            setRevealed({
+              username: data.user.username,
+              password: data.temporaryPassword,
+              reset: false,
+            })
+          }
         }
         resetForm()
       } catch (err) {
@@ -140,6 +161,24 @@ function UserManager({ users, setUsers }) {
 
   return (
     <div>
+      {revealed && (
+        <div className="mb-4 p-3 rounded-xl border border-amber-200 bg-amber-50 text-sm">
+          <p className="font-semibold text-amber-900 mb-1">
+            {revealed.reset ? AUTH_TEAM.passwordResetOnce : AUTH_TEAM.credentialsOnce}
+          </p>
+          <p className="text-ink-700 font-mono text-xs break-all">
+            Username: {revealed.username}<br />
+            Password: {revealed.password}
+          </p>
+          <button
+            type="button"
+            onClick={() => setRevealed(null)}
+            className="mt-2 text-xs font-medium text-amber-800 hover:text-amber-950"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
       <div className="flex items-center justify-between mb-3">
         <p className="text-xs font-bold text-ink-500 uppercase tracking-wider">Users</p>
         {!showForm && (
