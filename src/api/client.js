@@ -23,33 +23,43 @@ export async function apiFetch(path, options = {}) {
     headers.Authorization = `Bearer ${token}`
   }
 
+  const rawBody = options.body
+  const requestBody = rawBody != null
+    && typeof rawBody === 'object'
+    && !(rawBody instanceof FormData)
+    && !(rawBody instanceof URLSearchParams)
+    && !(rawBody instanceof Blob)
+    ? JSON.stringify(rawBody)
+    : rawBody
+
   const res = await fetch(path, {
     ...options,
+    body: requestBody,
     headers,
   })
 
-  let body = null
+  let data = null
   const text = await res.text()
   if (text) {
-    try { body = JSON.parse(text) } catch { body = text }
+    try { data = JSON.parse(text) } catch { data = text }
   }
 
   if (res.status === 401 && useApi) {
     clearAuthToken()
     try { sessionStorage.removeItem('sf_session') } catch { /* noop */ }
-    notifyAuthInvalidated(body?.code || 'UNAUTHORIZED')
+    notifyAuthInvalidated(data?.code || 'UNAUTHORIZED')
   }
 
   if (!res.ok) {
-    const message = body?.error || res.statusText || 'Request failed'
-    if (res.status === 403 && body?.code === 'FORBIDDEN') {
-      throw new ApiError(message || AUTH_ERRORS.forbidden, { status: res.status, body })
+    const message = data?.error || res.statusText || 'Request failed'
+    if (res.status === 403 && data?.code === 'FORBIDDEN') {
+      throw new ApiError(message || AUTH_ERRORS.forbidden, { status: res.status, body: data })
     }
     throw new ApiError(message, {
       status: res.status,
-      body,
+      body: data,
     })
   }
 
-  return body
+  return data
 }

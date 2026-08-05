@@ -1,6 +1,6 @@
 import { hashPassword } from '../lib/password.js'
 import { requireRole } from '../lib/authz.js'
-import { ROLES, isAdminRole } from '../lib/roles.js'
+import { ROLES, isAdminRole, ROLE_VALUES } from '../lib/roles.js'
 
 const newId = (prefix) => `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`
 const adminOnly = requireRole(ROLES.ADMIN)
@@ -134,6 +134,9 @@ export async function registerPlatformRoutes(app) {
     if (!username?.trim() || !name?.trim() || !password) {
       return reply.code(400).send({ error: 'Username, name, and password are required.' })
     }
+    if (!ROLE_VALUES.has(role) || role === ROLES.PLATFORM_OWNER) {
+      return reply.code(400).send({ error: 'Invalid role.' })
+    }
 
     const uname = username.trim()
     const email = uname.includes('@') ? uname.toLowerCase() : `${uname.toLowerCase()}@surveyforge.local`
@@ -165,6 +168,10 @@ export async function registerPlatformRoutes(app) {
       where: { id: request.params.id, organizationId: request.organizationId },
     })
     if (!existing) return reply.code(404).send({ error: 'User not found' })
+
+    if (role && (!ROLE_VALUES.has(role) || role === ROLES.PLATFORM_OWNER)) {
+      return reply.code(400).send({ error: 'Invalid role.' })
+    }
 
     if (role && role !== existing.role && isAdminRole(existing.role)) {
       const admins = await countAdmins(app.prisma, request.organizationId)

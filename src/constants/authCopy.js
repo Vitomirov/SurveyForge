@@ -40,3 +40,22 @@ export const AUTH_TEAM = {
   credentialsOnce:     'Copy these credentials now — the password will not be shown again.',
   passwordResetOnce:   'New password set — copy it now. It will not be shown again.',
 }
+
+export const AUTH_BILLING = {
+  heading:             'Billing',
+  subtitle:            'Subscription and invoices for your organization',
+  plan:                'Current plan',
+  status:              'Status',
+  seats:               'Seats',
+  periodEnd:           'Renews / trial ends',
+  invoices:            'Invoices',
+  noInvoices:          'No invoices yet.',
+  supportHeading:      'Support',
+  supportSubtitle:     'Message the SurveyForge team',
+  supportPlaceholder:  'Describe your question or issue…',
+  send:                'Send message',
+  platformHeading:     'Platform console',
+  platformSubtitle:    'Manage subscriptions and support across organizations',
+  organizations:       'Organizations',
+  selectOrg:           'Select an organization to manage billing',
+}

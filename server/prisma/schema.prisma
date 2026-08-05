@@ -17,11 +17,14 @@ model Organization {
   settings  Json     @default("{}") @map("organization_settings")
   createdAt DateTime @default(now()) @map("organization_created_at")
 
-  users     User[]
-  surveys   Survey[]
-  responses Response[]
-  clients   Client[]
-  topics    Topic[]
+  users        User[]
+  surveys      Survey[]
+  responses    Response[]
+  clients      Client[]
+  topics       Topic[]
+  subscription Subscription?
+  invoices     Invoice[]
+  supportThread SupportThread?
 
   @@map("organizations")
 }
@@ -37,8 +40,9 @@ model User {
   createdAt      DateTime @default(now()) @map("user_created_at")
   updatedAt      DateTime @updatedAt @map("user_updated_at")
 
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  surveys      Survey[]     @relation("SurveyCreator")
+  organization     Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  surveys          Survey[]         @relation("SurveyCreator")
+  supportMessages  SupportMessage[]
 
   @@unique([organizationId, email])
   @@map("users")
@@ -117,4 +121,73 @@ model DncEntry {
   @@unique([surveyId, email])
   @@index([surveyId])
   @@map("dnc_entries")
+}
+
+model Subscription {
+  id                 String   @id @default(uuid())
+  organizationId     String   @unique @map("organization_id")
+  planId             String   @map("subscription_plan_id")
+  status             String   @default("trialing") @map("subscription_status")
+  seats              Int      @default(5) @map("subscription_seats")
+  priceCents         Int      @default(0) @map("subscription_price_cents")
+  currency           String   @default("USD") @map("subscription_currency")
+  currentPeriodStart DateTime @map("subscription_period_start")
+  currentPeriodEnd   DateTime @map("subscription_period_end")
+  createdAt          DateTime @default(now()) @map("subscription_created_at")
+  updatedAt          DateTime @updatedAt @map("subscription_updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("subscriptions")
+}
+
+model Invoice {
+  id             String    @id @default(uuid())
+  organizationId String    @map("organization_id")
+  amountCents    Int       @map("invoice_amount_cents")
+  currency       String    @default("USD") @map("invoice_currency")
+  status         String    @default("draft") @map("invoice_status")
+  description    String?   @map("invoice_description")
+  periodStart    DateTime? @map("invoice_period_start")
+  periodEnd      DateTime? @map("invoice_period_end")
+  dueDate        DateTime? @map("invoice_due_date")
+  paidAt         DateTime? @map("invoice_paid_at")
+  createdAt      DateTime  @default(now()) @map("invoice_created_at")
+  updatedAt      DateTime  @updatedAt @map("invoice_updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([organizationId, createdAt(sort: Desc)])
+  @@map("invoices")
+}
+
+model SupportThread {
+  id               String    @id @default(uuid())
+  organizationId   String    @unique @map("organization_id")
+  status           String    @default("open") @map("support_thread_status")
+  orgLastReadAt    DateTime? @map("support_org_last_read_at")
+  vendorLastReadAt DateTime? @map("support_vendor_last_read_at")
+  createdAt        DateTime  @default(now()) @map("support_thread_created_at")
+  updatedAt        DateTime  @updatedAt @map("support_thread_updated_at")
+
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  messages     SupportMessage[]
+
+  @@map("support_threads")
+}
+
+model SupportMessage {
+  id        String   @id @default(uuid())
+  threadId  String   @map("support_thread_id")
+  authorId  String   @map("support_message_author_id")
+  body      String   @map("support_message_body")
+  createdAt DateTime @default(now()) @map("support_message_created_at")
+
+  thread SupportThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  author User          @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([threadId])
+  @@index([threadId, createdAt])
+  @@map("support_messages")
 }

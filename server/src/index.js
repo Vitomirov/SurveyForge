@@ -7,13 +7,14 @@ loadEnv({ path: resolve(__dirname, '../../.env') })
 
 import { buildApp } from './app.js'
 import { loadConfig } from './config.js'
-import { seedDefaultAdmin } from './lib/seed.js'
+import { seedDefaultAdmin, seedPlatformOwner } from './lib/seed.js'
 import { migratePlatformLists } from './lib/migratePlatformLists.js'
 
 const config = loadConfig()
 
 const app = await buildApp()
 await seedDefaultAdmin(app.prisma)
+await seedPlatformOwner(app.prisma)
 await migratePlatformLists(app.prisma)
 
 try {

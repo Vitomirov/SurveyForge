@@ -11,6 +11,7 @@ import { registerMigrateRoutes } from './routes/migrate.js'
 import { registerPlatformRoutes } from './routes/platform.js'
 import { registerDncRoutes } from './routes/dnc.js'
 import { registerAdminRoutes } from './routes/admin.js'
+import { registerBillingRoutes, registerVendorRoutes } from './routes/billing.js'
 import { loadConfig } from './config.js'
 
 export async function buildApp() {
@@ -41,6 +42,8 @@ export async function buildApp() {
   await registerResponseRoutes(app)
   await registerPlatformRoutes(app)
   await registerAdminRoutes(app)
+  await registerBillingRoutes(app)
+  await registerVendorRoutes(app)
   await registerDncRoutes(app)
   await registerMigrateRoutes(app, { isDev: config.isDev })
 

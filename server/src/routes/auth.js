@@ -1,5 +1,6 @@
 import { verifyPassword, hashPassword } from '../lib/password.js'
 import { seedPlatformLists } from '../lib/seed.js'
+import { provisionOrgBilling } from '../lib/billingDefaults.js'
 
 function buildSession(user, organizationName = null) {
   return {
@@ -66,6 +67,7 @@ export async function registerAuthRoutes(app) {
         data: { name: organizationName.trim(), settings: {} },
       })
       await seedPlatformLists(tx, org.id)
+      await provisionOrgBilling(tx, org.id)
       const user = await tx.user.create({
         data: {
           organizationId: org.id,

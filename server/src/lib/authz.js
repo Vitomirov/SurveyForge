@@ -1,8 +1,13 @@
-import { isAdminRole } from './roles.js'
+import { isAdminRole, isPlatformOwnerRole, ROLES } from './roles.js'
 
 /** True when the authenticated caller is an org admin (CEO). */
 export function isAdmin(request) {
   return isAdminRole(request.auth?.role)
+}
+
+/** True when the authenticated caller is the SaaS vendor (cross-org). */
+export function isPlatformOwner(request) {
+  return isPlatformOwnerRole(request.auth?.role)
 }
 
 /**
@@ -18,6 +23,8 @@ export function requireRole(...roles) {
     }
   }
 }
+
+export const requirePlatformOwner = requireRole(ROLES.PLATFORM_OWNER)
 
 /**
  * Prisma `where` fragment for survey queries.

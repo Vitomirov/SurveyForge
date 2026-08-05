@@ -1,8 +1,9 @@
 /** Client-side role checks — mirror server rules for UI gating. */
 
 export const ROLES = {
-  ADMIN:  'admin',
-  EDITOR: 'editor',
+  ADMIN:          'admin',
+  EDITOR:         'editor',
+  PLATFORM_OWNER: 'platform_owner',
 }
 
 export function isAdmin(session) {
@@ -11,6 +12,10 @@ export function isAdmin(session) {
 
 export function isEditor(session) {
   return session?.role === ROLES.EDITOR
+}
+
+export function isPlatformOwner(session) {
+  return session?.role === ROLES.PLATFORM_OWNER
 }
 
 /** Org admin (CEO) — full survey visibility and platform management. */
@@ -27,15 +32,21 @@ export function canManageUsers(session) {
   return isAdmin(session)
 }
 
-/** Reserved for Phase 6 billing UI. */
-export function canManageBilling(session) {
+/** Org admin read-only billing + support for their organization. */
+export function canViewBilling(session) {
   return isAdmin(session)
+}
+
+/** Vendor console — manage subscriptions/invoices across all orgs. */
+export function canManageBilling(session) {
+  return isPlatformOwner(session)
 }
 
 /** Human label for a stored role value (editor → "User"). */
 export function roleLabel(role) {
   if (role === ROLES.ADMIN) return 'Admin'
   if (role === ROLES.EDITOR) return 'User'
+  if (role === ROLES.PLATFORM_OWNER) return 'Platform owner'
   return role || ''
 }
 

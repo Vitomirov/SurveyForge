@@ -22,7 +22,8 @@
     "test:rbac2": "node --test scripts/phase-r2-ownership.test.mjs",
     "test:rbac3": "node --test scripts/phase-r3-rbac.test.mjs",
     "test:rbac4": "node --test scripts/phase-r4-permissions.test.mjs",
-    "test:rbac5": "node --test scripts/phase-r5-employees.test.mjs"
+    "test:rbac5": "node --test scripts/phase-r5-employees.test.mjs",
+    "test:rbac6": "node --test scripts/phase-r6-billing.test.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.1.0",

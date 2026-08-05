@@ -4,7 +4,7 @@ import {
   Plus, Search, Settings, Filter, MoreVertical,
   Copy, Trash2, ExternalLink, ChevronUp, ChevronDown,
   Layers, BarChart3, Clock, CheckCircle2, XCircle,
-  PlayCircle, PauseCircle, Edit3, Eye, LogOut, Users,
+  PlayCircle, PauseCircle, Edit3, Eye, LogOut, Users, CreditCard, Building2,
 } from 'lucide-react'
 import {
   loadLibrary, deleteSurvey, duplicateSurvey, buildClonedSurvey,
@@ -29,10 +29,15 @@ import { InlineLoader, useToast } from '@/components/ui'
 import { prefetchBuilder, prefetchPreview } from '@/utils/routePrefetch'
 import {
   canManagePlatform, canSeeAllSurveys, filterSurveysForSession, roleLabel,
+  canViewBilling, canManageBilling,
 } from '@/utils/permissions'
+import { fetchBillingNotifications } from '@/api/billing'
+import { fetchVendorNotifications } from '@/api/vendor'
 
 const PlatformSettings = lazy(() => import('./PlatformSettings.jsx'))
 const TeamPanel        = lazy(() => import('./TeamPanel.jsx'))
+const BillingPanel     = lazy(() => import('./BillingPanel.jsx'))
+const PlatformConsole  = lazy(() => import('./PlatformConsole.jsx'))
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
 function fmtDate(iso) {
@@ -61,6 +66,15 @@ function SortIcon({ field, sort }) {
   return sort.dir === 'asc'
     ? <ChevronUp size={12} className="text-brand-500" />
     : <ChevronDown size={12} className="text-brand-500" />
+}
+
+function IconBadge({ count }) {
+  if (!count) return null
+  return (
+    <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-1 rounded-full bg-rose-500 text-white text-[10px] font-bold leading-none flex items-center justify-center pointer-events-none">
+      {count > 9 ? '9+' : count}
+    </span>
+  )
 }
 
 // ─── Context menu ──────────────────────────────────────────────────────────
@@ -171,6 +185,10 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
   const [sort, setSort]             = useState({ field: 'updatedAt', dir: 'desc' })
   const [showSettings, setShowSettings] = useState(false)
   const [showTeam, setShowTeam]         = useState(false)
+  const [showBilling, setShowBilling]   = useState(false)
+  const [showPlatform, setShowPlatform] = useState(false)
+  const [billingBadge, setBillingBadge]   = useState(0)
+  const [platformBadge, setPlatformBadge] = useState(0)
   const [deleteId, setDeleteId]     = useState(null)
   const migrateAttemptedRef = useRef(false)
 
@@ -207,6 +225,38 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
   useEffect(() => {
     if (useApi) refresh({ allowMigrate: true })
   }, [refresh])
+
+  const refreshNotifications = useCallback(async () => {
+    if (!useApi || !session) return
+    try {
+      if (canViewBilling(session)) {
+        const n = await fetchBillingNotifications()
+        setBillingBadge(n.total ?? 0)
+      } else {
+        setBillingBadge(0)
+      }
+      if (canManageBilling(session)) {
+        const n = await fetchVendorNotifications()
+        setPlatformBadge(n.unreadMessages ?? 0)
+      } else {
+        setPlatformBadge(0)
+      }
+    } catch {
+      /* ignore — user may lack access mid-session */
+    }
+  }, [session])
+
+  const handleBillingOpen = useCallback(() => {
+    setBillingBadge(0)
+    refreshNotifications()
+  }, [refreshNotifications])
+
+  useEffect(() => {
+    refreshNotifications()
+    if (!useApi) return undefined
+    const id = setInterval(refreshNotifications, 45000)
+    return () => clearInterval(id)
+  }, [refreshNotifications])
 
   const surveys = useMemo(() => {
     const raw = useApi ? apiSurveys : loadLibrary()
@@ -387,6 +437,26 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
                   <> · <span className="text-ink-500">{roleLabel(session.role)}</span></>
                 )}
               </span>
+            )}
+            {canViewBilling(session) && (
+              <button
+                onClick={() => setShowBilling(true)}
+                className="btn-ghost px-2 sm:px-3 relative"
+                title="Billing — subscription and invoices"
+              >
+                <CreditCard size={15} /> <span className="hidden sm:inline">Billing</span>
+                <IconBadge count={billingBadge} />
+              </button>
+            )}
+            {canManageBilling(session) && (
+              <button
+                onClick={() => setShowPlatform(true)}
+                className="btn-ghost px-2 sm:px-3 relative"
+                title="Platform console — manage all organizations"
+              >
+                <Building2 size={15} /> <span className="hidden sm:inline">Platform</span>
+                <IconBadge count={platformBadge} />
+              </button>
             )}
             {canManagePlatform(session) && (
               <>
@@ -768,6 +838,32 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
           </div>
         }>
           <TeamPanel onClose={() => setShowTeam(false)} />
+        </Suspense>
+      )}
+
+      {showBilling && canViewBilling(session) && (
+        <Suspense fallback={
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center">
+            <InlineLoader label="Loading billing…" />
+          </div>
+        }>
+          <BillingPanel
+            onClose={() => { setShowBilling(false); refreshNotifications() }}
+            onOpen={handleBillingOpen}
+          />
+        </Suspense>
+      )}
+
+      {showPlatform && canManageBilling(session) && (
+        <Suspense fallback={
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center">
+            <InlineLoader label="Loading platform console…" />
+          </div>
+        }>
+          <PlatformConsole
+            onClose={() => { setShowPlatform(false); refreshNotifications() }}
+            onNotificationsChange={refreshNotifications}
+          />
         </Suspense>
       )}
     </div>
