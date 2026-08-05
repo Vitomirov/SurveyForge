@@ -1,17 +1,25 @@
-// Legacy localStorage IDs from frontend defaults — map to display names.
-const LEGACY_CLIENT_NAMES = {
-  c_dmr: 'DMR',
-  c_fsi: 'FSI',
-  c_apg: 'APG',
-}
+/** Canonical platform lists — IDs must match src/utils/platformStore.js defaults. */
+export const CANONICAL_CLIENTS = [
+  { id: 'c_dmr', name: 'DMR' },
+  { id: 'c_fsi', name: 'FSI' },
+  { id: 'c_apg', name: 'APG' },
+]
 
-const LEGACY_TOPIC_NAMES = {
-  t_beauty:     'Beauty',
-  t_education:  'Education',
-  t_healthcare: 'Healthcare',
-  t_gaming:     'Gaming',
-  t_pets:       'Pets',
-}
+export const CANONICAL_TOPICS = [
+  { id: 't_beauty',     name: 'Beauty' },
+  { id: 't_education',  name: 'Education' },
+  { id: 't_healthcare', name: 'Healthcare' },
+  { id: 't_gaming',     name: 'Gaming' },
+  { id: 't_pets',       name: 'Pets' },
+]
+
+const LEGACY_CLIENT_NAMES = Object.fromEntries(
+  CANONICAL_CLIENTS.map(c => [c.id, c.name])
+)
+
+const LEGACY_TOPIC_NAMES = Object.fromEntries(
+  CANONICAL_TOPICS.map(t => [t.id, t.name])
+)
 
 export function resolveClientRecord(clientId, clients) {
   if (!clientId) return null

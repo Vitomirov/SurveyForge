@@ -1,29 +1,31 @@
 import { hashPassword } from './password.js'
+import { CANONICAL_CLIENTS, CANONICAL_TOPICS } from './platformIds.js'
 
 const DEFAULT_ORG_NAME = 'Default Organization'
 const ADMIN_USERNAME   = 'admin'
 const ADMIN_EMAIL      = 'admin@surveyforge.local'
 const ADMIN_PASSWORD   = 'admin123'
 
-const DEFAULT_CLIENTS = ['DMR', 'FSI', 'APG']
-const DEFAULT_TOPICS  = ['Beauty', 'Education', 'Healthcare', 'Gaming', 'Pets']
-
-// IDs must be unique per org — clients/topics use a String @id with no default,
-// so generate a fresh id per row rather than reusing fixed ids across orgs.
-const rid = (prefix) => `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`
-
 export async function seedPlatformLists(prisma, organizationId) {
   const clientCount = await prisma.client.count({ where: { organizationId } })
   if (clientCount === 0) {
     await prisma.client.createMany({
-      data: DEFAULT_CLIENTS.map(name => ({ id: rid('c'), name, organizationId })),
+      data: CANONICAL_CLIENTS.map(({ name }) => ({
+        id: `c_${organizationId.slice(0, 8)}_${name.toLowerCase()}`,
+        name,
+        organizationId,
+      })),
     })
   }
 
   const topicCount = await prisma.topic.count({ where: { organizationId } })
   if (topicCount === 0) {
     await prisma.topic.createMany({
-      data: DEFAULT_TOPICS.map(name => ({ id: rid('t'), name, organizationId })),
+      data: CANONICAL_TOPICS.map(({ name }) => ({
+        id: `t_${organizationId.slice(0, 8)}_${name.toLowerCase().replace(/\s+/g, '')}`,
+        name,
+        organizationId,
+      })),
     })
   }
 }

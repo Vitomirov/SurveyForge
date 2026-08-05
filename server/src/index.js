@@ -8,11 +8,13 @@ loadEnv({ path: resolve(__dirname, '../../.env') })
 import { buildApp } from './app.js'
 import { loadConfig } from './config.js'
 import { seedDefaultAdmin } from './lib/seed.js'
+import { migratePlatformLists } from './lib/migratePlatformLists.js'
 
 const config = loadConfig()
 
 const app = await buildApp()
 await seedDefaultAdmin(app.prisma)
+await migratePlatformLists(app.prisma)
 
 try {
   await app.listen({ port: config.port, host: '0.0.0.0' })

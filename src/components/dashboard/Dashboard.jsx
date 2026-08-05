@@ -24,6 +24,7 @@ import {
   SURVEY_TYPES, SURVEY_STATUSES,
 } from '@/utils/platformStore'
 import { countResponsesForSurveys } from '@/utils/responseStore'
+import { resolveClientName, resolveTopicName } from '@/utils/platformResolve'
 import { InlineLoader } from '@/components/ui'
 import { prefetchBuilder, prefetchPreview } from '@/utils/routePrefetch'
 
@@ -213,6 +214,19 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
     Object.fromEntries(clients.map(c => [c.id, c.name])), [clients])
   const topicMap  = useMemo(() =>
     Object.fromEntries(topics.map(t => [t.id, t.name])),  [topics])
+
+  const displayClient = useCallback(
+    (survey) => resolveClientName(survey?.clientId, clients, survey?.clientName)
+      || clientMap[survey?.clientId]
+      || '',
+    [clients, clientMap]
+  )
+  const displayTopic = useCallback(
+    (survey) => resolveTopicName(survey?.topicId, topics, survey?.topicName)
+      || topicMap[survey?.topicId]
+      || '',
+    [topics, topicMap]
+  )
   const typeMap   = Object.fromEntries(SURVEY_TYPES.map(t => [t.id, t.label]))
 
   // Response counts per survey
@@ -252,7 +266,7 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
         case 'title':      av = a.survey?.title || ''; bv = b.survey?.title || ''; break
         case 'code':       av = a.survey?.surveyCode || ''; bv = b.survey?.surveyCode || ''; break
         case 'status':     av = a.survey?.status || ''; bv = b.survey?.status || ''; break
-        case 'client':     av = a.survey?.clientName || clientMap[a.survey?.clientId] || ''; bv = b.survey?.clientName || clientMap[b.survey?.clientId] || ''; break
+        case 'client':     av = displayClient(a.survey); bv = displayClient(b.survey); break
         case 'responses':  av = responseCounts[a.survey?.id]?.total || 0; bv = responseCounts[b.survey?.id]?.total || 0; break
         case 'updatedAt':  av = a.survey?.updatedAt || ''; bv = b.survey?.updatedAt || ''; break
         default: av = a.survey?.updatedAt || ''; bv = b.survey?.updatedAt || ''
@@ -263,7 +277,7 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
       return sort.dir === 'asc' ? cmp : -cmp
     })
     return list
-  }, [surveys, search, filterStatus, filterClient, filterTopic, filterType, sort, responseCounts, clientMap])
+  }, [surveys, search, filterStatus, filterClient, filterTopic, filterType, sort, responseCounts, clientMap, displayClient])
 
   const toggleSort = (field) =>
     setSort(s => s.field === field ? { field, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { field, dir: 'asc' })
@@ -476,12 +490,8 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
                         )}
                         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-xs text-ink-500">
                           <span>{qCount} question{qCount !== 1 ? 's' : ''}</span>
-                          {(sv.clientName || clientMap[sv.clientId]) && (
-                            <span>{sv.clientName || clientMap[sv.clientId]}</span>
-                          )}
-                          {(sv.topicName || topicMap[sv.topicId]) && (
-                            <span>{sv.topicName || topicMap[sv.topicId]}</span>
-                          )}
+                          {displayClient(sv) && <span>{displayClient(sv)}</span>}
+                          {displayTopic(sv) && <span>{displayTopic(sv)}</span>}
                           {sv.surveyType && (
                             <span className="font-medium text-brand-600 bg-brand-50 px-1.5 py-0.5 rounded">
                               {typeMap[sv.surveyType]}
@@ -593,21 +603,21 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
 
                       {/* Client */}
                       <td className="px-4 py-3 text-xs text-ink-600">
-                        {sv.clientName || clientMap[sv.clientId] || <span className="text-ink-300">—</span>}
+                        {displayClient(sv) || <span className="text-ink-300">—</span>}
                       </td>
 
                       {/* Topic + Type */}
                       <td className="px-4 py-3">
                         <div className="space-y-0.5">
-                          {(sv.topicName || topicMap[sv.topicId]) && (
-                            <p className="text-xs text-ink-600">{sv.topicName || topicMap[sv.topicId]}</p>
+                          {displayTopic(sv) && (
+                            <p className="text-xs text-ink-600">{displayTopic(sv)}</p>
                           )}
                           {sv.surveyType && (
                             <span className="text-xs font-medium text-brand-600 bg-brand-50 px-1.5 py-0.5 rounded">
                               {typeMap[sv.surveyType]}
                             </span>
                           )}
-                          {!sv.topicId && !sv.surveyType && !sv.topicName && (
+                          {!displayTopic(sv) && !sv.surveyType && (
                             <span className="text-ink-300 text-xs">—</span>
                           )}
                         </div>
