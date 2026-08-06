@@ -35,7 +35,7 @@ function CollapsedSummary({ conditions, questions }) {
 
 // ─── Main TerminationBlockItem ─────────────────────────────────────────────
 export const TerminationBlockItem = memo(function TerminationBlockItem({
-  item, availableQuestions, isActive, onActivateItem, dispatch,
+  item, availableQuestions, contextItems = [], isActive, onActivateItem, dispatch,
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: item.id })
@@ -119,6 +119,7 @@ export const TerminationBlockItem = memo(function TerminationBlockItem({
               variant="termination"
               conditions={conditions}
               availableQuestions={availableQuestions}
+              contextItems={contextItems}
               onUpdateCondition={(conditionId, patch) =>
                 dispatch({ type: 'UPDATE_TERMINATION_CONDITION', blockId: item.id, conditionId, patch })}
               onDeleteCondition={(conditionId) =>

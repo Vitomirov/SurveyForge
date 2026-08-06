@@ -46,6 +46,8 @@ export const makeVisibilityCondition = (isFirst = false) => ({
   questionId: '',
   conditionType: 'any_of',
   optionIds: [],
+  matrixRowId: '',
+  matrixColumnIds: [],
   textOperator: 'contains',
   textValue: '',
 })
@@ -70,6 +72,8 @@ export const makeQuestion = (questionType = 'single_select') => {
     pipedOptionsConfig: {
       enabled:          false,
       sourceQuestionId: null,
+      matrixRowId:      null,
+      matrixPipeMode:   'rows',
     },
     visibility: makeVisibilityConfig(),
 
@@ -269,6 +273,8 @@ export const makeTerminationCondition = (isFirst = false) => ({
   questionId: '',
   conditionType: 'any_of',
   optionIds: [],
+  matrixRowId: '',
+  matrixColumnIds: [],
   textOperator: 'contains',
   textValue: '',
 })

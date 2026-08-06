@@ -91,6 +91,21 @@ export function validateAnswer(question, answer) {
   if (question.questionType === 'image_choice_single') {
     if (question.required && !answer) return 'Please select an image.'
   }
+  if (question.questionType === 'matrix') {
+    const cfg = question.matrixConfig
+    if (question.required) {
+      const vals = answer || {}
+      const unanswered = (cfg?.rows || []).filter(row => {
+        const sel = vals[row.id]
+        if (sel === null || sel === undefined) return true
+        if (Array.isArray(sel)) return sel.length === 0
+        return false
+      })
+      if (unanswered.length > 0) {
+        return `Please answer all rows (${unanswered.length} remaining).`
+      }
+    }
+  }
   if (question.questionType === 'image_choice_multi') {
     if (question.required && (!Array.isArray(answer) || answer.length === 0))
       return 'Please select at least one image.'

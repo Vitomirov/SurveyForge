@@ -1,4 +1,5 @@
 import { findAccessibleSurvey } from '../lib/surveyAccess.js'
+import { normalizeResponseEntry } from '../lib/responseNormalization.js'
 
 const DEFAULT_LIMIT = 50
 const MAX_LIMIT = 200
@@ -38,8 +39,9 @@ function entryToDbFields(entry, surveyId, organizationId) {
   }
 }
 
-export async function upsertResponse(app, { surveyId, organizationId, entry }) {
-  const data = entryToDbFields(entry, surveyId, organizationId)
+export async function upsertResponse(app, { surveyId, organizationId, entry, surveyItems = [] }) {
+  const normalized = normalizeResponseEntry(entry, surveyItems)
+  const data = entryToDbFields(normalized, surveyId, organizationId)
   if (!data) return null
 
   return app.prisma.response.upsert({
@@ -121,6 +123,7 @@ export async function registerResponseRoutes(app) {
       surveyId: survey.id,
       organizationId: request.organizationId,
       entry,
+      surveyItems: survey.items || [],
     })
 
     return { ok: true, id: row.id }

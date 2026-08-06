@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Plus, Trash2, UserX, AlertTriangle, ChevronDown } from 'lucide-react'
 import { SectionLabel, Divider } from '@/components/ui'
 import { isChoiceType } from '@/utils/questionHelpers'
+import { getBuilderConditionOptions } from '@/utils/questionOptions'
 import { TEXT_OPERATORS } from '@/utils/conditionConstants'
 
 function OperatorSelect({ value, onChange }) {
@@ -19,8 +20,8 @@ function OperatorSelect({ value, onChange }) {
 }
 
 // ─── Single Rule card ──────────────────────────────────────────────────────
-function RuleCard({ rule, ruleIndex, question, dispatch, onDelete, showChoiceRules }) {
-  const opts    = question.options || []
+function RuleCard({ rule, ruleIndex, question, dispatch, onDelete, showChoiceRules, contextItems = [] }) {
+  const opts    = getBuilderConditionOptions(question, contextItems)
   const isText  = rule.ruleType === 'text'
 
   const update = (patch) =>
@@ -101,7 +102,11 @@ function RuleCard({ rule, ruleIndex, question, dispatch, onDelete, showChoiceRul
             {/* Option checkboxes */}
             <div className="grid grid-cols-1 gap-1 max-h-48 overflow-y-auto">
               {opts.length === 0 && (
-                <p className="text-xs text-ink-300 italic">Add options to the question first.</p>
+                <p className="text-xs text-ink-300 italic">
+                  {question.pipedOptionsConfig?.enabled
+                    ? 'Configure option piping above to see dynamic options here.'
+                    : 'Add options to the question first.'}
+                </p>
               )}
               {opts.map(opt => {
                 const selected = rule.optionIds.includes(opt.id)
@@ -173,12 +178,14 @@ function RuleCard({ rule, ruleIndex, question, dispatch, onDelete, showChoiceRul
 }
 
 // ─── Main TerminationEditor ────────────────────────────────────────────────
-export function TerminationEditor({ question, dispatch }) {
+export function TerminationEditor({ question, dispatch, contextItems = [] }) {
   const rules          = question.terminationRules || []
   const logic          = question.terminationLogic || 'if_any'
   const isChoiceQ      = isChoiceType(question.questionType)
-  const showChoiceRule = isChoiceQ  // whether to offer choice rule type
-  const perOptCount    = (question.options || []).filter(o => o.terminates).length
+  const isPipedQ       = question.pipedOptionsConfig?.enabled
+  const showChoiceRule = isChoiceQ || isPipedQ
+  const effectiveOpts  = getBuilderConditionOptions(question, contextItems)
+  const perOptCount    = effectiveOpts.filter(o => o.terminates).length
 
   const addRule = (ruleType) =>
     dispatch({ type: 'ADD_TERMINATION_RULE', questionId: question.id, ruleType })
@@ -266,6 +273,7 @@ export function TerminationEditor({ question, dispatch }) {
               dispatch={dispatch}
               onDelete={() => deleteRule(rule.id)}
               showChoiceRules={showChoiceRule}
+              contextItems={contextItems}
             />
           ))}
         </div>
@@ -277,7 +285,7 @@ export function TerminationEditor({ question, dispatch }) {
 
       {/* Add rule buttons */}
       <div className="flex gap-2 flex-wrap">
-        {isChoiceQ && (
+        {showChoiceRule && (
           <button
             onClick={() => addRule('choice')}
             className="flex items-center gap-1.5 text-xs text-rose-600 hover:text-rose-700 font-medium px-3 py-1.5 border border-rose-200 hover:bg-rose-50 rounded-lg transition-all"

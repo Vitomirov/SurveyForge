@@ -2,7 +2,8 @@
 // Uses conditionEngine for all condition matching — same logic as termination
 // blocks, so survey creators only need one mental model for AND/OR rules.
 
-import { isChoiceType, buildQuestionNumberById } from '@/utils/questionHelpers'
+import { isChoiceType, buildQuestionNumberById, isMatrixType } from '@/utils/questionHelpers'
+import { resolveOptionLabel } from '@/utils/questionOptions'
 import { evalConditionSet } from '@/utils/conditionEngine'
 
 /**
@@ -16,6 +17,18 @@ function isItemVisible(item, responses, allItems) {
 
   const matched = evalConditionSet(vis.conditions, responses, allItems)
   return vis.mode === 'hide_if' ? !matched : matched
+}
+
+/**
+ * Termination blocks evaluate when the respondent leaves the page that holds
+ * the questions they reference — not an empty page created by a page break
+ * placed between the questions and the block.
+ */
+function terminationBlockTargetIndex(pagesArr) {
+  for (let i = pagesArr.length - 1; i >= 0; i--) {
+    if (pagesArr[i].some(it => it.itemType === 'question')) return i
+  }
+  return Math.max(0, pagesArr.length - 1)
 }
 
 /**
@@ -60,7 +73,8 @@ export function buildVisiblePages(items, responses) {
     }
 
     if (item.itemType === 'termination_block') {
-      blocksArr[blocksArr.length - 1].push(item)
+      const targetIdx = terminationBlockTargetIndex(pagesArr)
+      blocksArr[targetIdx].push(item)
       continue
     }
 
@@ -100,8 +114,14 @@ export function visibilitySummary(vis, allItems) {
     const q = itemById[c.questionId]
     const qLabel = q ? `Q${qNumById[q.id] ?? '?'}` : '?'
     let condStr
-    if (q && isChoiceType(q.questionType)) {
-      const labels = (c.optionIds || []).map(id => q.options?.find(o => o.id === id)?.text || '?')
+    if (q && isMatrixType(q.questionType)) {
+      const rowLabel = q.matrixConfig?.rows?.find(r => r.id === c.matrixRowId)?.text || 'row'
+      const colLabels = (c.matrixColumnIds || []).map(id =>
+        q.matrixConfig?.columns?.find(col => col.id === id)?.text || '?'
+      )
+      condStr = `${qLabel} row "${rowLabel}" ${c.conditionType?.replace(/_/g, ' ')} [${colLabels.join(', ')}]`
+    } else if (q && (isChoiceType(q.questionType) || q.pipedOptionsConfig?.enabled)) {
+      const labels = (c.optionIds || []).map(id => resolveOptionLabel(q, id, allItems))
       condStr = `${qLabel} ${c.conditionType?.replace(/_/g, ' ')} [${labels.join(', ')}]`
     } else {
       condStr = `${qLabel} ${c.textOperator?.replace(/_/g, ' ') || ''} "${c.textValue || ''}"`

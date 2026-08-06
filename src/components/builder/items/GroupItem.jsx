@@ -6,7 +6,7 @@ import { VisibilityEditor } from '@/components/shared'
 import { visibilitySummary } from '@/utils/visibilityEngine'
 
 export const GroupItem = memo(function GroupItem({
-  item, questionCount, dispatch, isActive, onActivateItem, availableQuestions = [],
+  item, questionCount, dispatch, isActive, onActivateItem, availableQuestions = [], contextItems = [],
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.id })
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 }
@@ -90,6 +90,7 @@ export const GroupItem = memo(function GroupItem({
             itemId={item.id}
             vis={item.visibility}
             availableQuestions={availableQuestions}
+            contextItems={contextItems}
             dispatch={dispatch}
           />
         </div>

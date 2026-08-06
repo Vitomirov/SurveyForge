@@ -74,6 +74,8 @@ model Response {
   id             String   @id
   surveyId       String   @map("survey_id")
   organizationId String   @map("organization_id")
+  /// JSON payload: { responses: { [questionId]: answer }, companions, terminatedBy, ... }
+  /// Matrix answers: { [rowId]: columnId | columnId[] } — see answerSchemaVersion in payload
   payload        Json     @map("response_payload")
   status         String   @map("response_status")
   timestamp      DateTime @default(now()) @map("response_timestamp")

@@ -8,7 +8,7 @@ import { visibilitySummary } from '@/utils/visibilityEngine'
 const MAX_IMAGE_BYTES = 4 * 1024 * 1024
 
 export const TextBlockItem = memo(function TextBlockItem({
-  item, dispatch, isActive, onActivateItem, availableQuestions = [],
+  item, dispatch, isActive, onActivateItem, availableQuestions = [], contextItems = [],
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: item.id })
@@ -161,6 +161,7 @@ export const TextBlockItem = memo(function TextBlockItem({
                 itemId={item.id}
                 vis={item.visibility}
                 availableQuestions={availableQuestions}
+                contextItems={contextItems}
                 dispatch={dispatch}
               />
             </div>

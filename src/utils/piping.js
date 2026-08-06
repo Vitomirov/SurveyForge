@@ -1,7 +1,50 @@
 // ─── Piping utilities ───────────────────────────────────────────────────────
 // Two features share this module:
-//   1. Text piping   — {{qid:ID}} tokens in question/block text replaced at render time
+//   1. Text piping   — {{qid:ID}} or {{qid:ID:ROW_ID}} tokens in question/block text
 //   2. Option piping — dynamic option list built from a source question's selections
+
+import {
+  formatMatrixAnswer,
+  formatMatrixRowAnswer,
+} from '@/utils/matrixHelpers'
+
+function resolveMatrixPipeMode(cfg) {
+  return cfg.matrixPipeMode || (cfg.matrixRowId ? 'columns' : 'rows')
+}
+
+/**
+ * Static catalog of options a piped question will expose (builder-time).
+ * IDs match runtime piped options so rules bind correctly.
+ */
+export function getPipedOptionCatalog(sourceQ, pipeCfg) {
+  if (!sourceQ) return []
+
+  if (sourceQ.questionType === 'matrix') {
+    const mode = resolveMatrixPipeMode(pipeCfg)
+    if (mode === 'rows') {
+      return (sourceQ.matrixConfig?.rows || []).map(row => ({
+        id: row.id,
+        text: row.text,
+        terminates: false,
+      }))
+    }
+    return (sourceQ.matrixConfig?.columns || []).map(col => ({
+      id: col.id,
+      text: col.text,
+      terminates: false,
+    }))
+  }
+
+  if (sourceQ.questionType === 'image_choice_single' || sourceQ.questionType === 'image_choice_multi') {
+    return (sourceQ.imageChoiceConfig?.imageOptions || []).map(o => ({
+      id: o.id,
+      text: o.text,
+      terminates: o.terminates || false,
+    }))
+  }
+
+  return sourceQ.options || []
+}
 
 // ─── Format a single answer for display in piped text ─────────────────────
 function formatPipedAnswer(question, answer) {
@@ -42,6 +85,8 @@ function formatPipedAnswer(question, answer) {
         .map(item => `${item.label}: ${vals[item.id] || 0}`)
         .join(', ')
     }
+    case 'matrix':
+      return formatMatrixAnswer(question, answer)
     default:
       if (typeof answer === 'object') return JSON.stringify(answer)
       return String(answer)
@@ -49,29 +94,24 @@ function formatPipedAnswer(question, answer) {
 }
 
 // ─── Resolve all piping tokens in a text string ───────────────────────────
-// Tokens: {{qid:QUESTION_ID}}
-// Returns the string with every token replaced by the formatted answer.
-// If the source question hasn't been answered yet, renders [not yet answered].
 export function resolvePipingTokens(text, responses, items) {
   if (!text || !text.includes('{{qid:')) return text
-  return text.replace(/\{\{qid:([^}]+)\}\}/g, (match, questionId) => {
+  return text.replace(/\{\{qid:([^}:]+)(?::([^}]+))?\}\}/g, (match, questionId, rowId) => {
     const question = items.find(i => i.id === questionId && i.itemType === 'question')
-    if (!question) return match   // unknown ID — leave token as-is
+    if (!question) return match
     const answer = responses[questionId]
+    if (rowId && question.questionType === 'matrix') {
+      return formatMatrixRowAnswer(question, answer, rowId)
+    }
     return formatPipedAnswer(question, answer)
   })
 }
 
-// ─── Build token string to insert into text ───────────────────────────────
-export function makeToken(questionId) {
-  return `{{qid:${questionId}}}`
+export function makeToken(questionId, rowId = null) {
+  return rowId ? `{{qid:${questionId}:${rowId}}}` : `{{qid:${questionId}}}`
 }
 
 // ─── Option piping: build dynamic options from source question's answers ──
-// For a question with pipedOptionsConfig.enabled = true, returns an array of
-// option objects built from whatever the respondent selected in the source Q.
-// Falls back to the question's own manually-entered options if piping isn't
-// configured or the source hasn't been answered yet.
 export function buildPipedOptions(question, responses, items) {
   const cfg = question.pipedOptionsConfig
   if (!cfg?.enabled || !cfg.sourceQuestionId) return question.options || []
@@ -79,28 +119,60 @@ export function buildPipedOptions(question, responses, items) {
   const sourceQ = items.find(i => i.id === cfg.sourceQuestionId && i.itemType === 'question')
   if (!sourceQ) return []
 
+  if (sourceQ.questionType === 'matrix') {
+    const mode = resolveMatrixPipeMode(cfg)
+
+    // Pipe matrix rows (e.g. Modul A, Modul B) as downstream options
+    if (mode === 'rows') {
+      return getPipedOptionCatalog(sourceQ, cfg)
+    }
+
+    // Pipe column selections from a specific matrix row
+    const rowId = cfg.matrixRowId
+    if (!rowId) return getPipedOptionCatalog(sourceQ, { ...cfg, matrixPipeMode: 'rows' })
+
+    const answer = responses[cfg.sourceQuestionId]
+    if (!answer) return []
+
+    const rowAnswer = answer[rowId]
+    if (rowAnswer === null || rowAnswer === undefined) return []
+
+    const colIds = Array.isArray(rowAnswer) ? rowAnswer : [rowAnswer]
+    return colIds
+      .map(id => {
+        const col = sourceQ.matrixConfig?.columns?.find(c => c.id === id)
+        return col ? { id: col.id, text: col.text, terminates: false } : null
+      })
+      .filter(Boolean)
+  }
+
   const answer = responses[cfg.sourceQuestionId]
   if (!answer) return []
 
   const selectedIds = Array.isArray(answer) ? answer : [answer]
 
-  // Return option objects with the SAME IDs as in the source question so that
-  // any termination rules referencing those IDs still work transparently.
   return selectedIds
     .map(id => sourceQ.options?.find(o => o.id === id))
     .filter(Boolean)
 }
 
-// ─── Which question types can be SOURCE for option piping ─────────────────
-// Only types that store a list of selected option IDs are valid sources.
 const PIPEABLE_SOURCE_TYPES = [
   'single_select',
   'multi_select',
   'dropdown',
   'image_choice_single',
   'image_choice_multi',
+  'matrix',
 ]
 
 export function isPipeableSource(questionType) {
   return PIPEABLE_SOURCE_TYPES.includes(questionType)
+}
+
+export function isMatrixPipeSource(sourceQ) {
+  return sourceQ?.questionType === 'matrix'
+}
+
+export function getMatrixPipeModeLabel(mode) {
+  return mode === 'columns' ? 'column selections from a row' : 'matrix rows'
 }

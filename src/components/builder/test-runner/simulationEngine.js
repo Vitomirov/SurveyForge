@@ -77,7 +77,7 @@ export function runSimulation(items, survey, branch) {
     }
 
     for (const q of pageQ) {
-      const result = checkTermination(q, responses[q.id])
+      const result = checkTermination(q, responses[q.id], responses, items)
       if (result.terminated) {
         log.push({ type: 'terminate', source: `Q${getQNum(q.id)}: "${clip(q.text)}"`, reason: result.cause })
         outcome = { type: 'terminated', source: `Q${getQNum(q.id)}`, reason: result.cause }

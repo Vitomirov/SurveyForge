@@ -1,18 +1,20 @@
 import { Plus, UserX, Link2, Link2Off } from 'lucide-react'
-import { isPipeableSource } from '@/utils/piping'
+import { isPipeableSource, isMatrixPipeSource, getMatrixPipeModeLabel } from '@/utils/piping'
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
 import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable'
 import { ChoiceOptionRow } from './ChoiceOptionRow'
 import { TerminationEditor } from './TerminationEditor'
 import { Divider, SectionLabel, Toggle } from '@/components/ui'
 
-export function ChoiceEditor({ question, dispatch, focusOptionId, availableQuestions = [] }) {
+export function ChoiceEditor({ question, dispatch, focusOptionId, availableQuestions = [], contextItems = [] }) {
   const pipeableSources = availableQuestions.filter(q => isPipeableSource(q.questionType))
   const pipeCfg         = question.pipedOptionsConfig || {}
   const pipingEnabled   = pipeCfg.enabled || false
+  const matrixPipeMode  = pipeCfg.matrixPipeMode || (pipeCfg.matrixRowId ? 'columns' : 'rows')
   const setPipeCfg = (patch) =>
     dispatch({ type: 'UPDATE_ITEM', id: question.id, patch: { pipedOptionsConfig: { ...pipeCfg, ...patch } } })
   const sourceQ = pipeableSources.find(q => q.id === pipeCfg.sourceQuestionId)
+  const ruleContextItems = contextItems.length ? contextItems : availableQuestions
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
@@ -58,19 +60,52 @@ export function ChoiceEditor({ question, dispatch, focusOptionId, availableQuest
               <>
                 <select
                   value={pipeCfg.sourceQuestionId || ''}
-                  onChange={e => setPipeCfg({ sourceQuestionId: e.target.value || null })}
+                  onChange={e => setPipeCfg({
+                    sourceQuestionId: e.target.value || null,
+                    matrixRowId: null,
+                    matrixPipeMode: 'rows',
+                  })}
                   className="input-base text-sm"
                 >
                   <option value="">— Select source question —</option>
-                  {pipeableSources.map((q, idx) => (
+                  {pipeableSources.map((q) => (
                     <option key={q.id} value={q.id}>
                       Q{availableQuestions.indexOf(q) + 1}: {q.text || '(untitled)'}
+                      {q.questionType === 'matrix' ? ' (matrix)' : ''}
                     </option>
                   ))}
                 </select>
+                {sourceQ && isMatrixPipeSource(sourceQ) && (
+                  <>
+                    <select
+                      value={matrixPipeMode}
+                      onChange={e => setPipeCfg({
+                        matrixPipeMode: e.target.value,
+                        matrixRowId: e.target.value === 'rows' ? null : pipeCfg.matrixRowId,
+                      })}
+                      className="input-base text-sm"
+                    >
+                      <option value="rows">Pipe matrix rows as options</option>
+                      <option value="columns">Pipe selected columns from a row</option>
+                    </select>
+                    {matrixPipeMode === 'columns' && (
+                      <select
+                        value={pipeCfg.matrixRowId || ''}
+                        onChange={e => setPipeCfg({ matrixRowId: e.target.value || null })}
+                        className="input-base text-sm"
+                      >
+                        <option value="">— Select matrix row —</option>
+                        {(sourceQ.matrixConfig?.rows || []).map(row => (
+                          <option key={row.id} value={row.id}>{row.text || '(untitled row)'}</option>
+                        ))}
+                      </select>
+                    )}
+                  </>
+                )}
                 {sourceQ && (
                   <p className="text-xs text-brand-600">
-                    ✓ In preview, this question's options will be built from whatever the respondent selected in Q{availableQuestions.indexOf(sourceQ) + 1}. The manual options below are ignored while piping is active.
+                    ✓ In preview, options come from {getMatrixPipeModeLabel(matrixPipeMode)} in Q{availableQuestions.indexOf(sourceQ) + 1}.
+                    Manual options below are ignored while piping is active.
                   </p>
                 )}
               </>
@@ -146,9 +181,17 @@ export function ChoiceEditor({ question, dispatch, focusOptionId, availableQuest
         </>
       )}
 
-      {/* Screen-out rules — available for all choice types */}
+      </div>{/* end piping-dimmed wrapper */}
+
+      {/* Screen-out rules — outside dimmed area so piped questions remain configurable */}
       <Divider label="Screen-out Rules" />
-      <TerminationEditor question={question} dispatch={dispatch} />
+      {pipingEnabled && (
+        <p className="text-xs text-rose-600 bg-rose-50 border border-rose-100 rounded-lg px-2.5 py-2 mb-2">
+          Options are piped dynamically — rules below use the populated option list from the source question
+          {sourceQ ? ` (Q${availableQuestions.indexOf(sourceQ) + 1})` : ''}.
+        </p>
+      )}
+      <TerminationEditor question={question} dispatch={dispatch} contextItems={ruleContextItems} />
 
       <Divider label="Display" />
       <div className="flex items-center justify-between p-2.5 bg-ink-50 rounded-lg">
@@ -158,7 +201,6 @@ export function ChoiceEditor({ question, dispatch, focusOptionId, availableQuest
         </div>
         <Toggle checked={question.randomizeOptions} onChange={val => dispatch({ type: 'UPDATE_ITEM', id: question.id, patch: { randomizeOptions: val } })} />
       </div>
-      </div>{/* end piping-dimmed wrapper */}
     </div>
   )
 }

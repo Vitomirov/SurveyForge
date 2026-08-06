@@ -1,6 +1,7 @@
 import { Plus } from 'lucide-react'
 import { Toggle, SectionLabel, Divider } from '@/components/ui'
 import { DeletableTextInput } from '@/components/shared'
+import { MatrixTerminationEditor } from './MatrixTerminationEditor'
 
 // ── Preview grid ─────────────────────────────────────────────────────────────
 function MatrixPreview({ rows, columns, subType }) {
@@ -149,6 +150,9 @@ export function MatrixEditor({ question, dispatch }) {
       <div className="rounded-lg border border-dashed border-ink-200 p-3 bg-ink-50">
         <MatrixPreview rows={cfg.rows} columns={cfg.columns} subType={cfg.subType} />
       </div>
+
+      <Divider label="Screen-out Rules" />
+      <MatrixTerminationEditor question={question} dispatch={dispatch} />
     </div>
   )
 }

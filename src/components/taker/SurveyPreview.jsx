@@ -186,7 +186,7 @@ export function SurveyPreview({ survey, items, onClose, isPublic = false }) {
   const checkPageTermination = () => {
     // 1. Per-question termination rules
     for (const q of currentQuestions) {
-      const result = checkTermination(q, responses[q.id])
+      const result = checkTermination(q, responses[q.id], responses, items)
       if (result.terminated) {
         const tb = { questionText: q.text, cause: result.cause, blockTitle: null }
         setTerminated(true)

@@ -6,7 +6,7 @@ import { VisibilityEditor } from '@/components/shared'
 import { visibilitySummary } from '@/utils/visibilityEngine'
 
 export const PageBreakItem = memo(function PageBreakItem({
-  item, pageNumber, dispatch, isActive, onActivateItem, availableQuestions = [],
+  item, pageNumber, dispatch, isActive, onActivateItem, availableQuestions = [], contextItems = [],
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.id })
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 }
@@ -76,6 +76,7 @@ export const PageBreakItem = memo(function PageBreakItem({
             itemId={item.id}
             vis={item.visibility}
             availableQuestions={availableQuestions}
+            contextItems={contextItems}
             dispatch={dispatch}
           />
         </div>

@@ -1,5 +1,6 @@
 import { Plus, X } from 'lucide-react'
-import { isChoiceType } from '@/utils/questionHelpers'
+import { isChoiceType, isMatrixType } from '@/utils/questionHelpers'
+import { getBuilderConditionOptions, resolveOptionLabel } from '@/utils/questionOptions'
 import {
   CHOICE_CONDITION_TYPES,
   TEXT_CONDITION_TYPES,
@@ -60,6 +61,20 @@ const THEMES = {
 
 const JOIN_OR = 'bg-amber-500 text-white border-amber-400 hover:bg-amber-600'
 
+function resolveConditionOptions(q, contextItems) {
+  if (!q) return []
+  if (isMatrixType(q.questionType)) return q.matrixConfig?.columns || []
+  return getBuilderConditionOptions(q, contextItems)
+}
+
+function isChoiceCondition(q) {
+  if (!q) return false
+  if (isMatrixType(q.questionType)) return true
+  if (isChoiceType(q.questionType)) return true
+  if (q.pipedOptionsConfig?.enabled) return true
+  return false
+}
+
 // ─── Rich inline summary (JSX) ──────────────────────────────────────────────
 export function ConditionSummaryInline({ cond, questions, variant = 'visibility', truncate = 26 }) {
   const theme = THEMES[variant] || THEMES.visibility
@@ -70,12 +85,32 @@ export function ConditionSummaryInline({ cond, questions, variant = 'visibility'
     ? `"${q.text.slice(0, truncate)}${q.text.length > truncate ? '…' : ''}"`
     : (variant === 'termination' ? 'Question' : 'Question')
 
-  if (isChoiceType(q.questionType)) {
-    const labels = (cond.optionIds || []).map(id => q.options?.find(o => o.id === id)?.text || '?').filter(Boolean)
+  if (isMatrixType(q.questionType)) {
+    const rowLabel = q.matrixConfig?.rows?.find(r => r.id === cond.matrixRowId)?.text || 'row'
+    const colLabels = (cond.matrixColumnIds || []).map(id =>
+      q.matrixConfig?.columns?.find(c => c.id === id)?.text || '?'
+    ).filter(Boolean)
     const ct = getChoiceConditionLabel(cond.conditionType)
     return (
       <>
-        {qLabel}{' '}
+        {qLabel} row <em className={theme.summaryEm}>"{rowLabel}"</em>{' '}
+        <em className={theme.summaryEm}>{ct}</em>{' '}
+        {colLabels.length
+          ? `[${colLabels.join(', ')}]`
+          : <span className={`italic ${theme.summaryEmpty}`}>no columns</span>}
+      </>
+    )
+  }
+
+  if (isChoiceCondition(q)) {
+    const labels = (cond.optionIds || []).map(id =>
+      resolveOptionLabel(q, id, questions)
+    ).filter(Boolean)
+    const ct = getChoiceConditionLabel(cond.conditionType)
+    const pipedNote = q.pipedOptionsConfig?.enabled ? ' (piped) ' : ' '
+    return (
+      <>
+        {qLabel}{pipedNote}
         <em className={theme.summaryEm}>{ct}</em>{' '}
         {labels.length
           ? `[${labels.join(', ')}]`
@@ -99,9 +134,16 @@ export function buildConditionLogicString(conditions, questions) {
     const q    = questions.find(q => q.id === c.questionId)
     const qLbl = q ? `Q${questions.indexOf(q) + 1}` : '?'
     let condStr
-    if (q && isChoiceType(q.questionType)) {
+    if (q && isMatrixType(q.questionType)) {
+      const rowLbl = q.matrixConfig?.rows?.find(r => r.id === c.matrixRowId)?.text || 'row'
+      const ct     = getChoiceConditionLabel(c.conditionType)
+      const cols   = (c.matrixColumnIds || []).map(id =>
+        q.matrixConfig?.columns?.find(col => col.id === id)?.text || '?'
+      )
+      condStr = `${qLbl} row "${rowLbl}" ${ct} [${cols.join(', ') || 'none'}]`
+    } else if (q && isChoiceCondition(q)) {
       const ct   = getChoiceConditionLabel(c.conditionType)
-      const opts = (c.optionIds || []).map(id => q.options?.find(o => o.id === id)?.text || '?')
+      const opts = (c.optionIds || []).map(id => resolveOptionLabel(q, id, questions))
       condStr = `${qLbl} ${ct} [${opts.join(', ') || 'none'}]`
     } else {
       const op = TEXT_CONDITION_TYPES.find(t => t.value === c.textOperator)?.label || c.textOperator
@@ -114,20 +156,25 @@ export function buildConditionLogicString(conditions, questions) {
 
 // ─── Single condition row ─────────────────────────────────────────────────────
 function ConditionRow({
-  cond, index, variant, availableQuestions,
+  cond, index, variant, availableQuestions, contextItems,
   onUpdate, onDelete,
 }) {
   const theme    = THEMES[variant] || THEMES.visibility
   const q        = availableQuestions.find(q => q.id === cond.questionId)
-  const isChoice = q && isChoiceType(q.questionType)
-  const opts     = q?.options || []
+  const isChoice = isChoiceCondition(q)
+  const isMatrix = q && isMatrixType(q.questionType)
+  const opts     = resolveConditionOptions(q, contextItems)
+  const rows     = q?.matrixConfig?.rows || []
 
   const setQuestion = (qId) => {
     const newQ = availableQuestions.find(q => q.id === qId)
-    const isC  = newQ && isChoiceType(newQ.questionType)
+    const isC  = isChoiceCondition(newQ)
+    const isM  = newQ && isMatrixType(newQ.questionType)
     onUpdate(cond.id, {
       questionId: qId,
       optionIds: [],
+      matrixRowId: isM ? (newQ.matrixConfig?.rows?.[0]?.id || '') : '',
+      matrixColumnIds: [],
       conditionType: isC ? 'any_of' : undefined,
       textOperator: isC ? undefined : 'contains',
       textValue: '',
@@ -135,10 +182,12 @@ function ConditionRow({
   }
 
   const toggleOption = (optId) => {
-    const next = (cond.optionIds || []).includes(optId)
-      ? cond.optionIds.filter(id => id !== optId)
-      : [...(cond.optionIds || []), optId]
-    onUpdate(cond.id, { optionIds: next })
+    const field = isMatrix ? 'matrixColumnIds' : 'optionIds'
+    const current = cond[field] || []
+    const next = current.includes(optId)
+      ? current.filter(id => id !== optId)
+      : [...current, optId]
+    onUpdate(cond.id, { [field]: next })
   }
 
   const fieldClass = `w-full border text-xs rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 ${theme.select}`
@@ -182,6 +231,22 @@ function ConditionRow({
           </select>
         </div>
 
+        {isMatrix && (
+          <div>
+            <label className={`text-xs mb-1 block ${theme.label}`}>Matrix row</label>
+            <select
+              value={cond.matrixRowId || ''}
+              onChange={e => onUpdate(cond.id, { matrixRowId: e.target.value, matrixColumnIds: [] })}
+              className={fieldClass}
+            >
+              <option value="">— Select row —</option>
+              {rows.map(row => (
+                <option key={row.id} value={row.id}>{row.text || '(untitled row)'}</option>
+              ))}
+            </select>
+          </div>
+        )}
+
         {q && (
           <div>
             <label className={`text-xs mb-1 block ${theme.label}`}>Condition</label>
@@ -199,12 +264,29 @@ function ConditionRow({
           </div>
         )}
 
-        {q && isChoice && opts.length > 0 && (
+        {q?.pipedOptionsConfig?.enabled && isChoice && !isMatrix && (
+          <p className={`text-xs ${theme.hint}`}>
+            Options are piped from an earlier question — select from the dynamic option list below.
+          </p>
+        )}
+
+        {q && isChoice && opts.length === 0 && (
+          <p className={`text-xs italic ${theme.optionEmpty}`}>
+            {q.pipedOptionsConfig?.enabled
+              ? 'No piped options available — configure the source question above.'
+              : 'No options defined for this question yet.'}
+          </p>
+        )}
+
+        {q && isChoice && opts.length > 0 && (!isMatrix || cond.matrixRowId) && (
           <div>
-            <label className={`text-xs mb-1.5 block ${theme.label}`}>Options</label>
+            <label className={`text-xs mb-1.5 block ${theme.label}`}>
+              {isMatrix ? 'Columns' : 'Options'}
+            </label>
             <div className="space-y-1 max-h-32 overflow-y-auto">
               {opts.map(opt => {
-                const sel = (cond.optionIds || []).includes(opt.id)
+                const field = isMatrix ? 'matrixColumnIds' : 'optionIds'
+                const sel = (cond[field] || []).includes(opt.id)
                 return (
                   <label key={opt.id} className="flex items-center gap-2 cursor-pointer group">
                     <div
@@ -257,15 +339,17 @@ export function ConditionBuilder({
   variant = 'visibility',
   conditions = [],
   availableQuestions = [],
+  contextItems = null,
   onUpdateCondition,
   onDeleteCondition,
   onAddCondition,
   previewLabel,
-  previewMode = 'block', // 'block' = one condition per line; 'inline' = used externally
+  previewMode = 'block',
   addLabel = 'Add condition',
   truncate = 26,
 }) {
   const theme = THEMES[variant] || THEMES.visibility
+  const itemsForOptions = contextItems || availableQuestions
 
   return (
     <div className="space-y-3">
@@ -298,6 +382,7 @@ export function ConditionBuilder({
             index={i}
             variant={variant}
             availableQuestions={availableQuestions}
+            contextItems={itemsForOptions}
             onUpdate={onUpdateCondition}
             onDelete={onDeleteCondition}
           />

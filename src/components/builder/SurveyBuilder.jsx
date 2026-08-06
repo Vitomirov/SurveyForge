@@ -425,6 +425,7 @@ export function SurveyBuilder({ initialState, initialRevision = null, onBackToDa
                           pageNumber={meta.pageNum}
                           dispatch={dispatch}
                           availableQuestions={availableQuestions}
+                          contextItems={state.items}
                           isActive={state.activeItemId === item.id}
                           onActivateItem={handleActivateItem}
                         />
@@ -440,6 +441,7 @@ export function SurveyBuilder({ initialState, initialRevision = null, onBackToDa
                           questionCount={groupQuestionCounts[item.id] || 0}
                           dispatch={dispatch}
                           availableQuestions={availableQuestions}
+                          contextItems={state.items}
                           isActive={state.activeItemId === item.id}
                           onActivateItem={handleActivateItem}
                         />
@@ -453,6 +455,7 @@ export function SurveyBuilder({ initialState, initialRevision = null, onBackToDa
                           key={item.id}
                           item={item}
                           availableQuestions={availableQuestions}
+                          contextItems={state.items}
                           isActive={state.activeItemId === item.id}
                           onActivateItem={handleActivateItem}
                           dispatch={dispatch}
@@ -468,6 +471,7 @@ export function SurveyBuilder({ initialState, initialRevision = null, onBackToDa
                           item={item}
                           dispatch={dispatch}
                           availableQuestions={availableQuestions}
+                          contextItems={state.items}
                           isActive={state.activeItemId === item.id}
                           onActivateItem={handleActivateItem}
                         />
@@ -492,6 +496,7 @@ export function SurveyBuilder({ initialState, initialRevision = null, onBackToDa
                           }
                           surveyDateFormat={state.survey.defaultDateFormat || DEFAULT_DATE_FORMAT}
                           availableQuestions={availableQuestions}
+                          contextItems={state.items}
                         />
                       </div>
                     )

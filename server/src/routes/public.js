@@ -54,6 +54,7 @@ export async function registerPublicRoutes(app) {
       surveyId: row.id,
       organizationId: row.organizationId,
       entry,
+      surveyItems: row.items || [],
     })
 
     return { ok: true, id: entry.id }

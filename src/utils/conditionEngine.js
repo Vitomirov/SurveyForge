@@ -3,7 +3,11 @@
 // termination blocks, and any future rule types). AND binds tighter than OR:
 // A AND B OR C = (A AND B) OR C
 
-import { isChoiceType } from '@/utils/questionHelpers'
+import { isChoiceType, isMatrixType } from '@/utils/questionHelpers'
+import {
+  isMatrixAnswerEmpty,
+  evalMatrixSelection,
+} from '@/utils/matrixHelpers'
 
 /**
  * Match a text/numeric answer against an operator.
@@ -23,23 +27,44 @@ export function evalTextOperator(answer, operator, textValue) {
   }
 }
 
+function isAnswerEmpty(answer, questionType) {
+  if (answer === undefined || answer === null || answer === '') return true
+  if (Array.isArray(answer) && answer.length === 0) return true
+  if (isMatrixType(questionType) && isMatrixAnswerEmpty(answer)) return true
+  return false
+}
+
+function evalMatrixCondition(cond, question, answer) {
+  if (!cond.matrixRowId) return false
+  return evalMatrixSelection(cond, question, answer)
+}
+
+function evalChoiceCondition(cond, question, answer) {
+  const selected = Array.isArray(answer) ? answer : [answer]
+  const ids      = cond.optionIds || []
+
+  switch (cond.conditionType) {
+    case 'any_of':  return ids.some(id => selected.includes(id))
+    case 'none_of': return ids.length > 0 && !ids.some(id => selected.includes(id))
+    case 'all_of':  return ids.length > 0 && ids.every(id => selected.includes(id))
+    default: return false
+  }
+}
+
 /**
  * Evaluate a single visibility/termination condition against current responses.
  */
 function evalCondition(cond, responses, allItems) {
   const q      = allItems.find(i => i.id === cond.questionId)
   const answer = responses[cond.questionId]
-  if (!q || answer === undefined || answer === null || answer === '') return false
+  if (!q || isAnswerEmpty(answer, q.questionType)) return false
 
-  if (isChoiceType(q.questionType)) {
-    const selected = Array.isArray(answer) ? answer : [answer]
-    const ids = cond.optionIds || []
-    switch (cond.conditionType) {
-      case 'any_of':  return ids.some(id => selected.includes(id))
-      case 'none_of': return ids.length > 0 && !ids.some(id => selected.includes(id))
-      case 'all_of':  return ids.length > 0 && ids.every(id => selected.includes(id))
-      default: return false
-    }
+  if (isMatrixType(q.questionType)) {
+    return evalMatrixCondition(cond, q, answer)
+  }
+
+  if (isChoiceType(q.questionType) || q.pipedOptionsConfig?.enabled) {
+    return evalChoiceCondition(cond, q, answer)
   }
 
   return evalTextOperator(answer, cond.textOperator, cond.textValue)
@@ -57,3 +82,5 @@ export function evalConditionSet(conditions, responses, allItems) {
   }
   return orGroups.some(g => g.length > 0 && g.every(c => evalCondition(c, responses, allItems)))
 }
+
+export { evalCondition }

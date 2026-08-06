@@ -8,7 +8,7 @@ import { ConditionBuilder } from './ConditionBuilder'
  * `vis` is `item.visibility`; `availableQuestions` should be every question
  * that appears before this item in the survey flow.
  */
-export function VisibilityEditor({ itemId, vis, availableQuestions, dispatch }) {
+export function VisibilityEditor({ itemId, vis, availableQuestions, contextItems, dispatch }) {
   const conditions = vis?.conditions || []
   const enabled    = vis?.enabled || false
   const mode       = vis?.mode || 'show_if'
@@ -64,6 +64,7 @@ export function VisibilityEditor({ itemId, vis, availableQuestions, dispatch }) 
             variant="visibility"
             conditions={conditions}
             availableQuestions={availableQuestions}
+            contextItems={contextItems}
             onUpdateCondition={(conditionId, patch) =>
               dispatch({ type: 'UPDATE_VISIBILITY_CONDITION', itemId, conditionId, patch })}
             onDeleteCondition={(conditionId) =>

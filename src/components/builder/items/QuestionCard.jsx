@@ -9,13 +9,14 @@ import { Toggle, IconBtn } from '@/components/ui'
 import { QuestionTypeEditor } from '@/components/builder/editors'
 import { VisibilityEditor } from '@/components/shared'
 import { makeToken } from '@/utils/piping'
-import { getTypeMeta, TYPE_COLORS, TYPE_ICONS, isChoiceType, QUESTION_TYPES } from '@/utils/questionHelpers'
+import { getTypeMeta, TYPE_COLORS, TYPE_ICONS, isChoiceType, isMatrixType, QUESTION_TYPES } from '@/utils/questionHelpers'
 import { makeOption } from '@/store/surveyStore'
 import { DEFAULT_DATE_FORMAT } from '@/constants/surveyDefaults'
 
 // ─── Token Picker — insert piping reference into question text ─────────────
 function TokenPicker({ availableQuestions, onInsert }) {
   const [open, setOpen] = useState(false)
+  const [expandedMatrix, setExpandedMatrix] = useState(null)
   const ref = React.useRef(null)
 
   React.useEffect(() => {
@@ -43,14 +44,49 @@ function TokenPicker({ availableQuestions, onInsert }) {
             Insert answer from…
           </p>
           {availableQuestions.map((q, idx) => (
-            <button
-              key={q.id}
-              onClick={() => { onInsert(makeToken(q.id)); setOpen(false) }}
-              className="w-full text-left px-3 py-2 text-sm hover:bg-brand-50 hover:text-brand-700 transition-all"
-            >
-              <span className="font-semibold text-brand-600 mr-1.5">Q{idx + 1}</span>
-              <span className="text-ink-600 truncate">{q.text || '(untitled)'}</span>
-            </button>
+            <div key={q.id}>
+              {isMatrixType(q.questionType) ? (
+                <>
+                  <button
+                    onClick={() => setExpandedMatrix(expandedMatrix === q.id ? null : q.id)}
+                    className="w-full text-left px-3 py-2 text-sm hover:bg-brand-50 hover:text-brand-700 transition-all flex items-center justify-between"
+                  >
+                    <span>
+                      <span className="font-semibold text-brand-600 mr-1.5">Q{idx + 1}</span>
+                      <span className="text-ink-600 truncate">{q.text || '(untitled)'}</span>
+                    </span>
+                    <ChevronDown size={12} className={`shrink-0 transition-transform ${expandedMatrix === q.id ? 'rotate-180' : ''}`} />
+                  </button>
+                  {expandedMatrix === q.id && (
+                    <div className="pl-4 pb-1">
+                      <button
+                        onClick={() => { onInsert(makeToken(q.id)); setOpen(false) }}
+                        className="w-full text-left px-3 py-1.5 text-xs hover:bg-brand-50 text-ink-600"
+                      >
+                        Entire matrix
+                      </button>
+                      {(q.matrixConfig?.rows || []).map(row => (
+                        <button
+                          key={row.id}
+                          onClick={() => { onInsert(makeToken(q.id, row.id)); setOpen(false) }}
+                          className="w-full text-left px-3 py-1.5 text-xs hover:bg-brand-50 text-ink-600"
+                        >
+                          Row: {row.text || '(untitled)'}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <button
+                  onClick={() => { onInsert(makeToken(q.id)); setOpen(false) }}
+                  className="w-full text-left px-3 py-2 text-sm hover:bg-brand-50 hover:text-brand-700 transition-all"
+                >
+                  <span className="font-semibold text-brand-600 mr-1.5">Q{idx + 1}</span>
+                  <span className="text-ink-600 truncate">{q.text || '(untitled)'}</span>
+                </button>
+              )}
+            </div>
           ))}
         </div>
       )}
@@ -60,7 +96,7 @@ function TokenPicker({ availableQuestions, onInsert }) {
 
 export const QuestionCard = memo(function QuestionCard({
   question, questionNumber, isActive, dispatch, onActivateItem, focusOptionId,
-  surveyDateFormat, availableQuestions = [],
+  surveyDateFormat, availableQuestions = [], contextItems = [],
 }) {
   const [showTypeMenu, setShowTypeMenu] = useState(false)
   const meta   = getTypeMeta(question.questionType)
@@ -238,6 +274,7 @@ export const QuestionCard = memo(function QuestionCard({
               dispatch={dispatch}
               focusOptionId={focusOptionId}
               availableQuestions={availableQuestions}
+              contextItems={contextItems}
               surveyDateFormat={surveyDateFormat}
             />
 
@@ -276,6 +313,7 @@ export const QuestionCard = memo(function QuestionCard({
                 itemId={question.id}
                 vis={question.visibility}
                 availableQuestions={availableQuestions}
+                contextItems={contextItems}
                 dispatch={dispatch}
               />
             </div>

@@ -315,11 +315,15 @@ export function surveyReducer(state, action) {
 
     case 'ADD_TERMINATION_RULE':
       return withItems(state, updateItemById(state.items, action.questionId, item => {
+        const isMatrix = item.questionType === 'matrix'
+        const ruleType = action.ruleType || (isMatrix ? 'matrix' : 'choice')
         const newRule = {
           id: newId(),
-          ruleType: action.ruleType || 'choice',
+          ruleType,
           matchMode: 'any',
           optionIds: [],
+          matrixRowId: action.matrixRowId || item.matrixConfig?.rows?.[0]?.id || '',
+          matrixColumnIds: [],
           textOperator: 'contains',
           textValue: '',
           note: '',

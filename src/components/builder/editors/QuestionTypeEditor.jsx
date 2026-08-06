@@ -13,6 +13,7 @@ export function QuestionTypeEditor({
   dispatch,
   focusOptionId,
   availableQuestions,
+  contextItems = [],
   surveyDateFormat,
 }) {
   const { questionType } = question
@@ -31,6 +32,7 @@ export function QuestionTypeEditor({
       dispatch={dispatch}
       focusOptionId={focusOptionId}
       availableQuestions={availableQuestions}
+      contextItems={contextItems}
       surveyDateFormat={surveyDateFormat}
     />
   )
