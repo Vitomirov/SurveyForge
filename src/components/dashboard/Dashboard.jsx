@@ -362,7 +362,7 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
       { field: 'client',    label: 'Client',       w: 'w-24' },
       { field: null,        label: 'Topic / Type', w: 'w-36' },
     ]
-    if (isAdmin) cols.push({ field: 'owner', label: 'Created by', w: 'w-28' })
+    if (isAdmin) cols.push({ field: 'owner', label: 'Created by', w: 'w-30' })
     cols.push(
       { field: 'responses', label: 'Responses',    w: 'w-28' },
       { field: 'updatedAt', label: 'Modified',     w: 'w-28' },

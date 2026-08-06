@@ -8,6 +8,10 @@
 # Developer (rebuild locally):
 #   docker compose up --build -d
 #
+# Developer (live reload — no rebuild):
+#   npm run dev:docker
+#   open http://localhost:5173
+#
 # Publish images to Docker Hub (after `docker login`):
 #   ./scripts/publish-docker.sh
 #

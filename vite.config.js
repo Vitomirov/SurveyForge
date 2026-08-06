@@ -4,7 +4,7 @@ import path from 'path'
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
-  const apiPort = env.PORT || '3001'
+  const apiPort = env.PORT || '3003'
 
   return {
     plugins: [react()],
