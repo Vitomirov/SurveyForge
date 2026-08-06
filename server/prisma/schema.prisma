@@ -53,6 +53,7 @@ model Survey {
   organizationId String   @map("organization_id")
   createdById    String?  @map("survey_created_by_id")
   tenantId       String?  @map("tenant_id")
+  publicPath     String?  @map("survey_public_path")
   survey         Json     @map("survey_data")
   items          Json     @default("[]") @map("survey_items")
   revision       Int      @default(1) @map("survey_revision")
@@ -64,6 +65,7 @@ model Survey {
   responses    Response[]
   dncEntries   DncEntry[]
 
+  @@unique([publicPath])
   @@index([organizationId])
   @@index([organizationId, updatedAt(sort: Desc)])
   @@index([organizationId, createdById])

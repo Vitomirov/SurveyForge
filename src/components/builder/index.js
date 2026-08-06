@@ -1,3 +1,4 @@
+export { ShareableSurveyUrl } from './ShareableSurveyUrl'
 export { SurveyBuilder } from './SurveyBuilder'
 export { SurveyMetadata } from './SurveyMetadata'
 export { CoverPageSettings } from './CoverPageSettings'

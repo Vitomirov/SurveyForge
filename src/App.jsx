@@ -19,28 +19,35 @@ const SurveyPreview = lazy(() => import('@/components/taker/SurveyPreview.jsx'))
 prefetchForRoute()
 
 /** Load the survey named by the route — public payload for the taker link. */
-async function fetchEntry(view, id) {
+async function fetchEntry(view, id, { byPath = false, clientDomain = null } = {}) {
   if (useApi) {
-    const { getSurvey, getPublicSurvey, payloadToLibraryEntry } = await import('@/api/surveys')
-    return payloadToLibraryEntry(id, await (view === 'take' ? getPublicSurvey(id) : getSurvey(id)))
+    const { getSurvey, getPublicSurvey, getPublicSurveyByPath, payloadToLibraryEntry } =
+      await import('@/api/surveys')
+    const payload = view === 'take'
+      ? (byPath
+        ? await getPublicSurveyByPath(id, clientDomain)
+        : await getPublicSurvey(id))
+      : await getSurvey(id)
+    return payloadToLibraryEntry(id, payload)
   }
-  const { loadSurvey } = await import('@/utils/surveyLibrary')
+  const { loadSurvey, loadSurveyByPublicPath } = await import('@/utils/surveyLibrary')
+  if (view === 'take' && byPath) return loadSurveyByPublicPath(id, clientDomain)
   return loadSurvey(id)
 }
 
 /** Survey for the current route: 'loading' | 'ready' | 'missing' | 'error'. */
-function useSurveyEntry(view, id) {
+function useSurveyEntry(view, id, { byPath = false, clientDomain = null } = {}) {
   const [state, setState] = useState(() => ({ status: id ? 'loading' : 'ready', entry: null }))
 
   useEffect(() => {
     if (!id) { setState({ status: 'ready', entry: null }); return }
     let alive = true
     setState({ status: 'loading', entry: null })
-    fetchEntry(view, id)
+    fetchEntry(view, id, { byPath, clientDomain })
       .then(entry => { if (alive) setState({ status: entry ? 'ready' : 'missing', entry }) })
       .catch(err  => { if (alive) setState({ status: err?.status === 404 ? 'missing' : 'error', entry: null }) })
     return () => { alive = false }
-  }, [view, id])
+  }, [view, id, byPath, clientDomain])
 
   return state
 }
@@ -83,9 +90,9 @@ function builderState(id, entry) {
 export default function App() {
   const [session, setSession] = useState(getSession)
   const { toast }             = useToast()
-  const { view, id }          = useRoute()
+  const { view, id, byPath, clientDomain } = useRoute()
   const isPublic              = view === 'take'
-  const { status, entry }     = useSurveyEntry(view, isPublic || session ? id : null)
+  const { status, entry }     = useSurveyEntry(view, isPublic || session ? id : null, { byPath, clientDomain })
 
   useEffect(() => {
     return onAuthInvalidated((code) => {

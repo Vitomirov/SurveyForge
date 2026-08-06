@@ -5,14 +5,37 @@
 //   #/builder/:id     edit (unknown id = new draft)
 //   #/preview/:id     preview
 //   #/take/:id        public taker — no auth
+// White-label path URLs also resolve on surveys.{client}.com/{publicPath}
 import { useMemo, useSyncExternalStore } from 'react'
+import { parseSurveyHost } from '@shared/surveyUrl.js'
 
-const DASHBOARD = { view: 'dashboard', id: null }
+const DASHBOARD = { view: 'dashboard', id: null, byPath: false, clientDomain: null }
 const VIEWS     = ['builder', 'preview', 'take']
 
-export function parseRoute(hash = window.location.hash) {
+function pathSlug(pathname = window.location.pathname) {
+  const slug = pathname.replace(/^\//, '').split('/').filter(Boolean)[0]
+  if (!slug || slug.includes('.')) return null
+  return slug
+}
+
+export function parseRoute(hash = window.location.hash, pathname = window.location.pathname) {
   const [, view, id] = (hash || '').match(/^#\/([a-z]+)\/([^/?]+)$/) || []
-  return VIEWS.includes(view) ? { view, id } : DASHBOARD
+  if (VIEWS.includes(view)) {
+    return { view, id, byPath: false, clientDomain: null }
+  }
+
+  const clientDomain = parseSurveyHost(window.location.hostname)
+  const slug = clientDomain ? pathSlug(pathname) : null
+  if (slug) {
+    return {
+      view: 'take',
+      id: slug,
+      byPath: true,
+      clientDomain,
+    }
+  }
+
+  return DASHBOARD
 }
 
 export function parseTakeHash() {
@@ -27,12 +50,22 @@ export function nav(view, id) {
 }
 
 function subscribe(onChange) {
-  window.addEventListener('hashchange', onChange)
-  return () => window.removeEventListener('hashchange', onChange)
+  const handler = () => onChange()
+  window.addEventListener('hashchange', handler)
+  window.addEventListener('popstate', handler)
+  return () => {
+    window.removeEventListener('hashchange', handler)
+    window.removeEventListener('popstate', handler)
+  }
 }
 
-/** Current route, re-read whenever the hash changes. */
+/** Current route, re-read whenever the hash or pathname changes. */
 export function useRoute() {
-  const hash = useSyncExternalStore(subscribe, () => window.location.hash)
-  return useMemo(() => parseRoute(hash), [hash])
+  const locationKey = useSyncExternalStore(subscribe, () =>
+    `${window.location.hash}|${window.location.pathname}`,
+  )
+  return useMemo(() => {
+    const [hash, pathname] = locationKey.split('|')
+    return parseRoute(hash, pathname)
+  }, [locationKey])
 }

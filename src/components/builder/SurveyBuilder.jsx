@@ -14,7 +14,7 @@ import {
   PageBreakItem, GroupItem, TerminationBlockItem, TextBlockItem,
 } from '@/components/builder/items'
 import { RichTextEditor } from '@/components/shared'
-import { CopyButton, PageLoader, InlineLoader } from '@/components/ui'
+import { PageLoader, InlineLoader } from '@/components/ui'
 import {
   CoverPageSettings, BrandingSettings,
   FingerprintSettings, DNCManager, SurveyMetadata,
@@ -57,6 +57,11 @@ export function SurveyBuilder({ initialState, initialRevision = null, onBackToDa
     survey: state.survey,
     items: state.items,
     revision: initialRevision,
+    onSaved: (result, payload) => {
+      if (result.publicPath && result.publicPath !== payload.survey.publicPath) {
+        dispatch({ type: 'SET_SURVEY_FIELD', field: 'publicPath', value: result.publicPath })
+      }
+    },
   })
 
   const handleActivateItem = useCallback((id) => {
@@ -371,29 +376,6 @@ export function SurveyBuilder({ initialState, initialRevision = null, onBackToDa
                 </div>
               </div>
             </details>
-
-            {/* Shareable survey URL */}
-            {state.survey.id && (
-              <div className="mt-3 border-t border-ink-100 pt-3">
-                <p className="text-xs font-semibold text-ink-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                  🔗 Shareable survey URL
-                </p>
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                  <code className="flex-1 text-xs bg-surface-muted border border-ink-200 text-ink-700 px-3 py-2 rounded-lg truncate font-mono min-w-0">
-                    {`${window.location.origin}${window.location.pathname}#/take/${state.survey.id}`}
-                  </code>
-                  <CopyButton
-                    text={`${window.location.origin}${window.location.pathname}#/take/${state.survey.id}`}
-                  />
-                </div>
-                <p className="text-xs text-ink-500 mt-1.5">
-                  Status: <strong>{state.survey.status || 'draft'}</strong>
-                  {state.survey.status !== 'live' && (
-                    <span className="text-amber-600"> — set status to Live to accept responses</span>
-                  )}
-                </p>
-              </div>
-            )}
 
             {/* Digital fingerprinting */}
             <FingerprintSettings survey={state.survey} dispatch={dispatch} />

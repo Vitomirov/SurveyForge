@@ -28,16 +28,14 @@ async function saveToApi(id, patch, revisionRef) {
       revision: revisionRef.current,
     })
     revisionRef.current = result.revision
-    return 'saved'
+    return result
   } catch (err) {
     if (err instanceof ApiError && err.status === 409 && err.body?.revision != null) {
       revisionRef.current = err.body.revision
-      const result = await patchSurvey(id, {
+      return patchSurvey(id, {
         ...patch,
         revision: revisionRef.current,
       })
-      revisionRef.current = result.revision
-      return 'saved'
     }
     throw err
   }
@@ -53,15 +51,18 @@ export function useAutosave({
   revision: initialRevision = null,
   delayMs = DEFAULT_DELAY_MS,
   enabled = true,
+  onSaved,
 }) {
   const timerRef = useRef(null)
   const latestRef = useRef({ survey, items })
   const revisionRef = useRef(initialRevision)
   const saveChainRef = useRef(Promise.resolve())
   const lastSavedRef = useRef(snapshotPayload(survey, items))
+  const onSavedRef = useRef(onSaved)
   const [saveStatus, setSaveStatus] = useState('idle')
 
   latestRef.current = { survey, items }
+  onSavedRef.current = onSaved
 
   useEffect(() => {
     if (initialRevision != null) revisionRef.current = initialRevision
@@ -78,17 +79,18 @@ export function useAutosave({
     if (!patch.survey && !patch.items) return
 
     if (!useApi) {
-      upsertSurvey({
+      const entry = upsertSurvey({
         id: payload.survey.id,
         survey: payload.survey,
         items: payload.items,
         savedAt: new Date().toISOString(),
       })
-      lastSavedRef.current = snapshotPayload(payload.survey, payload.items)
+      const saved = entry.find(s => s.id === payload.survey.id)
+      lastSavedRef.current = snapshotPayload(saved?.survey || payload.survey, payload.items)
+      onSavedRef.current?.({ publicPath: saved?.survey?.publicPath }, payload)
       return
     }
 
-    // The API creates the survey on its first PATCH, which needs the whole document.
     const body = revisionRef.current == null
       ? { survey: payload.survey, items: payload.items }
       : patch
@@ -96,9 +98,13 @@ export function useAutosave({
     setSaveStatus('saving')
     saveChainRef.current = saveChainRef.current
       .then(() => saveToApi(payload.survey.id, body, revisionRef))
-      .then(() => {
-        lastSavedRef.current = snapshotPayload(payload.survey, payload.items)
+      .then((result) => {
+        const savedSurvey = result.publicPath
+          ? { ...payload.survey, publicPath: result.publicPath }
+          : payload.survey
+        lastSavedRef.current = snapshotPayload(savedSurvey, payload.items)
         setSaveStatus('saved')
+        onSavedRef.current?.(result, payload)
       })
       .catch(() => setSaveStatus('error'))
   }

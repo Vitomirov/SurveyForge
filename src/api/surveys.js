@@ -32,6 +32,12 @@ export async function getPublicSurvey(id) {
   return apiFetch(`/api/public/surveys/${encodeURIComponent(id)}`)
 }
 
+/** Public taker route by white-label path slug. */
+export async function getPublicSurveyByPath(publicPath, clientDomain = null) {
+  const qs = clientDomain ? `?client=${encodeURIComponent(clientDomain)}` : ''
+  return apiFetch(`/api/public/s/${encodeURIComponent(publicPath)}${qs}`)
+}
+
 /** Map API list row → library entry shape (metadata only; items loaded on open). */
 export function metaToLibraryEntry(meta) {
   return {

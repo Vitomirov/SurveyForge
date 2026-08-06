@@ -7,6 +7,7 @@ import {
 import { fetchClients, fetchTopics } from '@/api/platform'
 import { useApi } from '@/config/api'
 import { isSurveyCodeTaken } from '@/utils/surveyLibrary'
+import { ShareableSurveyUrl } from './ShareableSurveyUrl'
 
 const CODE_RE = /^[A-Z0-9_-]{1,20}$/i
 
@@ -158,6 +159,8 @@ export function SurveyMetadata({ survey, dispatch }) {
           </div>
         </div>
       </div>
+
+      <ShareableSurveyUrl survey={survey} clients={clients} />
     </div>
   )
 }
