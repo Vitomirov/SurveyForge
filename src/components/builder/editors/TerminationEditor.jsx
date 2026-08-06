@@ -4,19 +4,10 @@ import { SectionLabel, Divider } from '@/components/ui'
 import { isChoiceType } from '@/utils/questionHelpers'
 import { getBuilderConditionOptions } from '@/utils/questionOptions'
 import { TEXT_OPERATORS } from '@/utils/conditionConstants'
+import { TextOperatorSelect, getTextOperatorHint, isNumericTextOperator } from '@/components/shared/TextOperatorSelect'
 
-function OperatorSelect({ value, onChange }) {
-  return (
-    <select
-      value={value}
-      onChange={e => onChange(e.target.value)}
-      className="input-base py-1.5 text-xs font-medium"
-    >
-      {TEXT_OPERATORS.map(op => (
-        <option key={op.value} value={op.value}>{op.label}</option>
-      ))}
-    </select>
-  )
+function OperatorSelect({ value, onChange, question }) {
+  return <TextOperatorSelect value={value} onChange={onChange} question={question} />
 }
 
 // ─── Single Rule card ──────────────────────────────────────────────────────
@@ -140,7 +131,7 @@ function RuleCard({ rule, ruleIndex, question, dispatch, onDelete, showChoiceRul
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <span className="text-xs text-ink-500 shrink-0 w-16">Operator</span>
-              <OperatorSelect value={rule.textOperator} onChange={v => update({ textOperator: v })} />
+              <OperatorSelect value={rule.textOperator} onChange={v => update({ textOperator: v })} question={question} />
             </div>
             <div className="flex items-center gap-2">
               <span className="text-xs text-ink-500 shrink-0 w-16">Value</span>
@@ -155,8 +146,8 @@ function RuleCard({ rule, ruleIndex, question, dispatch, onDelete, showChoiceRul
             {/* Hint */}
             {rule.textOperator && (
               <p className="text-xs text-ink-400 bg-ink-50 rounded-lg px-2 py-1">
-                ℹ {TEXT_OPERATORS.find(o => o.value === rule.textOperator)?.hint}
-                {['greater_than', 'less_than'].includes(rule.textOperator) && (
+                ℹ {getTextOperatorHint(rule.textOperator)}
+                {isNumericTextOperator(rule.textOperator) && (
                   <span className="ml-1 text-amber-600"> — answer must be numeric</span>
                 )}
               </p>

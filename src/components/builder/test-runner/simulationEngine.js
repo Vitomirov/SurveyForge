@@ -5,6 +5,8 @@
 
 import { buildVisiblePages } from '@/utils/visibilityEngine'
 import { evalBlock, checkTermination } from '@/utils/terminationEngine'
+import { resolveBranchTargetPage } from '@/utils/branchEngine'
+import { resolvePageExternalRedirect } from '@/utils/externalRedirectEngine'
 import { clip } from './branchAnalysis'
 import { buildResponses } from './answerGeneration'
 
@@ -97,6 +99,19 @@ export function runSimulation(items, survey, branch) {
     }
 
     if (p < pages.length - 1) {
+      const redirectUrl = resolvePageExternalRedirect(pageQ, responses, items)
+      if (redirectUrl) {
+        log.push({ type: 'nav', label: `External redirect to ${clip(redirectUrl, 50)}` })
+        outcome = { type: 'redirected', url: redirectUrl }
+        return { outcome, log, responses }
+      }
+
+      const branchTarget = resolveBranchTargetPage(pageQ, responses, items, pages, p)
+      if (branchTarget !== null) {
+        log.push({ type: 'nav', label: `Branch skip to page ${branchTarget + 1}` })
+        p = branchTarget - 1
+        continue
+      }
       log.push({ type: 'nav', label: `Advanced to page ${p + 2}` })
     }
   }

@@ -10,6 +10,12 @@ import { collectFingerprint } from '@/utils/deviceSignals'
 import { DEFAULT_DATE_FORMAT } from '@/constants/surveyDefaults'
 import { isOnDNCListAsync, loadDNCListAsync } from '@/utils/dncStore'
 import { checkTermination, evalBlock, buildBlockCause } from '@/utils/terminationEngine'
+import { resolveBranchTargetPage } from '@/utils/branchEngine'
+import {
+  resolveExternalRedirectUrl,
+  resolvePageExternalRedirect,
+  redirectsOnAnswerChange,
+} from '@/utils/externalRedirectEngine'
 import { validateAnswer } from '@/utils/answerValidation'
 import { buildQuestionNumberById } from '@/utils/questionHelpers'
 import { prefetchModule, prefetchCommonQuestions } from '@/utils/routePrefetch'
@@ -166,10 +172,32 @@ export function SurveyPreview({ survey, items, onClose, isPublic = false }) {
     return finalStatus
   }
 
-  // ── Handle answer change — just update state, no termination check here ─
+  const performExternalRedirect = (url, responseSnapshot) => {
+    const entry = {
+      ...buildEntry('partial'),
+      responses: responseSnapshot,
+      redirectedTo: url,
+    }
+    if (survey?.id) {
+      if (useApi) {
+        const save = isPublic ? savePublicResponse : saveResponseApi
+        save(survey.id, entry).catch(err => console.error('Failed to save response before redirect', err))
+      } else {
+        saveResponse(survey.id, entry)
+      }
+    }
+    window.location.assign(url)
+  }
+
   const handleChange = (question, val) => {
-    setResponses(r => ({ ...r, [question.id]: val }))
+    const nextResponses = { ...responses, [question.id]: val }
+    setResponses(nextResponses)
     if (errors[question.id]) setErrors(e => ({ ...e, [question.id]: null }))
+
+    if (redirectsOnAnswerChange(question)) {
+      const url = resolveExternalRedirectUrl(question, val, nextResponses, items)
+      if (url) performExternalRedirect(url, nextResponses)
+    }
   }
 
   const validatePage = () => {
@@ -213,8 +241,16 @@ export function SurveyPreview({ survey, items, onClose, isPublic = false }) {
   const handleNext = () => {
     if (!validatePage()) return
     if (checkPageTermination()) return
+
+    const redirectUrl = resolvePageExternalRedirect(currentQuestions, responses, items)
+    if (redirectUrl) {
+      performExternalRedirect(redirectUrl, responses)
+      return
+    }
+
     if (currentPage < totalPages - 1) {
-      setCurrentPage(p => p + 1)
+      const branchTarget = resolveBranchTargetPage(currentQuestions, responses, items, pages, currentPage)
+      setCurrentPage(branchTarget ?? currentPage + 1)
       window.scrollTo({ top: 0, behavior: 'smooth' })
     } else {
       setSubmitted(true)

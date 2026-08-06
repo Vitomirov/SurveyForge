@@ -96,7 +96,7 @@ function TokenPicker({ availableQuestions, onInsert }) {
 
 export const QuestionCard = memo(function QuestionCard({
   question, questionNumber, isActive, dispatch, onActivateItem, focusOptionId,
-  surveyDateFormat, availableQuestions = [], contextItems = [],
+  surveyDateFormat, availableQuestions = [], contextItems = [], itemIndex = 0,
 }) {
   const [showTypeMenu, setShowTypeMenu] = useState(false)
   const meta   = getTypeMeta(question.questionType)
@@ -276,6 +276,8 @@ export const QuestionCard = memo(function QuestionCard({
               availableQuestions={availableQuestions}
               contextItems={contextItems}
               surveyDateFormat={surveyDateFormat}
+              allItems={contextItems}
+              itemIndex={itemIndex}
             />
 
             {/* Email capture field — for DNC matching */}

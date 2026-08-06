@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { Plus, X } from 'lucide-react'
 import { isChoiceType, isMatrixType } from '@/utils/questionHelpers'
 import { getBuilderConditionOptions, resolveOptionLabel } from '@/utils/questionOptions'
@@ -10,8 +11,10 @@ import {
 } from '@/utils/conditionSummary'
 import {
   CHOICE_CONDITION_TYPES,
-  TEXT_CONDITION_TYPES,
   getChoiceConditionLabel,
+  getTextConditionTypesForQuestion,
+  isNumericTextQuestion,
+  sanitizeTextOperator,
 } from '@/utils/conditionConstants'
 
 // ─── Theme tokens per variant ───────────────────────────────────────────────
@@ -151,6 +154,12 @@ function ConditionRow({
   const opts     = resolveConditionOptions(q, contextItems)
   const rows     = q?.matrixConfig?.rows || []
 
+  useEffect(() => {
+    if (!q || isChoice || !cond.textOperator) return
+    const safe = sanitizeTextOperator(cond.textOperator, q)
+    if (cond.textOperator !== safe) onUpdate(cond.id, { textOperator: safe })
+  }, [q?.id, q?.openTextConfig?.validation?.type, cond.textOperator, cond.id, isChoice, onUpdate, q])
+
   const setQuestion = (qId) => {
     const newQ = availableQuestions.find(q => q.id === qId)
     const isC  = isChoiceCondition(newQ)
@@ -242,7 +251,7 @@ function ConditionRow({
                 : onUpdate(cond.id, { textOperator: e.target.value })}
               className={fieldClass}
             >
-              {(isChoice ? CHOICE_CONDITION_TYPES : TEXT_CONDITION_TYPES).map(t => (
+              {(isChoice ? CHOICE_CONDITION_TYPES : getTextConditionTypesForQuestion(q)).map(t => (
                 <option key={t.value} value={t.value}>{t.label}</option>
               ))}
             </select>
@@ -306,7 +315,7 @@ function ConditionRow({
               placeholder="Enter value…"
               className={fieldClass}
             />
-            {['greater_than', 'less_than'].includes(cond.textOperator) && (
+            {isNumericTextQuestion(q) && ['greater_than', 'less_than'].includes(cond.textOperator) && (
               <p className={`text-xs mt-1 ${theme.hint}`}>Answer must be numeric</p>
             )}
           </div>

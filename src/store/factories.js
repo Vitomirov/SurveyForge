@@ -85,6 +85,8 @@ export const makeQuestion = (questionType = 'single_select') => {
     randomizeOptions: false,
     terminationRules: [],
     terminationLogic: 'if_any',
+    branchRules: [],
+    externalRedirectRules: [],
 
     openTextConfig: {
       multiline: true,

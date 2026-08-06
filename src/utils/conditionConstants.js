@@ -28,6 +28,30 @@ export const TEXT_OPERATORS = [
   { value: 'less_than',    label: 'less than',         hint: 'Numeric: answer < value' },
 ]
 
+const NUMERIC_ONLY_OPERATORS = new Set(['greater_than', 'less_than'])
+
+/** Open-text question with Number validation — only case that supports > / <. */
+export function isNumericTextQuestion(question) {
+  return question?.questionType === 'open_text'
+    && question?.openTextConfig?.validation?.type === 'number'
+}
+
+export function getTextOperatorsForQuestion(question) {
+  if (isNumericTextQuestion(question)) return TEXT_OPERATORS
+  return TEXT_OPERATORS.filter(op => !NUMERIC_ONLY_OPERATORS.has(op.value))
+}
+
+export function getTextConditionTypesForQuestion(question) {
+  if (isNumericTextQuestion(question)) return TEXT_CONDITION_TYPES
+  return TEXT_CONDITION_TYPES.filter(t => !NUMERIC_ONLY_OPERATORS.has(t.value))
+}
+
+/** Reset stored operator when it is no longer valid for this question type. */
+export function sanitizeTextOperator(operator, question) {
+  const allowed = getTextOperatorsForQuestion(question)
+  return allowed.some(op => op.value === operator) ? operator : 'contains'
+}
+
 export function getChoiceConditionLabel(value) {
   return CHOICE_CONDITION_TYPES.find(t => t.value === value)?.label || value
 }

@@ -1,5 +1,8 @@
 import { SectionLabel, Toggle, Divider } from '@/components/ui'
+import { sanitizeTextOperator } from '@/utils/conditionConstants'
 import { TerminationEditor } from './TerminationEditor'
+import { BranchEditor } from './BranchEditor'
+import { ExternalRedirectEditor } from './ExternalRedirectEditor'
 
 const VALIDATION_TYPES = [
   { value: 'none',   label: 'None',   description: 'Accept any text' },
@@ -8,7 +11,7 @@ const VALIDATION_TYPES = [
   { value: 'url',    label: 'URL',    description: 'Must be a valid web address' },
 ]
 
-export function OpenTextEditor({ question, dispatch }) {
+export function OpenTextEditor({ question, dispatch, allItems = [], itemIndex = 0 }) {
   const cfg = question.openTextConfig
   const val = cfg.validation || { type: 'none', numberMin: null, numberMax: null }
 
@@ -17,6 +20,29 @@ export function OpenTextEditor({ question, dispatch }) {
 
   const updateVal = (patch) =>
     update({ validation: { ...val, ...patch } })
+
+  const setValidationType = (type) => {
+    if (type === val.type) return
+    const nextQuestion = {
+      ...question,
+      openTextConfig: { ...cfg, validation: { ...val, type } },
+    }
+    const sanitizeRules = (rules) => (rules || []).map(r =>
+      r.ruleType === 'text'
+        ? { ...r, textOperator: sanitizeTextOperator(r.textOperator, nextQuestion) }
+        : r
+    )
+    dispatch({
+      type: 'UPDATE_ITEM',
+      id: question.id,
+      patch: {
+        openTextConfig: { ...cfg, validation: { ...val, type } },
+        terminationRules: sanitizeRules(question.terminationRules),
+        branchRules: sanitizeRules(question.branchRules),
+        externalRedirectRules: sanitizeRules(question.externalRedirectRules),
+      },
+    })
+  }
 
   return (
     <div className="space-y-4">
@@ -64,7 +90,7 @@ export function OpenTextEditor({ question, dispatch }) {
           {VALIDATION_TYPES.map(vt => (
             <button
               key={vt.value}
-              onClick={() => updateVal({ type: vt.value })}
+              onClick={() => setValidationType(vt.value)}
               className={`p-2.5 rounded-lg border text-sm text-left transition-all ${
                 val.type === vt.value
                   ? 'border-brand-500 bg-brand-50 text-brand-700'
@@ -163,6 +189,18 @@ export function OpenTextEditor({ question, dispatch }) {
         Terminate based on what the respondent types. Text rules are checked when the respondent clicks Next.
       </p>
       <TerminationEditor question={question} dispatch={dispatch} />
+
+      <Divider label="Skip to Page" />
+      <p className="text-xs text-ink-400 mb-3">
+        Jump respondents to a later page when their answer matches a text rule.
+      </p>
+      <BranchEditor question={question} dispatch={dispatch} allItems={allItems} itemIndex={itemIndex} />
+
+      <Divider label="Skip to External URL" />
+      <p className="text-xs text-ink-400 mb-3">
+        Send respondents to an external site when their text answer matches a rule (checked on Next).
+      </p>
+      <ExternalRedirectEditor question={question} dispatch={dispatch} />
     </div>
   )
 }

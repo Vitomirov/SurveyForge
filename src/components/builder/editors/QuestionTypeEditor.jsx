@@ -15,6 +15,8 @@ export function QuestionTypeEditor({
   availableQuestions,
   contextItems = [],
   surveyDateFormat,
+  allItems = [],
+  itemIndex = 0,
 }) {
   const { questionType } = question
 
@@ -34,6 +36,8 @@ export function QuestionTypeEditor({
       availableQuestions={availableQuestions}
       contextItems={contextItems}
       surveyDateFormat={surveyDateFormat}
+      allItems={allItems}
+      itemIndex={itemIndex}
     />
   )
 }

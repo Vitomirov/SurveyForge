@@ -58,6 +58,32 @@ export function buildAvailableQuestionsByIndex(items) {
  * @param {Array} itemMeta
  * @returns {Record<string, number>}
  */
+/**
+ * Forward page targets for skip-to-page rules (pages after `afterItemIndex`).
+ * `targetPageBreakId` is the page_break immediately before the target page;
+ * use `'__start__'` for Page 1.
+ */
+export function buildPageTargets(items, afterItemIndex) {
+  const targets = [{ id: '__start__', label: 'Page 1', pageNum: 1 }]
+  let pageNum = 1
+
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i]
+    if (item.itemType !== 'page_break') continue
+    pageNum++
+    if (i > afterItemIndex) {
+      const title = item.title?.trim()
+      targets.push({
+        id: item.id,
+        label: title ? `Page ${pageNum}: ${title}` : `Page ${pageNum}`,
+        pageNum,
+      })
+    }
+  }
+
+  return targets
+}
+
 export function buildGroupQuestionCounts(items, itemMeta) {
   const counts = {}
   items.forEach((item, i) => {

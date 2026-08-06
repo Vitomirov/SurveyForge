@@ -2,6 +2,8 @@ import { Plus } from 'lucide-react'
 import { Toggle, SectionLabel, Divider } from '@/components/ui'
 import { DeletableTextInput } from '@/components/shared'
 import { MatrixTerminationEditor } from './MatrixTerminationEditor'
+import { BranchEditor } from './BranchEditor'
+import { ExternalRedirectEditor } from './ExternalRedirectEditor'
 
 // ── Preview grid ─────────────────────────────────────────────────────────────
 function MatrixPreview({ rows, columns, subType }) {
@@ -39,7 +41,7 @@ function MatrixPreview({ rows, columns, subType }) {
   )
 }
 
-export function MatrixEditor({ question, dispatch }) {
+export function MatrixEditor({ question, dispatch, allItems = [], itemIndex = 0 }) {
   const cfg = question.matrixConfig
 
   const updateCfg = (patch) =>
@@ -153,6 +155,18 @@ export function MatrixEditor({ question, dispatch }) {
 
       <Divider label="Screen-out Rules" />
       <MatrixTerminationEditor question={question} dispatch={dispatch} />
+
+      <Divider label="Skip to Page" />
+      <p className="text-xs text-ink-400 mb-3">
+        Jump respondents to a later page when a matrix answer matches a rule.
+      </p>
+      <BranchEditor question={question} dispatch={dispatch} allItems={allItems} itemIndex={itemIndex} />
+
+      <Divider label="Skip to External URL" />
+      <p className="text-xs text-ink-400 mb-3">
+        Send respondents to an external site when a matrix answer matches a rule.
+      </p>
+      <ExternalRedirectEditor question={question} dispatch={dispatch} />
     </div>
   )
 }

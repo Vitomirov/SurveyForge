@@ -497,6 +497,7 @@ export function SurveyBuilder({ initialState, initialRevision = null, onBackToDa
                           surveyDateFormat={state.survey.defaultDateFormat || DEFAULT_DATE_FORMAT}
                           availableQuestions={availableQuestions}
                           contextItems={state.items}
+                          itemIndex={idx}
                         />
                       </div>
                     )

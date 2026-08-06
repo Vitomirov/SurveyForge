@@ -25,8 +25,8 @@ function resolveOptions(question, answer, responses, allItems) {
   return question.options || []
 }
 
-// ─── Per-question termination rule ──────────────────────────────────────────
-function evaluateRule(rule, question, answer, responses, allItems) {
+// ─── Per-question rule matching (shared by termination + branching) ─────────
+export function evaluateQuestionRule(rule, question, answer, responses, allItems) {
   const ruleType = rule.ruleType || 'choice'
 
   if (ruleType === 'matrix') {
@@ -81,7 +81,7 @@ export function checkTermination(question, answer, responses = {}, allItems = []
   if (!rules.length) return { terminated: false }
 
   const logic   = question.terminationLogic || 'if_any'
-  const results = rules.map(r => evaluateRule(r, question, answer, responses, allItems))
+  const results = rules.map(r => evaluateQuestionRule(r, question, answer, responses, allItems))
 
   if (logic === 'if_any') {
     const idx = results.findIndex(r => r)

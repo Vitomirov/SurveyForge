@@ -4,9 +4,11 @@ import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, us
 import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable'
 import { ChoiceOptionRow } from './ChoiceOptionRow'
 import { TerminationEditor } from './TerminationEditor'
+import { BranchEditor } from './BranchEditor'
+import { ExternalRedirectEditor } from './ExternalRedirectEditor'
 import { Divider, SectionLabel, Toggle } from '@/components/ui'
 
-export function ChoiceEditor({ question, dispatch, focusOptionId, availableQuestions = [], contextItems = [] }) {
+export function ChoiceEditor({ question, dispatch, focusOptionId, availableQuestions = [], contextItems = [], allItems = [], itemIndex = 0 }) {
   const pipeableSources = availableQuestions.filter(q => isPipeableSource(q.questionType))
   const pipeCfg         = question.pipedOptionsConfig || {}
   const pipingEnabled   = pipeCfg.enabled || false
@@ -35,6 +37,8 @@ export function ChoiceEditor({ question, dispatch, focusOptionId, availableQuest
   const hasOpenText    = question.options.some(o => o.openText?.enabled)
   const termOptCount   = question.options.filter(o => o.terminates).length
   const ruleCount      = (question.terminationRules || []).length
+  const branchCount    = (question.branchRules || []).length
+  const redirectCount  = (question.externalRedirectRules || []).length
 
   return (
     <div>
@@ -117,7 +121,7 @@ export function ChoiceEditor({ question, dispatch, focusOptionId, availableQuest
       {/* Dim manual options when piping is active */}
       <div className={pipingEnabled ? 'opacity-40 pointer-events-none select-none' : ''}>
       {/* Summary badges */}
-      {(topAnchored > 0 || bottomAnchored > 0 || hasExclusive || hasOpenText || termOptCount > 0 || ruleCount > 0) && (
+      {(topAnchored > 0 || bottomAnchored > 0 || hasExclusive || hasOpenText || termOptCount > 0 || ruleCount > 0 || branchCount > 0 || redirectCount > 0) && (
         <div className="flex flex-wrap gap-1.5 mb-3 p-2 bg-ink-50 rounded-lg">
           {topAnchored > 0    && <span className="text-xs text-brand-600 bg-brand-50 border border-brand-100 px-2 py-0.5 rounded">⚓ {topAnchored} top</span>}
           {bottomAnchored > 0 && <span className="text-xs text-amber-600 bg-amber-50 border border-amber-100 px-2 py-0.5 rounded">⚓ {bottomAnchored} bottom</span>}
@@ -125,6 +129,8 @@ export function ChoiceEditor({ question, dispatch, focusOptionId, availableQuest
           {hasOpenText        && <span className="text-xs text-brand-600 bg-brand-50 border border-brand-100 px-2 py-0.5 rounded">💬 Open-text</span>}
           {termOptCount > 0   && <span className="text-xs text-white bg-rose-600 px-2 py-0.5 rounded flex items-center gap-1"><UserX size={9} /> {termOptCount} instant</span>}
           {ruleCount > 0      && <span className="text-xs text-rose-700 bg-rose-100 border border-rose-200 px-2 py-0.5 rounded">{ruleCount} rule{ruleCount !== 1 ? 's' : ''} · {question.terminationLogic || 'if_any'}</span>}
+          {branchCount > 0    && <span className="text-xs text-sky-700 bg-sky-100 border border-sky-200 px-2 py-0.5 rounded">{branchCount} branch{branchCount !== 1 ? 'es' : ''}</span>}
+          {redirectCount > 0  && <span className="text-xs text-emerald-700 bg-emerald-100 border border-emerald-200 px-2 py-0.5 rounded">{redirectCount} external redirect{redirectCount !== 1 ? 's' : ''}</span>}
         </div>
       )}
 
@@ -192,6 +198,24 @@ export function ChoiceEditor({ question, dispatch, focusOptionId, availableQuest
         </p>
       )}
       <TerminationEditor question={question} dispatch={dispatch} contextItems={ruleContextItems} />
+
+      <Divider label="Skip to Page" />
+      <p className="text-xs text-ink-400 mb-3">
+        Jump respondents to a later page when their answer matches a rule. Otherwise they continue to the next page in order.
+      </p>
+      <BranchEditor
+        question={question}
+        dispatch={dispatch}
+        allItems={allItems.length ? allItems : contextItems}
+        itemIndex={itemIndex}
+        contextItems={ruleContextItems}
+      />
+
+      <Divider label="Skip to External URL" />
+      <p className="text-xs text-ink-400 mb-3">
+        Send respondents to an external site when their answer matches a rule. They leave the survey immediately — no further pages are shown.
+      </p>
+      <ExternalRedirectEditor question={question} dispatch={dispatch} contextItems={ruleContextItems} />
 
       <Divider label="Display" />
       <div className="flex items-center justify-between p-2.5 bg-ink-50 rounded-lg">

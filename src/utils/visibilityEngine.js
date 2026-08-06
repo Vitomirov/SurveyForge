@@ -121,3 +121,56 @@ export function visibilitySummary(vis, allItems) {
   const parts = joinConditionPhrasesInline(vis.conditions, phrases)
   return `${verb}: ${parts}`
 }
+
+/** Visible page index for content after `targetPageBreakId` (`__start__` → 0). */
+export function findPageIndexForBreak(items, responses, targetPageBreakId, pages) {
+  if (!targetPageBreakId || targetPageBreakId === '__start__') return 0
+  if (!pages?.length) return null
+
+  const groupVisibility = {}
+  items.forEach(item => {
+    if (item.itemType === 'group') {
+      groupVisibility[item.id] = isItemVisible(item, responses, items)
+    }
+  })
+
+  let afterTarget = false
+  let currentGroupId = null
+
+  for (const item of items) {
+    if (item.itemType === 'group') {
+      currentGroupId = item.id
+      continue
+    }
+
+    if (item.itemType === 'page_break') {
+      if (!isItemVisible(item, responses, items)) continue
+      if (item.id === targetPageBreakId) {
+        afterTarget = true
+        currentGroupId = null
+        continue
+      }
+      if (afterTarget) break
+      currentGroupId = null
+      continue
+    }
+
+    if (!afterTarget) continue
+    if (item.itemType === 'termination_block') continue
+
+    if (item.itemType === 'text_block') {
+      if (!isItemVisible(item, responses, items)) continue
+      const idx = pages.findIndex(page => page.some(p => p.id === item.id))
+      return idx >= 0 ? idx : null
+    }
+
+    if (item.itemType === 'question') {
+      if (currentGroupId && groupVisibility[currentGroupId] === false) continue
+      if (!isItemVisible(item, responses, items)) continue
+      const idx = pages.findIndex(page => page.some(p => p.id === item.id))
+      return idx >= 0 ? idx : null
+    }
+  }
+
+  return null
+}

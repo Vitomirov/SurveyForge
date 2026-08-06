@@ -347,6 +347,72 @@ export function surveyReducer(state, action) {
         terminationRules: (item.terminationRules || []).filter(r => r.id !== action.ruleId),
       })))
 
+    case 'ADD_BRANCH_RULE':
+      return withItems(state, updateItemById(state.items, action.questionId, item => {
+        const isMatrix = item.questionType === 'matrix'
+        const ruleType = action.ruleType || (isMatrix ? 'matrix' : 'choice')
+        const newRule = {
+          id: newId(),
+          ruleType,
+          matchMode: 'any',
+          optionIds: [],
+          matrixRowId: action.matrixRowId || item.matrixConfig?.rows?.[0]?.id || '',
+          matrixColumnIds: [],
+          textOperator: 'contains',
+          textValue: '',
+          targetPageBreakId: '',
+        }
+        return { ...item, branchRules: [...(item.branchRules || []), newRule] }
+      }))
+
+    case 'UPDATE_BRANCH_RULE':
+      return withItems(state, updateItemById(state.items, action.questionId, item => {
+        const branchRules = mapById(item.branchRules || [], action.ruleId, r =>
+          patchItem(r, action.patch)
+        )
+        return branchRules === item.branchRules ? item : { ...item, branchRules }
+      }))
+
+    case 'DELETE_BRANCH_RULE':
+      return withItems(state, updateItemById(state.items, action.questionId, item => ({
+        ...item,
+        branchRules: (item.branchRules || []).filter(r => r.id !== action.ruleId),
+      })))
+
+    case 'ADD_EXTERNAL_REDIRECT_RULE':
+      return withItems(state, updateItemById(state.items, action.questionId, item => {
+        const isMatrix = item.questionType === 'matrix'
+        const ruleType = action.ruleType || (isMatrix ? 'matrix' : 'choice')
+        const newRule = {
+          id: newId(),
+          ruleType,
+          matchMode: 'any',
+          optionIds: [],
+          matrixRowId: action.matrixRowId || item.matrixConfig?.rows?.[0]?.id || '',
+          matrixColumnIds: [],
+          textOperator: 'contains',
+          textValue: '',
+          externalUrl: '',
+        }
+        return { ...item, externalRedirectRules: [...(item.externalRedirectRules || []), newRule] }
+      }))
+
+    case 'UPDATE_EXTERNAL_REDIRECT_RULE':
+      return withItems(state, updateItemById(state.items, action.questionId, item => {
+        const externalRedirectRules = mapById(item.externalRedirectRules || [], action.ruleId, r =>
+          patchItem(r, action.patch)
+        )
+        return externalRedirectRules === item.externalRedirectRules
+          ? item
+          : { ...item, externalRedirectRules }
+      }))
+
+    case 'DELETE_EXTERNAL_REDIRECT_RULE':
+      return withItems(state, updateItemById(state.items, action.questionId, item => ({
+        ...item,
+        externalRedirectRules: (item.externalRedirectRules || []).filter(r => r.id !== action.ruleId),
+      })))
+
     case 'SET_SURVEY_SETTING': {
       return {
         ...state,
