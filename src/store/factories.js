@@ -5,6 +5,7 @@ import {
   SPECIFY_PLACEHOLDER,
   SPECIFY_PLACEHOLDER_UNICODE,
 } from '@/constants/placeholders'
+import { makeNavigationLock } from '@/constants/navigationLock'
 import { newId } from './id'
 
 // ─── Factory helpers ───────────────────────────────────────────────────────
@@ -258,6 +259,7 @@ export const makePageBreak = () => ({
   id: newId(),
   itemType: 'page_break',
   visibility: makeVisibilityConfig(),
+  navigationLock: makeNavigationLock(),
 })
 
 export const makeGroup = (title = 'New Group') => ({
@@ -267,6 +269,7 @@ export const makeGroup = (title = 'New Group') => ({
   collapsed: false,
   color: null,
   visibility: makeVisibilityConfig(),
+  navigationLock: makeNavigationLock(),
 })
 
 export const makeTerminationCondition = (isFirst = false) => ({

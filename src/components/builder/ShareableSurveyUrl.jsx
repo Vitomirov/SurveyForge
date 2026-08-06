@@ -29,7 +29,7 @@ export function ShareableSurveyUrl({ survey, clients }) {
           <p className="text-xs text-ink-500">
             {pathLocked
               ? 'White-label link for this survey. The path is fixed while the survey is live.'
-              : 'White-label link for this survey. Updates when you change the name; saved on autosave.'}
+              : 'White-label link for this survey. Updates when you change the name.'}
           </p>
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
             <code className="flex-1 text-xs bg-surface-muted border border-ink-200 text-ink-700 px-3 py-2 rounded-lg truncate font-mono min-w-0">

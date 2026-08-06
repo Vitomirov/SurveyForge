@@ -228,3 +228,72 @@ test('condition summary formatters produce stable plain-text output', () => {
     'Q1 row "Item 1" is any of [Disagree]'
   )
 })
+
+test('navigation lock resolves per page from page breaks, groups, and page 1 settings', () => {
+  const q1 = { id: 'q1', itemType: 'question', questionType: 'open_text', text: 'Q1' }
+  const group = {
+    id: 'g1',
+    itemType: 'group',
+    title: 'Info section',
+    navigationLock: { enabled: true, seconds: 20 },
+  }
+  const q2 = { id: 'q2', itemType: 'question', questionType: 'open_text', text: 'Q2' }
+  const pageBreak = {
+    id: 'pb1',
+    itemType: 'page_break',
+    navigationLock: { enabled: true, seconds: 10 },
+  }
+  const q3 = { id: 'q3', itemType: 'question', questionType: 'open_text', text: 'Q3' }
+
+  const { navigationLockByPage } = buildVisiblePages(
+    [q1, group, q2, pageBreak, q3],
+    {},
+    {
+      pageOneNavigationLock: { enabled: true, seconds: 5 },
+    },
+  )
+
+  assert.deepEqual(navigationLockByPage, [20, 10])
+})
+
+test('all-pages navigation lock applies to every page including page 1', () => {
+  const q1 = { id: 'q1', itemType: 'question', questionType: 'open_text', text: 'Q1' }
+  const pageBreak = { id: 'pb1', itemType: 'page_break' }
+  const q2 = { id: 'q2', itemType: 'question', questionType: 'open_text', text: 'Q2' }
+
+  const { navigationLockByPage } = buildVisiblePages(
+    [q1, pageBreak, q2],
+    {},
+    { navigationLockAllPages: { enabled: true, seconds: 15 } },
+  )
+
+  assert.deepEqual(navigationLockByPage, [15, 15])
+})
+
+test('page 1-only lock does not apply to later pages', () => {
+  const q1 = { id: 'q1', itemType: 'question', questionType: 'open_text', text: 'Q1' }
+  const pageBreak = { id: 'pb1', itemType: 'page_break' }
+  const q2 = { id: 'q2', itemType: 'question', questionType: 'open_text', text: 'Q2' }
+
+  const { navigationLockByPage } = buildVisiblePages(
+    [q1, pageBreak, q2],
+    {},
+    { pageOneNavigationLock: { enabled: true, seconds: 15 } },
+  )
+
+  assert.deepEqual(navigationLockByPage, [15, 0])
+})
+
+test('page 2 lock from page break is independent of page 1', () => {
+  const q1 = { id: 'q1', itemType: 'question', questionType: 'open_text', text: 'Q1' }
+  const pageBreak = {
+    id: 'pb1',
+    itemType: 'page_break',
+    navigationLock: { enabled: true, seconds: 20 },
+  }
+  const q2 = { id: 'q2', itemType: 'question', questionType: 'open_text', text: 'Q2' }
+
+  const { navigationLockByPage } = buildVisiblePages([q1, pageBreak, q2], {}, {})
+
+  assert.deepEqual(navigationLockByPage, [0, 20])
+})

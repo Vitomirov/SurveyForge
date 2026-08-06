@@ -8,6 +8,7 @@ import {
   formatConditionPhraseBlockStyle,
   joinConditionPhrasesInline,
 } from '@/utils/conditionSummary'
+import { resolveNavigationLockSeconds } from '@/constants/navigationLock'
 
 /**
  * Returns true if `item` (a question, page_break, or group) should be
@@ -41,14 +42,14 @@ function terminationBlockTargetIndex(pagesArr) {
  *  - group visibility (hides every question that belongs to a hidden group)
  *  - per-question visibility
  *
- * Returns { pages, blocksByPage } where `pages` is an array of question
- * arrays (one per page) and `blocksByPage[i]` is the termination blocks
- * that should be evaluated when the respondent leaves page i.
+ * Returns { pages, blocksByPage, navigationLockByPage } where `pages` is an array
+ * of page item arrays, `blocksByPage[i]` holds termination blocks for page i, and
+ * `navigationLockByPage[i]` is the minimum seconds before Next unlocks on page i.
  *
  * Must be recomputed whenever `responses` changes, since visibility can
  * depend on answers given earlier in the survey.
  */
-export function buildVisiblePages(items, responses) {
+export function buildVisiblePages(items, responses, surveySettings = null) {
   // Pass 1: resolve visibility for every group, keyed by group id.
   const groupVisibility = {}
   items.forEach(item => {
@@ -57,21 +58,53 @@ export function buildVisiblePages(items, responses) {
     }
   })
 
+  const allPagesLock = resolveNavigationLockSeconds(surveySettings?.navigationLockAllPages)
+  let pageOneOnlyLock = resolveNavigationLockSeconds(surveySettings?.pageOneNavigationLock)
+  // Legacy: `navigationLock` was previously used for page-1-only before all-pages key existed.
+  if (!pageOneOnlyLock && !allPagesLock) {
+    pageOneOnlyLock = resolveNavigationLockSeconds(surveySettings?.navigationLock)
+  }
+
+  const pageLock = (pageBreakLock = 0) => (allPagesLock > 0 ? allPagesLock : pageBreakLock)
+
   const pagesArr  = [[]]
   const blocksArr = [[]]
+  const locksArr  = [allPagesLock > 0 ? allPagesLock : Math.max(pageOneOnlyLock)]
   let currentGroupId = null
+
+  const applyGroupLock = (groupItem) => {
+    if (allPagesLock > 0) return
+    if (groupVisibility[groupItem.id] === false) return
+    const groupLock = resolveNavigationLockSeconds(groupItem.navigationLock)
+    if (groupLock <= 0) return
+    const idx = pagesArr.length - 1
+    locksArr[idx] = Math.max(locksArr[idx] || 0, groupLock)
+  }
+
+  const startNewPage = (pageBreakLock = 0) => {
+    currentGroupId = null
+    pagesArr.push([])
+    blocksArr.push([])
+    locksArr.push(pageLock(pageBreakLock))
+  }
 
   for (const item of items) {
     if (item.itemType === 'group') {
       currentGroupId = item.id
+      applyGroupLock(item)
       continue
     }
 
     if (item.itemType === 'page_break') {
-      if (!isItemVisible(item, responses, items)) continue // merges into current page
-      currentGroupId = null
-      pagesArr.push([])
-      blocksArr.push([])
+      const breakLock = allPagesLock > 0 ? 0 : resolveNavigationLockSeconds(item.navigationLock)
+      if (!isItemVisible(item, responses, items)) {
+        if (breakLock > 0) {
+          const idx = pagesArr.length - 1
+          locksArr[idx] = Math.max(locksArr[idx] || 0, breakLock)
+        }
+        continue // merges into current page
+      }
+      startNewPage(breakLock)
       continue
     }
 
@@ -96,12 +129,13 @@ export function buildVisiblePages(items, responses) {
   }
 
   const filtered = pagesArr
-    .map((p, i) => ({ p, b: blocksArr[i] || [] }))
+    .map((p, i) => ({ p, b: blocksArr[i] || [], l: locksArr[i] || 0 }))
     .filter(x => x.p.length > 0)
 
   return {
-    pages:        filtered.map(x => x.p),
+    pages: filtered.map(x => x.p),
     blocksByPage: filtered.map(x => x.b),
+    navigationLockByPage: filtered.map(x => x.l),
   }
 }
 

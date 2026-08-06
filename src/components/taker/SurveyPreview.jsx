@@ -19,6 +19,7 @@ import {
 import { validateAnswer } from '@/utils/answerValidation'
 import { buildQuestionNumberById } from '@/utils/questionHelpers'
 import { prefetchModule, prefetchCommonQuestions } from '@/utils/routePrefetch'
+import { usePageNavigationLock } from '@/hooks/usePageNavigationLock'
 import { QUESTION_LOADERS } from './questions/questionLoaders'
 import { QuestionRenderer } from './questions'
 import { CoverPage, CompletionScreen, TerminationScreen, ClosedSurveyScreen } from './screens'
@@ -32,6 +33,8 @@ export function SurveyPreview({ survey, items, onClose, isPublic = false }) {
   const [terminated, setTerminated]     = useState(false)
   const [terminatedBy, setTerminatedBy] = useState(null)
   const [showCover, setShowCover]       = useState(survey?.showCoverPage !== false)
+  const [lockVisitKey, setLockVisitKey] = useState(0)
+  const bumpLockVisit = () => setLockVisitKey(k => k + 1)
   const [fingerprint, setFingerprint]   = useState(null)
   const [fpStatus, setFpStatus]         = useState('idle') // 'idle' | 'collecting' | 'done'
 
@@ -71,9 +74,9 @@ export function SurveyPreview({ survey, items, onClose, isPublic = false }) {
   // Build pages + capture termination blocks, fully respecting conditional
   // show/hide logic on questions, page breaks, and groups. Must recompute
   // whenever `responses` changes, since visibility can depend on earlier answers.
-  const { pages, blocksByPage } = useMemo(
-    () => buildVisiblePages(items, responses),
-    [items, responses]
+  const { pages, blocksByPage, navigationLockByPage } = useMemo(
+    () => buildVisiblePages(items, responses, survey?.settings),
+    [items, responses, survey?.settings]
   )
 
   const questionNumberById = useMemo(
@@ -84,6 +87,14 @@ export function SurveyPreview({ survey, items, onClose, isPublic = false }) {
   const currentItems     = pages[currentPage] || []
   const currentQuestions = currentItems.filter(i => i.itemType === 'question')
   const totalPages       = pages.length
+  const currentPageLockSeconds = navigationLockByPage[currentPage] || 0
+  const isSurveyContentActive = !showCover && !submitted && !terminated
+    && !(isPublic && survey?.status === 'closed')
+  const { isLocked: isNavigationLocked, remainingSeconds } = usePageNavigationLock(
+    currentPageLockSeconds,
+    `${currentPage}-${lockVisitKey}`,
+    isSurveyContentActive,
+  )
 
   const currentPageBreakTitle = useMemo(() => {
     if (currentPage <= 0) return null
@@ -118,6 +129,7 @@ export function SurveyPreview({ survey, items, onClose, isPublic = false }) {
     setResponses({}); setCompanions({}); setErrors({}); setCurrentPage(0)
     setSubmitted(false); setTerminated(false); setTerminatedBy(null)
     setShowCover(survey?.showCoverPage !== false)
+    bumpLockVisit()
     if (fpEnabled) {
       setFpStatus('collecting')
       collectFingerprint(fpSignals).then(fp => { setFingerprint(fp); setFpStatus('done') })
@@ -239,6 +251,7 @@ export function SurveyPreview({ survey, items, onClose, isPublic = false }) {
   }
 
   const handleNext = () => {
+    if (isNavigationLocked) return
     if (!validatePage()) return
     if (checkPageTermination()) return
 
@@ -251,6 +264,7 @@ export function SurveyPreview({ survey, items, onClose, isPublic = false }) {
     if (currentPage < totalPages - 1) {
       const branchTarget = resolveBranchTargetPage(currentQuestions, responses, items, pages, currentPage)
       setCurrentPage(branchTarget ?? currentPage + 1)
+      bumpLockVisit()
       window.scrollTo({ top: 0, behavior: 'smooth' })
     } else {
       setSubmitted(true)
@@ -313,7 +327,7 @@ export function SurveyPreview({ survey, items, onClose, isPublic = false }) {
       {isPublic && survey?.status === 'closed' ? (
         <ClosedSurveyScreen settings={survey?.settings} />
       ) : showCover ? (
-        <CoverPage survey={survey} onStart={() => setShowCover(false)} isPublic={isPublic} />
+        <CoverPage survey={survey} onStart={() => { setShowCover(false); bumpLockVisit() }} isPublic={isPublic} />
       ) : terminated ? (
         <TerminationScreen settings={survey?.settings} terminatedBy={terminatedBy} onReset={reset} onDownload={() => persistAndDownload('terminated', terminatedBy, true)} isPublic={isPublic} />
       ) : submitted ? (
@@ -401,19 +415,25 @@ export function SurveyPreview({ survey, items, onClose, isPublic = false }) {
           {/* Navigation */}
           <div className="bg-white border-t border-ink-100 px-4 sm:px-6 py-3 sm:py-4 sticky bottom-0 safe-bottom">
             <div className="max-w-2xl mx-auto flex items-center justify-between gap-2">
-              <button onClick={() => { setCurrentPage(p => Math.max(0, p-1)); window.scrollTo({top:0,behavior:'smooth'}) }} disabled={currentPage === 0} className="flex items-center gap-1 sm:gap-2 text-sm font-medium text-ink-500 hover:text-ink-700 disabled:opacity-30 disabled:cursor-not-allowed transition-all shrink-0">
+              <button onClick={() => { setCurrentPage(p => Math.max(0, p-1)); bumpLockVisit(); window.scrollTo({top:0,behavior:'smooth'}) }} disabled={currentPage === 0} className="flex items-center gap-1 sm:gap-2 text-sm font-medium text-ink-500 hover:text-ink-700 disabled:opacity-30 disabled:cursor-not-allowed transition-all shrink-0">
                 <ChevronLeft size={16} /> Back
               </button>
               <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+                {isNavigationLocked && (
+                  <span className="text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1.5 rounded-lg shrink-0">
+                    Next unlocks in {remainingSeconds}s
+                  </span>
+                )}
                 <button
-                  onClick={() => persistAndDownload('partial')}
-                  title="Save this partial response to the export store"
-                  className="hidden sm:inline-flex text-xs font-medium text-ink-400 hover:text-ink-600 px-3 py-1.5 border border-ink-200 hover:border-ink-300 rounded-lg transition-all"
+                  onClick={handleNext}
+                  disabled={isNavigationLocked}
+                  className="btn-primary px-4 sm:px-8 shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Save partial
-                </button>
-                <button onClick={handleNext} className="btn-primary px-4 sm:px-8 shrink-0">
-                  {currentPage === totalPages - 1 ? <><Check size={15} /> <span className="hidden sm:inline">Submit</span></> : <>Next <ChevronRight size={15} /></>}
+                  {currentPage === totalPages - 1 ? (
+                    <><Check size={15} /> <span className="hidden sm:inline">Submit</span></>
+                  ) : (
+                    <>Next <ChevronRight size={15} /></>
+                  )}
                 </button>
               </div>
             </div>

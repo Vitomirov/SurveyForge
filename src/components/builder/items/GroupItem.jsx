@@ -1,12 +1,14 @@
 import { memo } from 'react'
-import { Trash2, GripVertical, ChevronDown, ChevronRight, Layers, GitBranch, Settings2 } from 'lucide-react'
+import { Trash2, GripVertical, ChevronDown, ChevronRight, Layers, GitBranch, Settings2, Clock } from 'lucide-react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { VisibilityEditor } from '@/components/shared'
+import { VisibilityEditor, NavigationLockEditor } from '@/components/shared'
 import { visibilitySummary } from '@/utils/visibilityEngine'
+import { resolveNavigationLockSeconds } from '@/constants/navigationLock'
 
 export const GroupItem = memo(function GroupItem({
   item, questionCount, dispatch, isActive, onActivateItem, availableQuestions = [], contextItems = [],
+  allPagesLockEnabled = false,
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.id })
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 }
@@ -16,6 +18,7 @@ export const GroupItem = memo(function GroupItem({
 
   const visEnabled = item.visibility?.enabled
   const summary    = visEnabled ? visibilitySummary(item.visibility, availableQuestions) : null
+  const lockEnabled = !allPagesLockEnabled && resolveNavigationLockSeconds(item.navigationLock) > 0
 
   return (
     <div ref={setNodeRef} style={style}>
@@ -52,6 +55,11 @@ export const GroupItem = memo(function GroupItem({
             <GitBranch size={9} /> Conditional
           </span>
         )}
+        {lockEnabled && (
+          <span className="flex items-center gap-0.5 text-xs font-semibold text-amber-200 bg-amber-900/50 px-1.5 py-0.5 rounded-full shrink-0">
+            <Clock size={9} /> {item.navigationLock?.seconds ?? 0}s lock
+          </span>
+        )}
 
         {/* Question count badge */}
         <span className="text-xs text-ink-500 bg-ink-700 px-2 py-0.5 rounded-full shrink-0">
@@ -80,9 +88,16 @@ export const GroupItem = memo(function GroupItem({
         </button>
       </div>
 
-      {/* Expanded visibility settings */}
+      {/* Expanded group settings */}
       {isActive && (
-        <div className="mt-1.5 mb-1">
+        <div className="mt-1.5 mb-1 space-y-2">
+          {!allPagesLockEnabled && (
+            <NavigationLockEditor
+              lock={item.navigationLock}
+              onChange={navigationLock => dispatch({ type: 'UPDATE_ITEM', id: item.id, patch: { navigationLock } })}
+              pageLabel={item.title || 'this section'}
+            />
+          )}
           {summary && (
             <p className="text-xs text-violet-800 italic mb-1.5 px-1">{summary}</p>
           )}

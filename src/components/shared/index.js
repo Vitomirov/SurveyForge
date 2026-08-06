@@ -1,5 +1,6 @@
 export { RichTextEditor } from './RichTextEditor'
 export { VisibilityEditor } from './VisibilityEditor'
+export { NavigationLockEditor } from './NavigationLockEditor'
 export { ConditionBuilder, ConditionSummaryInline, buildConditionLogicString } from './ConditionBuilder'
 export { EditableListRow } from './EditableListRow'
 export { DeletableTextInput } from './DeletableTextInput'

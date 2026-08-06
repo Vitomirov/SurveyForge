@@ -11,9 +11,10 @@ import {
 import { surveyReducer, INITIAL_STATE } from '@/store/surveyStore'
 import {
   QuestionCard,
-  PageBreakItem, GroupItem, TerminationBlockItem, TextBlockItem,
+  PageBreakItem, PageOneLockBar, GroupItem, TerminationBlockItem, TextBlockItem,
 } from '@/components/builder/items'
-import { RichTextEditor } from '@/components/shared'
+import { PAGE_ONE_LOCK_ID } from '@/components/builder/items/PageOneLockBar'
+import { RichTextEditor, NavigationLockEditor } from '@/components/shared'
 import { PageLoader, InlineLoader } from '@/components/ui'
 import {
   CoverPageSettings, BrandingSettings,
@@ -26,6 +27,7 @@ import { buildItemMeta, buildAvailableQuestionsByIndex, buildGroupQuestionCounts
 import { generateTemplateCSV, downloadCSV } from '@/utils/csvExport'
 import { APP_NAME } from '@/constants/branding'
 import { DEFAULT_DATE_FORMAT, DEFAULT_SCREEN_MESSAGES } from '@/constants/surveyDefaults'
+import { resolveNavigationLockSeconds } from '@/constants/navigationLock'
 import { prefetchCommonEditors, prefetchPreview, prefetchModule } from '@/utils/routePrefetch'
 import { isChoiceType } from '@/utils/questionHelpers'
 import { EDITOR_LOADERS, loadChoiceEditor } from '@/components/builder/editors/editorLoaders'
@@ -98,6 +100,11 @@ export function SurveyBuilder({ initialState, initialRevision = null, onBackToDa
   const groupQuestionCounts = useMemo(
     () => buildGroupQuestionCounts(state.items, itemMeta),
     [state.items, itemMeta]
+  )
+
+  const allPagesLockEnabled = useMemo(
+    () => resolveNavigationLockSeconds(state.survey.settings?.navigationLockAllPages) > 0,
+    [state.survey.settings?.navigationLockAllPages],
   )
 
   // ── Drag handlers ──────────────────────────────────────────────────────
@@ -335,6 +342,21 @@ export function SurveyBuilder({ initialState, initialRevision = null, onBackToDa
             {/* Cover page */}
             <CoverPageSettings survey={state.survey} dispatch={dispatch} />
 
+            {/* Survey-wide timed navigation lock (every page) */}
+            <div className="mt-3 border-t border-ink-100 pt-3">
+              <NavigationLockEditor
+                lock={state.survey.settings?.navigationLockAllPages}
+                onChange={navigationLock => dispatch({
+                  type: 'SET_SURVEY_SETTING',
+                  key: 'navigationLockAllPages',
+                  value: navigationLock,
+                })}
+                pageLabel="All pages"
+                allPages
+                compact
+              />
+            </div>
+
             {/* Screen-out message config */}
             <details className="mt-3 border-t border-ink-100 pt-3">
               <summary className="text-xs font-semibold text-ink-500 uppercase tracking-wider cursor-pointer hover:text-ink-800 select-none flex items-center gap-1.5 transition-colors">
@@ -395,6 +417,14 @@ export function SurveyBuilder({ initialState, initialRevision = null, onBackToDa
             >
               <SortableContext items={sortableItemIds} strategy={verticalListSortingStrategy}>
                 <div className="space-y-2">
+                  {!allPagesLockEnabled && (
+                    <PageOneLockBar
+                      survey={state.survey}
+                      dispatch={dispatch}
+                      isActive={state.activeItemId === PAGE_ONE_LOCK_ID}
+                      onActivate={handleActivateItem}
+                    />
+                  )}
                   {state.items.map((item, idx) => {
                     const meta = itemMeta[idx]
 
@@ -406,10 +436,9 @@ export function SurveyBuilder({ initialState, initialRevision = null, onBackToDa
                           item={item}
                           pageNumber={meta.pageNum}
                           dispatch={dispatch}
-                          availableQuestions={availableQuestions}
-                          contextItems={state.items}
                           isActive={state.activeItemId === item.id}
                           onActivateItem={handleActivateItem}
+                          allPagesLockEnabled={allPagesLockEnabled}
                         />
                       )
                     }
@@ -426,6 +455,7 @@ export function SurveyBuilder({ initialState, initialRevision = null, onBackToDa
                           contextItems={state.items}
                           isActive={state.activeItemId === item.id}
                           onActivateItem={handleActivateItem}
+                          allPagesLockEnabled={allPagesLockEnabled}
                         />
                       )
                     }

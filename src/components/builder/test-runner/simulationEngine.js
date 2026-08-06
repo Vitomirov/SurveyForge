@@ -47,7 +47,7 @@ export function runSimulation(items, survey, branch) {
   const responses = buildResponses(items, branch)
   const log       = []
 
-  const { pages, blocksByPage: blockMap } = buildVisiblePages(items, responses)
+  const { pages, blocksByPage: blockMap, navigationLockByPage } = buildVisiblePages(items, responses, survey?.settings)
 
   const allQuestions = items.filter(i => i.itemType === 'question')
   const getQNum      = id => allQuestions.findIndex(q => q.id === id) + 1
@@ -64,6 +64,14 @@ export function runSimulation(items, survey, branch) {
     const pageQ     = pages[p].filter(i => i.itemType === 'question')
     const pageBlocks = blockMap[p] || []
     const pageLabel  = pages.length > 1 ? `Page ${p + 1}` : 'Survey'
+    const pageLockSeconds = navigationLockByPage[p] || 0
+
+    if (pageLockSeconds > 0) {
+      log.push({
+        type: 'nav',
+        label: `${pageLabel}: navigation lock (${pageLockSeconds}s) — skipped in test runner`,
+      })
+    }
 
     if (pageQ.length > 0) {
       log.push({

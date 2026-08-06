@@ -1,5 +1,6 @@
 export { QuestionCard } from './QuestionCard'
 export { PageBreakItem } from './PageBreakItem'
+export { PageOneLockBar } from './PageOneLockBar'
 export { GroupItem } from './GroupItem'
 export { TerminationBlockItem } from './TerminationBlockItem'
 export { TextBlockItem } from './TextBlockItem'
