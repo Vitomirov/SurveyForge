@@ -2,18 +2,7 @@
 // Matrix answers are stored as structured objects: { [rowId]: columnId | columnId[] }.
 // Coerces legacy string values and validates shape before persisting to JSONB.
 
-function normalizeMatrixAnswer(answer) {
-  if (answer && typeof answer === 'object' && !Array.isArray(answer)) {
-    const normalized = {}
-    for (const [rowId, val] of Object.entries(answer)) {
-      if (val === null || val === undefined) normalized[rowId] = null
-      else if (Array.isArray(val)) normalized[rowId] = val.filter(Boolean)
-      else normalized[rowId] = val
-    }
-    return normalized
-  }
-  return {}
-}
+import { normalizeMatrixAnswer } from '../../../shared/matrixAnswer.js'
 
 /**
  * Normalize answer shapes in a response entry before DB persistence.

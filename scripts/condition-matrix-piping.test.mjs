@@ -9,8 +9,10 @@ import { checkTermination } from '../src/utils/terminationEngine.js'
 import { resolvePipingTokens, buildPipedOptions } from '../src/utils/piping.js'
 import { getBuilderConditionOptions } from '../src/utils/questionOptions.js'
 import { validateAnswer } from '../src/utils/answerValidation.js'
-import { buildVisiblePages } from '../src/utils/visibilityEngine.js'
-import { evalBlock } from '../src/utils/terminationEngine.js'
+import { buildVisiblePages, visibilitySummary } from '../src/utils/visibilityEngine.js'
+import { evalBlock, buildBlockCause } from '../src/utils/terminationEngine.js'
+import { formatConditionPhraseLogicStyle, joinConditionPhrasesMultiline } from '../src/utils/conditionSummary.js'
+import { normalizeMatrixAnswer } from '../shared/matrixAnswer.js'
 
 const row1 = 'row_1'
 const row2 = 'row_2'
@@ -179,4 +181,50 @@ test('termination block fires after page break (block attached to question page)
 
   const responses = { [matrixQ.id]: { [row1]: colB, [row2]: colA } }
   assert.equal(evalBlock(blocksByPage[0][0], responses, surveyItems), true)
+})
+
+test('shared normalizeMatrixAnswer coerces matrix payloads', () => {
+  assert.deepEqual(
+    normalizeMatrixAnswer({ row_1: 'col_a', row_2: null, row_3: ['col_a', ''] }),
+    { row_1: 'col_a', row_2: null, row_3: ['col_a'] }
+  )
+  assert.deepEqual(normalizeMatrixAnswer(null), {})
+})
+
+test('condition summary formatters produce stable plain-text output', () => {
+  const vis = {
+    enabled: true,
+    mode: 'show_if',
+    conditions: [{
+      id: 'c1', join: null, questionId: matrixQ.id,
+      matrixRowId: row1, conditionType: 'any_of', matrixColumnIds: [colA],
+    }],
+  }
+  assert.equal(
+    visibilitySummary(vis, [matrixQ]),
+    'Shown only if: Q1 row "Item 1" any of [Agree]'
+  )
+
+  const block = {
+    id: 'tb1',
+    itemType: 'termination_block',
+    title: 'Screen out',
+    conditions: [{
+      id: 'c1', join: null, questionId: matrixQ.id,
+      matrixRowId: row1, conditionType: 'any_of', matrixColumnIds: [colB],
+    }],
+  }
+  assert.equal(
+    buildBlockCause(block, {}, [matrixQ]),
+    '"Rate items…" row "Item 1" any of [Disagree]'
+  )
+
+  const logicPhrases = block.conditions.map(c => {
+    const q = matrixQ
+    return formatConditionPhraseLogicStyle(c, q, [matrixQ], 'Q1')
+  })
+  assert.equal(
+    joinConditionPhrasesMultiline(block.conditions, logicPhrases),
+    'Q1 row "Item 1" is any of [Disagree]'
+  )
 })

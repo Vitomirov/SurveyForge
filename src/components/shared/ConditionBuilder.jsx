@@ -2,6 +2,13 @@ import { Plus, X } from 'lucide-react'
 import { isChoiceType, isMatrixType } from '@/utils/questionHelpers'
 import { getBuilderConditionOptions, resolveOptionLabel } from '@/utils/questionOptions'
 import {
+  getMatrixRowLabel,
+  getMatrixColumnLabels,
+  usesOptionCondition,
+  formatConditionPhraseLogicStyle,
+  joinConditionPhrasesMultiline,
+} from '@/utils/conditionSummary'
+import {
   CHOICE_CONDITION_TYPES,
   TEXT_CONDITION_TYPES,
   getChoiceConditionLabel,
@@ -68,11 +75,7 @@ function resolveConditionOptions(q, contextItems) {
 }
 
 function isChoiceCondition(q) {
-  if (!q) return false
-  if (isMatrixType(q.questionType)) return true
-  if (isChoiceType(q.questionType)) return true
-  if (q.pipedOptionsConfig?.enabled) return true
-  return false
+  return usesOptionCondition(q)
 }
 
 // ─── Rich inline summary (JSX) ──────────────────────────────────────────────
@@ -86,10 +89,8 @@ export function ConditionSummaryInline({ cond, questions, variant = 'visibility'
     : (variant === 'termination' ? 'Question' : 'Question')
 
   if (isMatrixType(q.questionType)) {
-    const rowLabel = q.matrixConfig?.rows?.find(r => r.id === cond.matrixRowId)?.text || 'row'
-    const colLabels = (cond.matrixColumnIds || []).map(id =>
-      q.matrixConfig?.columns?.find(c => c.id === id)?.text || '?'
-    ).filter(Boolean)
+    const rowLabel = getMatrixRowLabel(q.matrixConfig, cond.matrixRowId)
+    const colLabels = getMatrixColumnLabels(q.matrixConfig, cond.matrixColumnIds).filter(Boolean)
     const ct = getChoiceConditionLabel(cond.conditionType)
     return (
       <>
@@ -130,28 +131,12 @@ export function ConditionSummaryInline({ cond, questions, variant = 'visibility'
 
 /** Plain-text logic string using Q-numbers (termination block preview). */
 export function buildConditionLogicString(conditions, questions) {
-  return conditions.map((c, i) => {
-    const q    = questions.find(q => q.id === c.questionId)
+  const phrases = conditions.map(c => {
+    const q = questions.find(q => q.id === c.questionId)
     const qLbl = q ? `Q${questions.indexOf(q) + 1}` : '?'
-    let condStr
-    if (q && isMatrixType(q.questionType)) {
-      const rowLbl = q.matrixConfig?.rows?.find(r => r.id === c.matrixRowId)?.text || 'row'
-      const ct     = getChoiceConditionLabel(c.conditionType)
-      const cols   = (c.matrixColumnIds || []).map(id =>
-        q.matrixConfig?.columns?.find(col => col.id === id)?.text || '?'
-      )
-      condStr = `${qLbl} row "${rowLbl}" ${ct} [${cols.join(', ') || 'none'}]`
-    } else if (q && isChoiceCondition(q)) {
-      const ct   = getChoiceConditionLabel(c.conditionType)
-      const opts = (c.optionIds || []).map(id => resolveOptionLabel(q, id, questions))
-      condStr = `${qLbl} ${ct} [${opts.join(', ') || 'none'}]`
-    } else {
-      const op = TEXT_CONDITION_TYPES.find(t => t.value === c.textOperator)?.label || c.textOperator
-      condStr = `${qLbl} ${op} "${c.textValue || '…'}"`
-    }
-    if (i === 0) return condStr
-    return `${c.join || 'AND'} ${condStr}`
-  }).join('\n')
+    return formatConditionPhraseLogicStyle(c, q, questions, qLbl)
+  })
+  return joinConditionPhrasesMultiline(conditions, phrases)
 }
 
 // ─── Single condition row ─────────────────────────────────────────────────────

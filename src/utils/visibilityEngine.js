@@ -2,9 +2,12 @@
 // Uses conditionEngine for all condition matching — same logic as termination
 // blocks, so survey creators only need one mental model for AND/OR rules.
 
-import { isChoiceType, buildQuestionNumberById, isMatrixType } from '@/utils/questionHelpers'
-import { resolveOptionLabel } from '@/utils/questionOptions'
+import { isChoiceType, buildQuestionNumberById } from '@/utils/questionHelpers'
 import { evalConditionSet } from '@/utils/conditionEngine'
+import {
+  formatConditionPhraseBlockStyle,
+  joinConditionPhrasesInline,
+} from '@/utils/conditionSummary'
 
 /**
  * Returns true if `item` (a question, page_break, or group) should be
@@ -110,23 +113,11 @@ export function visibilitySummary(vis, allItems) {
   for (const item of allItems) itemById[item.id] = item
 
   const verb = vis.mode === 'hide_if' ? 'Hidden if' : 'Shown only if'
-  const parts = vis.conditions.map((c, i) => {
+  const phrases = vis.conditions.map(c => {
     const q = itemById[c.questionId]
     const qLabel = q ? `Q${qNumById[q.id] ?? '?'}` : '?'
-    let condStr
-    if (q && isMatrixType(q.questionType)) {
-      const rowLabel = q.matrixConfig?.rows?.find(r => r.id === c.matrixRowId)?.text || 'row'
-      const colLabels = (c.matrixColumnIds || []).map(id =>
-        q.matrixConfig?.columns?.find(col => col.id === id)?.text || '?'
-      )
-      condStr = `${qLabel} row "${rowLabel}" ${c.conditionType?.replace(/_/g, ' ')} [${colLabels.join(', ')}]`
-    } else if (q && (isChoiceType(q.questionType) || q.pipedOptionsConfig?.enabled)) {
-      const labels = (c.optionIds || []).map(id => resolveOptionLabel(q, id, allItems))
-      condStr = `${qLabel} ${c.conditionType?.replace(/_/g, ' ')} [${labels.join(', ')}]`
-    } else {
-      condStr = `${qLabel} ${c.textOperator?.replace(/_/g, ' ') || ''} "${c.textValue || ''}"`
-    }
-    return i === 0 ? condStr : `${c.join} ${condStr}`
+    return formatConditionPhraseBlockStyle(c, q, allItems, qLabel)
   })
-  return `${verb}: ${parts.join(' ')}`
+  const parts = joinConditionPhrasesInline(vis.conditions, phrases)
+  return `${verb}: ${parts}`
 }

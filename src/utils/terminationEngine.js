@@ -6,7 +6,12 @@
 import { isChoiceType } from '@/utils/questionHelpers'
 import { evalConditionSet, evalTextOperator } from '@/utils/conditionEngine'
 import { evalMatrixSelection } from '@/utils/matrixHelpers'
-import { getEffectiveOptions, resolveOptionLabel } from '@/utils/questionOptions'
+import { getEffectiveOptions } from '@/utils/questionOptions'
+import {
+  buildBlockQuestionLabel,
+  formatConditionPhraseBlockStyle,
+  joinConditionPhrasesInline,
+} from '@/utils/conditionSummary'
 
 /** Evaluate a termination block's conditions (AND/OR). */
 export function evalBlock(block, responses, allItems) {
@@ -111,23 +116,10 @@ export function checkTermination(question, answer, responses = {}, allItems = []
 /** Build readable cause string from a fired termination block. */
 export function buildBlockCause(block, responses, allItems) {
   const conds = block.conditions || []
-  return conds.map((c, i) => {
+  const phrases = conds.map(c => {
     const q = allItems.find(item => item.id === c.questionId)
-    if (!q) return null
-    const qLabel = q.text ? `"${q.text.slice(0, 40)}…"` : 'a question'
-    let condStr
-    if (q.questionType === 'matrix') {
-      const rowLabel = q.matrixConfig?.rows?.find(r => r.id === c.matrixRowId)?.text || 'row'
-      const colLabels = (c.matrixColumnIds || []).map(id =>
-        q.matrixConfig?.columns?.find(col => col.id === id)?.text || '?'
-      )
-      condStr = `${qLabel} row "${rowLabel}" ${c.conditionType?.replace(/_/g, ' ') || ''} [${colLabels.join(', ')}]`
-    } else if (isChoiceType(q.questionType) || q.pipedOptionsConfig?.enabled) {
-      const labels = (c.optionIds || []).map(id => resolveOptionLabel(q, id, allItems))
-      condStr = `${qLabel} ${c.conditionType?.replace(/_/g, ' ') || ''} [${labels.join(', ')}]`
-    } else {
-      condStr = `${qLabel} ${c.textOperator?.replace(/_/g, ' ') || ''} "${c.textValue}"`
-    }
-    return i === 0 ? condStr : `${c.join} ${condStr}`
-  }).filter(Boolean).join(' ')
+    const qLabel = q ? buildBlockQuestionLabel(q) : 'a question'
+    return formatConditionPhraseBlockStyle(c, q, allItems, qLabel)
+  })
+  return joinConditionPhrasesInline(conds, phrases)
 }

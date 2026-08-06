@@ -2,9 +2,9 @@
 // Matrix answers are stored as { [rowId]: columnId | columnId[] | null }.
 // Used by condition evaluation, piping, validation, and export.
 
-export function isMatrixType(questionType) {
-  return questionType === 'matrix'
-}
+import { normalizeMatrixAnswer } from '../../shared/matrixAnswer.js'
+
+export { normalizeMatrixAnswer }
 
 /** True when the answer has no meaningful row selections. */
 export function isMatrixAnswerEmpty(answer) {
@@ -56,24 +56,6 @@ export function formatMatrixAnswer(question, answer) {
     .map(row => formatMatrixRowAnswer(question, answer, row.id))
     .filter(text => text !== '[not yet answered]')
     .join('; ') || '[not yet answered]'
-}
-
-/** Coerce legacy/invalid values into the structured matrix shape. */
-export function normalizeMatrixAnswer(answer) {
-  if (answer && typeof answer === 'object' && !Array.isArray(answer)) {
-    const normalized = {}
-    for (const [rowId, val] of Object.entries(answer)) {
-      if (val === null || val === undefined) {
-        normalized[rowId] = null
-      } else if (Array.isArray(val)) {
-        normalized[rowId] = val.filter(Boolean)
-      } else {
-        normalized[rowId] = val
-      }
-    }
-    return normalized
-  }
-  return {}
 }
 
 /**
