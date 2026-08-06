@@ -25,9 +25,34 @@ function resolveOptions(question, answer, responses, allItems) {
   return question.options || []
 }
 
+/** Infer how a rule should be evaluated for this question type. */
+export function resolveQuestionRuleType(rule, question) {
+  const qType = question.questionType
+  if (qType === 'open_text') return 'text'
+  if (qType === 'matrix') return rule.ruleType === 'text' ? 'text' : 'matrix'
+  return rule.ruleType || 'choice'
+}
+
+/** Text compared in text rules — typed answer or selected option label(s). */
+function resolveTextRuleHaystack(question, answer, responses, allItems) {
+  const qType = question.questionType
+  const isPipedChoice = question.pipedOptionsConfig?.enabled
+
+  if (!isChoiceType(qType) && !isPipedChoice) {
+    return String(answer)
+  }
+
+  const opts = resolveOptions(question, answer, responses, allItems)
+  if (qType === 'multi_select') {
+    const selected = Array.isArray(answer) ? answer : []
+    return selected.map(id => opts.find(o => o.id === id)?.text || '').filter(Boolean).join(' ')
+  }
+  return opts.find(o => o.id === answer)?.text || ''
+}
+
 // ─── Per-question rule matching (shared by termination + branching) ─────────
 export function evaluateQuestionRule(rule, question, answer, responses, allItems) {
-  const ruleType = rule.ruleType || 'choice'
+  const ruleType = resolveQuestionRuleType(rule, question)
 
   if (ruleType === 'matrix') {
     return evalMatrixSelection(rule, question, answer)
@@ -35,7 +60,10 @@ export function evaluateQuestionRule(rule, question, answer, responses, allItems
 
   if (ruleType === 'text') {
     if (answer === null || answer === undefined || answer === '') return false
-    return evalTextOperator(answer, rule.textOperator, rule.textValue)
+    if (!String(rule.textValue ?? '').trim()) return false
+    const haystack = resolveTextRuleHaystack(question, answer, responses, allItems)
+    if (!haystack.trim()) return false
+    return evalTextOperator(haystack, rule.textOperator || 'contains', rule.textValue)
   }
 
   const qType = question.questionType
@@ -87,7 +115,8 @@ export function checkTermination(question, answer, responses = {}, allItems = []
     const idx = results.findIndex(r => r)
     if (idx === -1) return { terminated: false }
     const firedRule = rules[idx]
-    if (firedRule.ruleType === 'matrix') {
+    const firedType = resolveQuestionRuleType(firedRule, question)
+    if (firedType === 'matrix') {
       const row = question.matrixConfig?.rows?.find(r => r.id === firedRule.matrixRowId)
       const cols = (firedRule.matrixColumnIds || []).map(id =>
         question.matrixConfig?.columns?.find(c => c.id === id)?.text || '?'
@@ -100,7 +129,7 @@ export function checkTermination(question, answer, responses = {}, allItems = []
     return {
       terminated: true,
       cause: firedRule.note || (
-        firedRule.ruleType === 'text'
+        firedType === 'text'
           ? `Answer ${firedRule.textOperator?.replace(/_/g,' ')} "${firedRule.textValue}"`
           : `Rule ${idx + 1} matched`
       ),

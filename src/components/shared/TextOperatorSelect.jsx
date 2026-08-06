@@ -14,7 +14,8 @@ export function TextOperatorSelect({ value, onChange, question, className = 'inp
   const safeValue = sanitizeTextOperator(value, question)
 
   useEffect(() => {
-    if (value && value !== safeValue) onChange(safeValue)
+    if (value == null || value === '') return
+    if (value !== safeValue) onChange(safeValue)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value, safeValue])
 

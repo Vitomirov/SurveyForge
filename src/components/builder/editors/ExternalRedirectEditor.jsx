@@ -9,7 +9,7 @@ function ExternalRedirectRuleCard({
   rule, ruleIndex, question, dispatch, onDelete, showChoiceRules, contextItems = [],
 }) {
   const opts = getBuilderConditionOptions(question, contextItems)
-  const isText = rule.ruleType === 'text'
+  const isText = rule.ruleType === 'text' || question.questionType === 'open_text'
   const isMatrix = rule.ruleType === 'matrix'
   const rows = question.matrixConfig?.rows || []
   const cols = question.matrixConfig?.columns || []
@@ -198,12 +198,15 @@ function ExternalRedirectRuleCard({
               <span className="text-xs text-ink-500 shrink-0 w-16">Value</span>
               <input
                 type="text"
-                value={rule.textValue}
+                value={rule.textValue ?? ''}
                 onChange={e => update({ textValue: e.target.value })}
                 placeholder="Enter value…"
                 className="input-base py-1.5 text-sm flex-1"
               />
             </div>
+            {!String(rule.textValue ?? '').trim() && (
+              <p className="text-xs text-amber-600">Enter a value — this rule has no effect until you do.</p>
+            )}
           </div>
         )}
       </div>

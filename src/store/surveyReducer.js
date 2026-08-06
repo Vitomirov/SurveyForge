@@ -316,7 +316,8 @@ export function surveyReducer(state, action) {
     case 'ADD_TERMINATION_RULE':
       return withItems(state, updateItemById(state.items, action.questionId, item => {
         const isMatrix = item.questionType === 'matrix'
-        const ruleType = action.ruleType || (isMatrix ? 'matrix' : 'choice')
+        const isOpenText = item.questionType === 'open_text'
+        const ruleType = action.ruleType || (isMatrix ? 'matrix' : isOpenText ? 'text' : 'choice')
         const newRule = {
           id: newId(),
           ruleType,
@@ -350,7 +351,8 @@ export function surveyReducer(state, action) {
     case 'ADD_BRANCH_RULE':
       return withItems(state, updateItemById(state.items, action.questionId, item => {
         const isMatrix = item.questionType === 'matrix'
-        const ruleType = action.ruleType || (isMatrix ? 'matrix' : 'choice')
+        const isOpenText = item.questionType === 'open_text'
+        const ruleType = action.ruleType || (isMatrix ? 'matrix' : isOpenText ? 'text' : 'choice')
         const newRule = {
           id: newId(),
           ruleType,
@@ -382,7 +384,8 @@ export function surveyReducer(state, action) {
     case 'ADD_EXTERNAL_REDIRECT_RULE':
       return withItems(state, updateItemById(state.items, action.questionId, item => {
         const isMatrix = item.questionType === 'matrix'
-        const ruleType = action.ruleType || (isMatrix ? 'matrix' : 'choice')
+        const isOpenText = item.questionType === 'open_text'
+        const ruleType = action.ruleType || (isMatrix ? 'matrix' : isOpenText ? 'text' : 'choice')
         const newRule = {
           id: newId(),
           ruleType,

@@ -13,7 +13,7 @@ function OperatorSelect({ value, onChange, question }) {
 // ─── Single Rule card ──────────────────────────────────────────────────────
 function RuleCard({ rule, ruleIndex, question, dispatch, onDelete, showChoiceRules, contextItems = [] }) {
   const opts    = getBuilderConditionOptions(question, contextItems)
-  const isText  = rule.ruleType === 'text'
+  const isText  = rule.ruleType === 'text' || question.questionType === 'open_text'
 
   const update = (patch) =>
     dispatch({ type: 'UPDATE_TERMINATION_RULE', questionId: question.id, ruleId: rule.id, patch })
@@ -137,12 +137,15 @@ function RuleCard({ rule, ruleIndex, question, dispatch, onDelete, showChoiceRul
               <span className="text-xs text-ink-500 shrink-0 w-16">Value</span>
               <input
                 type="text"
-                value={rule.textValue}
+                value={rule.textValue ?? ''}
                 onChange={e => update({ textValue: e.target.value })}
                 placeholder="Enter value…"
                 className="input-base py-1.5 text-sm flex-1"
               />
             </div>
+            {!String(rule.textValue ?? '').trim() && (
+              <p className="text-xs text-amber-600">Enter a value — this rule has no effect until you do.</p>
+            )}
             {/* Hint */}
             {rule.textOperator && (
               <p className="text-xs text-ink-400 bg-ink-50 rounded-lg px-2 py-1">

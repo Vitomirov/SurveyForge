@@ -1,7 +1,7 @@
 // ─── External Redirect Engine ───────────────────────────────────────────────
 // Instant redirect when a question rule matches. Reuses evaluateQuestionRule.
 
-import { evaluateQuestionRule } from '@/utils/terminationEngine'
+import { evaluateQuestionRule, resolveQuestionRuleType } from '@/utils/terminationEngine'
 
 export function isSafeExternalUrl(url) {
   if (!url || typeof url !== 'string') return false
@@ -36,6 +36,6 @@ export function resolvePageExternalRedirect(pageQuestions, responses, allItems) 
 export function redirectsOnAnswerChange(question) {
   if (question.questionType === 'open_text') return false
   return (question.externalRedirectRules || []).some(r =>
-    (r.ruleType || 'choice') !== 'text' && isSafeExternalUrl(r.externalUrl)
+    resolveQuestionRuleType(r, question) !== 'text' && isSafeExternalUrl(r.externalUrl)
   )
 }

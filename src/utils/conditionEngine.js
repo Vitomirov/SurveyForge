@@ -15,15 +15,28 @@ import {
  */
 export function evalTextOperator(answer, operator, textValue) {
   const hay    = String(answer).toLowerCase().trim()
-  const needle = String(textValue || '').toLowerCase().trim()
-  switch (operator) {
-    case 'contains':     return hay.includes(needle)
-    case 'not_contains': return !hay.includes(needle)
-    case 'equals':       return hay === needle
-    case 'not_equals':   return hay !== needle
-    case 'greater_than': { const n = parseFloat(answer); return !isNaN(n) && n > parseFloat(textValue) }
-    case 'less_than':    { const n = parseFloat(answer); return !isNaN(n) && n < parseFloat(textValue) }
-    default: return false
+  const needle = String(textValue ?? '').toLowerCase().trim()
+  const op     = operator || 'contains'
+
+  switch (op) {
+    case 'contains':
+      return needle.length > 0 && hay.includes(needle)
+    case 'not_contains':
+      return needle.length > 0 && !hay.includes(needle)
+    case 'equals':
+      return needle.length > 0 && hay === needle
+    case 'not_equals':
+      return needle.length > 0 && hay !== needle
+    case 'greater_than': {
+      const n = parseFloat(answer)
+      return !isNaN(n) && n > parseFloat(textValue)
+    }
+    case 'less_than': {
+      const n = parseFloat(answer)
+      return !isNaN(n) && n < parseFloat(textValue)
+    }
+    default:
+      return false
   }
 }
 
@@ -67,7 +80,7 @@ function evalCondition(cond, responses, allItems) {
     return evalChoiceCondition(cond, q, answer)
   }
 
-  return evalTextOperator(answer, cond.textOperator, cond.textValue)
+  return evalTextOperator(answer, cond.textOperator || 'contains', cond.textValue)
 }
 
 /**
