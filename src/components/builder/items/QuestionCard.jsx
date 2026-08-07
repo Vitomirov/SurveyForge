@@ -99,6 +99,7 @@ export const QuestionCard = memo(function QuestionCard({
   surveyDateFormat, availableQuestions = [], contextItems = [], itemIndex = 0,
 }) {
   const [showTypeMenu, setShowTypeMenu] = useState(false)
+  const typeMenuRef = React.useRef(null)
   const meta   = getTypeMeta(question.questionType)
   const colors = TYPE_COLORS[question.questionType] || TYPE_COLORS.single_select
   const TypeIcon = TYPE_ICONS[question.questionType] || TYPE_ICONS.single_select
@@ -106,8 +107,20 @@ export const QuestionCard = memo(function QuestionCard({
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: question.id })
   const style = { transform: CSS.Transform.toString(transform), transition }
 
+  React.useEffect(() => {
+    if (!showTypeMenu) return
+    const close = (e) => {
+      if (typeMenuRef.current && !typeMenuRef.current.contains(e.target)) {
+        setShowTypeMenu(false)
+      }
+    }
+    document.addEventListener('mousedown', close)
+    return () => document.removeEventListener('mousedown', close)
+  }, [showTypeMenu])
+
   const handleTypeChange = (newType) => {
     setShowTypeMenu(false)
+    if (newType === question.questionType) return
     const wasChoice  = isChoiceType(question.questionType)
     const willChoice = isChoiceType(newType)
     const patch = { questionType: newType }
@@ -149,8 +162,15 @@ export const QuestionCard = memo(function QuestionCard({
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5 flex-wrap mb-0.5">
               {/* Type badge */}
-              <div className="relative" onClick={e => { e.stopPropagation(); setShowTypeMenu(!showTypeMenu) }}>
-                <button className={`flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-md ${colors.bg} ${colors.text} hover:opacity-80`}>
+              <div
+                ref={typeMenuRef}
+                className="relative"
+                onClick={e => { e.stopPropagation(); setShowTypeMenu(v => !v) }}
+              >
+                <button
+                  type="button"
+                  className={`flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-md ${colors.bg} ${colors.text} hover:opacity-80`}
+                >
                   <TypeIcon size={11} />
                   {meta.shortLabel}
                   <ChevronDown size={9} />
@@ -164,7 +184,8 @@ export const QuestionCard = memo(function QuestionCard({
                       return (
                         <button
                           key={qt.type}
-                          onClick={() => handleTypeChange(qt.type)}
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); handleTypeChange(qt.type) }}
                           className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm hover:bg-ink-50 transition-colors ${question.questionType === qt.type ? 'font-semibold' : ''}`}
                         >
                           <span className={`p-1 rounded ${c.bg} ${c.text}`}><Icon size={12} /></span>

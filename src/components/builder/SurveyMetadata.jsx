@@ -57,7 +57,7 @@ export function SurveyMetadata({ survey, dispatch }) {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {/* Internal name */}
         <div className="col-span-2">
-          <label className="text-xs text-ink-500 mb-1 block">Internal name</label>
+          <label className="text-xs text-ink-500 mb-1 block">Internal name (apear in domain name)</label>
           <input
             type="text"
             value={survey.internalName || ''}
