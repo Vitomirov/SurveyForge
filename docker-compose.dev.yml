@@ -1,0 +1,6 @@
+# Optional override for local npm dev: expose Postgres on the host.
+# Usage: docker compose -f docker-compose.yml -f docker-compose.dev.yml up postgres -d
+services:
+  postgres:
+    ports:
+      - '${POSTGRES_HOST_PORT:-5433}:5432'

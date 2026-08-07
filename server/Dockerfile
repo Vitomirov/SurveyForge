@@ -2,13 +2,14 @@ FROM node:20-alpine
 
 RUN apk add --no-cache openssl curl python3 make g++
 
-WORKDIR /app
+WORKDIR /app/server
 
 COPY server/package.json server/package-lock.json ./
 COPY server/prisma ./prisma
 RUN npm ci
 
 COPY server/src ./src
+COPY shared /app/shared
 COPY docker/api-entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 

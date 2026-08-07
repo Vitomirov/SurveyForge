@@ -26,10 +26,10 @@ services:
       POSTGRES_USER: surveyforge
       POSTGRES_PASSWORD: surveyforge
       POSTGRES_DB: surveyforge
-    ports:
-      - '${POSTGRES_HOST_PORT:-5433}:5432'
     volumes:
       - pgdata:/var/lib/postgresql/data
+    # Host port is only needed for local npm dev (`docker compose -f docker-compose.yml -f docker-compose.dev.yml up postgres -d`).
+    # Full stack / partner pull does not expose Postgres on the host.
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U surveyforge -d surveyforge']
       interval: 5s
