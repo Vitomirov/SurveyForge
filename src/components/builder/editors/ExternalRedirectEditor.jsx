@@ -287,7 +287,7 @@ export function ExternalRedirectEditor({ question, dispatch, contextItems = [] }
 
       {rules.length > 0 && (
         <p className="text-xs text-ink-400 mt-3">
-          Choice and matrix rules redirect immediately when the answer matches. Text rules redirect when the respondent clicks Next.
+          Matching rules redirect when the respondent clicks Next — they can change their answer or go back before then.
         </p>
       )}
     </div>

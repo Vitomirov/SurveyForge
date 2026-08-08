@@ -11,11 +11,7 @@ import { DEFAULT_DATE_FORMAT } from '@/constants/surveyDefaults'
 import { isOnDNCListAsync, loadDNCListAsync } from '@/utils/dncStore'
 import { checkTermination, evalBlock, buildBlockCause } from '@/utils/terminationEngine'
 import { resolveBranchTargetPage } from '@/utils/branchEngine'
-import {
-  resolveExternalRedirectUrl,
-  resolvePageExternalRedirect,
-  redirectsOnAnswerChange,
-} from '@/utils/externalRedirectEngine'
+import { resolvePageExternalRedirect } from '@/utils/externalRedirectEngine'
 import { validateAnswer } from '@/utils/answerValidation'
 import { buildQuestionNumberById } from '@/utils/questionHelpers'
 import { prefetchModule, prefetchCommonQuestions } from '@/utils/routePrefetch'
@@ -202,14 +198,8 @@ export function SurveyPreview({ survey, items, onClose, isPublic = false }) {
   }
 
   const handleChange = (question, val) => {
-    const nextResponses = { ...responses, [question.id]: val }
-    setResponses(nextResponses)
+    setResponses(r => ({ ...r, [question.id]: val }))
     if (errors[question.id]) setErrors(e => ({ ...e, [question.id]: null }))
-
-    if (redirectsOnAnswerChange(question)) {
-      const url = resolveExternalRedirectUrl(question, val, nextResponses, items)
-      if (url) performExternalRedirect(url, nextResponses)
-    }
   }
 
   const validatePage = () => {
