@@ -87,6 +87,8 @@ export const makeQuestion = (questionType = 'single_select') => {
     terminationRules: [],
     terminationLogic: 'if_any',
     branchRules: [],
+    branchLogic: 'if_any',
+    branchNoneTargetPageBreakId: '',
     externalRedirectRules: [],
 
     openTextConfig: {

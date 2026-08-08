@@ -129,7 +129,7 @@ export function ChoiceEditor({ question, dispatch, focusOptionId, availableQuest
           {hasOpenText        && <span className="text-xs text-brand-600 bg-brand-50 border border-brand-100 px-2 py-0.5 rounded">💬 Open-text</span>}
           {termOptCount > 0   && <span className="text-xs text-white bg-rose-600 px-2 py-0.5 rounded flex items-center gap-1"><UserX size={9} /> {termOptCount} instant</span>}
           {ruleCount > 0      && <span className="text-xs text-rose-700 bg-rose-100 border border-rose-200 px-2 py-0.5 rounded">{ruleCount} rule{ruleCount !== 1 ? 's' : ''} · {question.terminationLogic || 'if_any'}</span>}
-          {branchCount > 0    && <span className="text-xs text-sky-700 bg-sky-100 border border-sky-200 px-2 py-0.5 rounded">{branchCount} branch{branchCount !== 1 ? 'es' : ''}</span>}
+          {branchCount > 0    && <span className="text-xs text-sky-700 bg-sky-100 border border-sky-200 px-2 py-0.5 rounded">{branchCount} branch{branchCount !== 1 ? 'es' : ''} · {question.branchLogic || 'if_any'}</span>}
           {redirectCount > 0  && <span className="text-xs text-emerald-700 bg-emerald-100 border border-emerald-200 px-2 py-0.5 rounded">{redirectCount} external redirect{redirectCount !== 1 ? 's' : ''}</span>}
         </div>
       )}

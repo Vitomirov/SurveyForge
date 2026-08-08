@@ -1,5 +1,7 @@
 import { Plus, Trash2, UserX } from 'lucide-react'
 import { SectionLabel } from '@/components/ui'
+import { RuleLogicSelector } from './RuleLogicSelector'
+import { normalizeQuestionRuleLogic } from '@/utils/questionRuleLogic'
 
 /**
  * Per-question screen-out rules for matrix grids — row + column targeting.
@@ -9,7 +11,7 @@ export function MatrixTerminationEditor({ question, dispatch }) {
   const rows  = cfg.rows || []
   const cols  = cfg.columns || []
   const rules = question.terminationRules || []
-  const logic = question.terminationLogic || 'if_any'
+  const logic = normalizeQuestionRuleLogic(question.terminationLogic)
 
   const setLogic = (val) =>
     dispatch({ type: 'UPDATE_ITEM', id: question.id, patch: { terminationLogic: val } })
@@ -38,22 +40,14 @@ export function MatrixTerminationEditor({ question, dispatch }) {
   return (
     <div className="space-y-3">
       {rules.length > 0 && (
-        <div className="flex gap-2 mb-2">
-          {[
-            { v: 'if_any', label: 'Terminate if ANY rule fires' },
-            { v: 'if_none', label: 'Terminate if NONE fire' },
-          ].map(({ v, label }) => (
-            <button
-              key={v}
-              onClick={() => setLogic(v)}
-              className={`flex-1 text-xs font-medium px-2 py-1.5 rounded-lg border transition-all ${
-                logic === v ? 'border-rose-400 bg-rose-50 text-rose-700' : 'border-ink-200 text-ink-500'
-              }`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+        <RuleLogicSelector
+          purpose="termination"
+          value={logic}
+          onChange={setLogic}
+          compact
+          showLabel={false}
+          className="mb-2"
+        />
       )}
 
       {rules.map((rule, ri) => {

@@ -5,6 +5,8 @@ import { isChoiceType } from '@/utils/questionHelpers'
 import { getBuilderConditionOptions } from '@/utils/questionOptions'
 import { TEXT_OPERATORS } from '@/utils/conditionConstants'
 import { TextOperatorSelect, getTextOperatorHint, isNumericTextOperator } from '@/components/shared/TextOperatorSelect'
+import { RuleLogicSelector } from './RuleLogicSelector'
+import { normalizeQuestionRuleLogic, questionRuleLogicSummary } from '@/utils/questionRuleLogic'
 
 function OperatorSelect({ value, onChange, question }) {
   return <TextOperatorSelect value={value} onChange={onChange} question={question} />
@@ -174,7 +176,7 @@ function RuleCard({ rule, ruleIndex, question, dispatch, onDelete, showChoiceRul
 // ─── Main TerminationEditor ────────────────────────────────────────────────
 export function TerminationEditor({ question, dispatch, contextItems = [] }) {
   const rules          = question.terminationRules || []
-  const logic          = question.terminationLogic || 'if_any'
+  const logic          = normalizeQuestionRuleLogic(question.terminationLogic)
   const isChoiceQ      = isChoiceType(question.questionType)
   const isPipedQ       = question.pipedOptionsConfig?.enabled
   const showChoiceRule = isChoiceQ || isPipedQ
@@ -207,7 +209,7 @@ export function TerminationEditor({ question, dispatch, contextItems = [] }) {
           )}
           {totalRules > 0 && (
             <span className="text-xs bg-rose-100 text-rose-700 border border-rose-200 px-2 py-0.5 rounded flex items-center gap-1">
-              <AlertTriangle size={9} /> {totalRules} rule{totalRules !== 1 ? 's' : ''} · <em>{logic === 'if_any' ? 'ANY fires' : 'NONE fires'}</em>
+              <AlertTriangle size={9} /> {totalRules} rule{totalRules !== 1 ? 's' : ''} · <em>{questionRuleLogicSummary(logic)}</em>
             </span>
           )}
         </div>
@@ -215,44 +217,7 @@ export function TerminationEditor({ question, dispatch, contextItems = [] }) {
 
       {/* Logic mode selector */}
       <div className="mb-3">
-        <SectionLabel>Rule evaluation logic</SectionLabel>
-        <div className="grid grid-cols-1 gap-1.5">
-          {[
-            {
-              v: 'if_any',
-              title: 'Terminate if ANY rule fires',
-              desc: 'Screen out respondent when at least one condition is met.',
-              example: 'e.g. "Male" OR "Under 18" → terminate',
-            },
-            {
-              v: 'if_none',
-              title: 'Terminate if NONE of the rules fire',
-              desc: 'Respondent must satisfy at least one rule to continue.',
-              example: 'e.g. Must select "Daily user" OR "Power user" to qualify',
-            },
-          ].map(({ v, title, desc, example }) => (
-            <button
-              key={v}
-              onClick={() => setLogic(v)}
-              className={`w-full text-left p-3 rounded-xl border-2 transition-all ${
-                logic === v
-                  ? 'border-rose-400 bg-rose-50'
-                  : 'border-ink-200 bg-white hover:border-ink-300'
-              }`}
-            >
-              <div className="flex items-start gap-2">
-                <div className={`mt-0.5 w-3.5 h-3.5 rounded-full border-2 shrink-0 flex items-center justify-center ${logic === v ? 'border-rose-500 bg-rose-500' : 'border-ink-300'}`}>
-                  {logic === v && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-ink-800">{title}</p>
-                  <p className="text-xs text-ink-500 mt-0.5">{desc}</p>
-                  <p className="text-xs text-ink-400 italic mt-0.5">{example}</p>
-                </div>
-              </div>
-            </button>
-          ))}
-        </div>
+        <RuleLogicSelector purpose="termination" value={logic} onChange={setLogic} />
       </div>
 
       {/* Rules list */}

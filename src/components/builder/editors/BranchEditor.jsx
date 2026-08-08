@@ -4,6 +4,8 @@ import { getBuilderConditionOptions } from '@/utils/questionOptions'
 import { buildPageTargets } from '@/utils/builderLayout'
 import { TEXT_OPERATORS } from '@/utils/conditionConstants'
 import { TextOperatorSelect } from '@/components/shared/TextOperatorSelect'
+import { RuleLogicSelector } from './RuleLogicSelector'
+import { QUESTION_RULE_LOGIC, normalizeQuestionRuleLogic, questionRuleLogicSummary } from '@/utils/questionRuleLogic'
 
 function TargetPageSelect({ value, targets, onChange }) {
   return (
@@ -22,6 +24,7 @@ function TargetPageSelect({ value, targets, onChange }) {
 
 function BranchRuleCard({
   rule, ruleIndex, question, dispatch, onDelete, showChoiceRules, pageTargets, contextItems = [],
+  showTargetPage = true,
 }) {
   const opts = getBuilderConditionOptions(question, contextItems)
   const isText = rule.ruleType === 'text' || question.questionType === 'open_text'
@@ -81,21 +84,25 @@ function BranchRuleCard({
           </div>
         )}
 
-        <span className="text-xs text-sky-500 flex-1 truncate ml-1">{summary()} → {targetLabel}</span>
+        <span className="text-xs text-sky-500 flex-1 truncate ml-1">
+          {summary()}{showTargetPage ? ` → ${targetLabel}` : ''}
+        </span>
         <button onClick={onDelete} className="p-1 text-sky-400 hover:text-sky-700 transition-colors shrink-0">
           <Trash2 size={12} />
         </button>
       </div>
 
       <div className="px-3 py-3 space-y-2.5">
-        <div>
-          <label className="text-xs text-ink-500 mb-1 block">Skip to page</label>
-          <TargetPageSelect
-            value={rule.targetPageBreakId}
-            targets={pageTargets}
-            onChange={v => update({ targetPageBreakId: v })}
-          />
-        </div>
+        {showTargetPage && (
+          <div>
+            <label className="text-xs text-ink-500 mb-1 block">Skip to page</label>
+            <TargetPageSelect
+              value={rule.targetPageBreakId}
+              targets={pageTargets}
+              onChange={v => update({ targetPageBreakId: v })}
+            />
+          </div>
+        )}
 
         {isMatrix && (
           <>
@@ -225,6 +232,8 @@ function BranchRuleCard({
 
 export function BranchEditor({ question, dispatch, allItems = [], itemIndex = 0, contextItems = [] }) {
   const rules = question.branchRules || []
+  const logic = normalizeQuestionRuleLogic(question.branchLogic)
+  const isIfNone = logic === QUESTION_RULE_LOGIC.IF_NONE
   const isChoiceQ = isChoiceType(question.questionType)
   const isPipedQ = question.pipedOptionsConfig?.enabled
   const isMatrixQ = isMatrixType(question.questionType)
@@ -238,12 +247,18 @@ export function BranchEditor({ question, dispatch, allItems = [], itemIndex = 0,
   const deleteRule = (ruleId) =>
     dispatch({ type: 'DELETE_BRANCH_RULE', questionId: question.id, ruleId })
 
+  const setLogic = (val) =>
+    dispatch({ type: 'UPDATE_ITEM', id: question.id, patch: { branchLogic: val } })
+
+  const setNoneTarget = (targetPageBreakId) =>
+    dispatch({ type: 'UPDATE_ITEM', id: question.id, patch: { branchNoneTargetPageBreakId: targetPageBreakId } })
+
   return (
     <div>
       {rules.length > 0 && (
         <div className="flex flex-wrap gap-1.5 mb-3 p-2 bg-sky-50 border border-sky-100 rounded-lg">
           <span className="text-xs bg-sky-600 text-white px-2 py-0.5 rounded flex items-center gap-1">
-            <GitBranch size={9} /> {rules.length} branch rule{rules.length !== 1 ? 's' : ''}
+            <GitBranch size={9} /> {rules.length} branch rule{rules.length !== 1 ? 's' : ''} · <em>{questionRuleLogicSummary(logic)}</em>
           </span>
         </div>
       )}
@@ -252,6 +267,23 @@ export function BranchEditor({ question, dispatch, allItems = [], itemIndex = 0,
         <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2 mb-3">
           Add a page break after this question to enable skip-to-page branching.
         </p>
+      )}
+
+      {rules.length > 0 && pageTargets.length > 1 && (
+        <div className="mb-3">
+          <RuleLogicSelector purpose="branch" value={logic} onChange={setLogic} />
+        </div>
+      )}
+
+      {isIfNone && rules.length > 0 && pageTargets.length > 1 && (
+        <div className="mb-3">
+          <label className="text-xs text-ink-500 mb-1 block">Skip to page (when no rules match)</label>
+          <TargetPageSelect
+            value={question.branchNoneTargetPageBreakId || ''}
+            targets={pageTargets}
+            onChange={setNoneTarget}
+          />
+        </div>
       )}
 
       {rules.length > 0 && (
@@ -267,6 +299,7 @@ export function BranchEditor({ question, dispatch, allItems = [], itemIndex = 0,
               showChoiceRules={showChoiceRule}
               pageTargets={pageTargets}
               contextItems={ruleContextItems}
+              showTargetPage={!isIfNone}
             />
           ))}
         </div>
@@ -308,8 +341,20 @@ export function BranchEditor({ question, dispatch, allItems = [], itemIndex = 0,
 
       {rules.length > 0 && (
         <p className="text-xs text-ink-400 mt-3">
-          Rules are checked when the respondent clicks Next. The first matching rule skips ahead; otherwise the survey continues sequentially.
+          {isIfNone
+            ? 'Rules are checked when the respondent clicks Next. If none match, they skip to the fallback page; otherwise they continue sequentially.'
+            : 'Rules are checked when the respondent clicks Next. The first matching rule skips ahead; otherwise the survey continues sequentially.'}
         </p>
+      )}
+
+      {isIfNone && rules.length > 0 && (
+        <div className="mt-3 p-2.5 bg-amber-50 border border-amber-200 rounded-lg">
+          <p className="text-xs text-amber-800">
+            <strong>Fallback mode active:</strong> respondent skips ahead if their answer matches{' '}
+            <strong>none</strong> of the {rules.length} rule{rules.length !== 1 ? 's' : ''} above.
+            Matching any rule keeps them on the normal path.
+          </p>
+        </div>
       )}
     </div>
   )

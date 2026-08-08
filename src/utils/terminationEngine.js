@@ -12,6 +12,26 @@ import {
   formatConditionPhraseBlockStyle,
   joinConditionPhrasesInline,
 } from '@/utils/conditionSummary'
+import { normalizeQuestionRuleLogic } from '@/utils/questionRuleLogic'
+
+/**
+ * Evaluate a rule set with if_any (OR) or if_none (AND-inverted) logic.
+ * - if_any: fires when at least one rule matches
+ * - if_none: fires when no rules match
+ */
+export function evaluateRulesWithLogic(rules, logic, question, answer, responses, allItems) {
+  if (!rules.length) return { shouldFire: false, firedRuleIndex: -1 }
+
+  const results = rules.map(r => evaluateQuestionRule(r, question, answer, responses, allItems))
+  const mode = normalizeQuestionRuleLogic(logic)
+
+  if (mode === 'if_any') {
+    const firedRuleIndex = results.findIndex(Boolean)
+    return { shouldFire: firedRuleIndex !== -1, firedRuleIndex }
+  }
+
+  return { shouldFire: results.every(r => !r), firedRuleIndex: -1 }
+}
 
 /** Evaluate a termination block's conditions (AND/OR). */
 export function evalBlock(block, responses, allItems) {
@@ -108,37 +128,35 @@ export function checkTermination(question, answer, responses = {}, allItems = []
   const rules = question.terminationRules || []
   if (!rules.length) return { terminated: false }
 
-  const logic   = question.terminationLogic || 'if_any'
-  const results = rules.map(r => evaluateQuestionRule(r, question, answer, responses, allItems))
+  const logic = normalizeQuestionRuleLogic(question.terminationLogic)
+  const { shouldFire, firedRuleIndex } = evaluateRulesWithLogic(
+    rules, logic, question, answer, responses, allItems,
+  )
+  if (!shouldFire) return { terminated: false }
 
-  if (logic === 'if_any') {
-    const idx = results.findIndex(r => r)
-    if (idx === -1) return { terminated: false }
-    const firedRule = rules[idx]
-    const firedType = resolveQuestionRuleType(firedRule, question)
-    if (firedType === 'matrix') {
-      const row = question.matrixConfig?.rows?.find(r => r.id === firedRule.matrixRowId)
-      const cols = (firedRule.matrixColumnIds || []).map(id =>
-        question.matrixConfig?.columns?.find(c => c.id === id)?.text || '?'
-      )
-      return {
-        terminated: true,
-        cause: firedRule.note || `${row?.text || 'Row'}: ${cols.join(', ')}`,
-      }
-    }
+  if (logic === 'if_none') {
+    return { terminated: true, cause: 'No qualifying condition met' }
+  }
+
+  const firedRule = rules[firedRuleIndex]
+  const firedType = resolveQuestionRuleType(firedRule, question)
+  if (firedType === 'matrix') {
+    const row = question.matrixConfig?.rows?.find(r => r.id === firedRule.matrixRowId)
+    const cols = (firedRule.matrixColumnIds || []).map(id =>
+      question.matrixConfig?.columns?.find(c => c.id === id)?.text || '?'
+    )
     return {
       terminated: true,
-      cause: firedRule.note || (
-        firedType === 'text'
-          ? `Answer ${firedRule.textOperator?.replace(/_/g,' ')} "${firedRule.textValue}"`
-          : `Rule ${idx + 1} matched`
-      ),
+      cause: firedRule.note || `${row?.text || 'Row'}: ${cols.join(', ')}`,
     }
-  } else {
-    if (results.every(r => !r)) {
-      return { terminated: true, cause: 'No qualifying condition met' }
-    }
-    return { terminated: false }
+  }
+  return {
+    terminated: true,
+    cause: firedRule.note || (
+      firedType === 'text'
+        ? `Answer ${firedRule.textOperator?.replace(/_/g,' ')} "${firedRule.textValue}"`
+        : `Rule ${firedRuleIndex + 1} matched`
+    ),
   }
 }
 
