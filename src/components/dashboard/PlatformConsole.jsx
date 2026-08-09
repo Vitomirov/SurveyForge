@@ -15,6 +15,7 @@ import {
 } from '@/api/vendor'
 import { InlineLoader, Modal, StatusPill, useToast } from '@/components/ui'
 import { formatMoney, formatDate } from '@/utils/format'
+import { normalizeSurveyDomain } from '@shared/surveyUrl.js'
 
 const PLANS = [
   { id: 'starter', name: 'Starter' },
@@ -31,6 +32,7 @@ function OrgDetail({ orgId, onBack, onNotificationsChange }) {
   const [support, setSupport] = useState(null)
   const [planId, setPlanId] = useState('starter')
   const [status, setStatus] = useState('active')
+  const [surveyDomain, setSurveyDomain] = useState('')
   const [saving, setSaving] = useState(false)
   const [invoiceAmount, setInvoiceAmount] = useState('')
   const [invoiceDesc, setInvoiceDesc] = useState('')
@@ -48,6 +50,7 @@ function OrgDetail({ orgId, onBack, onNotificationsChange }) {
       setSupport(supportData)
       setPlanId(orgData.subscription.planId)
       setStatus(orgData.subscription.status)
+      setSurveyDomain(orgData.organization.surveyDomain || '')
       await markVendorThreadSeen(orgId).catch(() => {})
       onNotificationsChange?.()
     } catch (err) {
@@ -62,8 +65,20 @@ function OrgDetail({ orgId, onBack, onNotificationsChange }) {
   const saveSubscription = async () => {
     setSaving(true)
     try {
-      const data = await updateVendorSubscription(orgId, { planId, status })
-      setDetail(prev => ({ ...prev, subscription: data.subscription }))
+      const data = await updateVendorSubscription(orgId, {
+        planId,
+        status,
+        surveyDomain: planId === 'enterprise' ? surveyDomain : '',
+      })
+      setDetail(prev => ({
+        ...prev,
+        subscription: data.subscription,
+        organization: {
+          ...prev.organization,
+          surveyDomain: data.surveyDomain || '',
+        },
+      }))
+      setSurveyDomain(data.surveyDomain || '')
       toast({ message: 'Subscription updated.', type: 'success' })
       onNotificationsChange?.()
     } catch (err) {
@@ -156,6 +171,21 @@ function OrgDetail({ orgId, onBack, onNotificationsChange }) {
             </select>
           </label>
         </div>
+        {planId === 'enterprise' && (
+          <label className="text-sm block">
+            <span className="text-ink-500 text-xs block mb-1">Survey domain</span>
+            <input
+              type="text"
+              value={surveyDomain}
+              onChange={e => setSurveyDomain(e.target.value)}
+              placeholder="domain.com"
+              className="input-field w-full text-sm font-mono"
+            />
+            <span className="text-xs text-ink-400 mt-1 block">
+              Used in public survey URLs, e.g. https://{normalizeSurveyDomain(surveyDomain) || 'client.com'}/project-name-date
+            </span>
+          </label>
+        )}
         <p className="text-xs text-ink-400">
           Current: {subscription.planName} · {formatMoney(subscription.priceCents)} · renews {formatDate(subscription.currentPeriodEnd)}
         </p>

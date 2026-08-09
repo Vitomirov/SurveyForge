@@ -31,3 +31,10 @@ export function resolvePageExternalRedirect(pageQuestions, responses, allItems) 
   }
   return null
 }
+
+/** Open a validated external URL in a new tab; survey tab stays open. */
+export function openExternalRedirect(url) {
+  if (!isSafeExternalUrl(url)) return false
+  const opened = window.open(url.trim(), '_blank', 'noopener,noreferrer')
+  return Boolean(opened)
+}

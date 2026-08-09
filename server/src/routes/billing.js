@@ -6,6 +6,7 @@ import {
   planById,
 } from '../lib/billingPlans.js'
 import { ensureOrgBilling, ensureSupportThread } from '../lib/billingDefaults.js'
+import { readSurveyDomain, patchOrgSettings } from '../lib/orgSettings.js'
 import {
   countOrgBillingNotifications,
   countVendorNotifications,
@@ -55,15 +56,22 @@ export async function registerBillingRoutes(app) {
 
   app.get('/api/billing/overview', { preHandler: adminOnly }, async (request) => {
     const orgId = request.organizationId
-    const subscription = await ensureOrgBilling(app.prisma, orgId)
-    const invoices = await app.prisma.invoice.findMany({
-      where: { organizationId: orgId },
-      orderBy: { createdAt: 'desc' },
-      take: 12,
-    })
+    const [subscription, org, invoices] = await Promise.all([
+      ensureOrgBilling(app.prisma, orgId),
+      app.prisma.organization.findUnique({
+        where: { id: orgId },
+        select: { settings: true },
+      }),
+      app.prisma.invoice.findMany({
+        where: { organizationId: orgId },
+        orderBy: { createdAt: 'desc' },
+        take: 12,
+      }),
+    ])
 
     return {
       subscription: serializeSubscription(subscription),
+      surveyDomain: readSurveyDomain(org?.settings),
       invoices:     invoices.map(serializeInvoice),
     }
   })
@@ -178,11 +186,12 @@ export async function registerVendorRoutes(app) {
 
     return {
       organization: {
-        id:          org.id,
-        name:        org.name,
-        createdAt:   org.createdAt.toISOString(),
-        userCount:   org._count.users,
-        surveyCount: org._count.surveys,
+        id:           org.id,
+        name:         org.name,
+        createdAt:    org.createdAt.toISOString(),
+        userCount:    org._count.users,
+        surveyCount:  org._count.surveys,
+        surveyDomain: readSurveyDomain(org.settings),
       },
       subscription: serializeSubscription(subscription),
       invoices:     org.invoices.map(serializeInvoice),
@@ -190,7 +199,7 @@ export async function registerVendorRoutes(app) {
   })
 
   app.patch('/api/vendor/organizations/:orgId/subscription', { preHandler: requirePlatformOwner }, async (request, reply) => {
-    const { planId, status, seats, priceCents, currentPeriodEnd } = request.body ?? {}
+    const { planId, status, seats, priceCents, currentPeriodEnd, surveyDomain } = request.body ?? {}
     const org = await app.prisma.organization.findUnique({
       where: { id: request.params.orgId },
     })
@@ -217,7 +226,20 @@ export async function registerVendorRoutes(app) {
       data,
     })
 
-    return { subscription: serializeSubscription(updated) }
+    let organizationSurveyDomain = readSurveyDomain(org.settings)
+    if (surveyDomain !== undefined) {
+      const settings = patchOrgSettings(org.settings, { surveyDomain })
+      await app.prisma.organization.update({
+        where: { id: org.id },
+        data: { settings },
+      })
+      organizationSurveyDomain = readSurveyDomain(settings)
+    }
+
+    return {
+      subscription: serializeSubscription(updated),
+      surveyDomain: organizationSurveyDomain,
+    }
   })
 
   app.post('/api/vendor/organizations/:orgId/invoices', { preHandler: requirePlatformOwner }, async (request, reply) => {

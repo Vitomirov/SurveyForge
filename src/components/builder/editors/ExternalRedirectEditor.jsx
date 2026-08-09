@@ -287,7 +287,7 @@ export function ExternalRedirectEditor({ question, dispatch, contextItems = [] }
 
       {rules.length > 0 && (
         <p className="text-xs text-ink-400 mt-3">
-          Matching rules redirect when the respondent clicks Next — they can change their answer or go back before then.
+          Matching rules open the link in a new tab and end the survey when the respondent clicks Next.
         </p>
       )}
     </div>

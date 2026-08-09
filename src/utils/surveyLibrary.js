@@ -1,13 +1,12 @@
 // ─── Multi-survey library (all surveys for this install) ──────────────────
 import { newSurveyId } from '@/store/id'
 import {
-  clientDomainFromName,
-  displayPublicPath,
-  ensureUniquePublicPath,
   isPublicPathLocked,
   previewPublicPath,
+  ensureUniquePublicPath,
+  surveyHostMatches,
+  SURVEYFORGE_HOST,
 } from '@shared/surveyUrl.js'
-import { loadClients } from '@/utils/platformStore'
 
 const LIBRARY_KEY = 'sf_survey_library'
 
@@ -66,8 +65,8 @@ export function loadSurveyByPublicPath(publicPath, clientDomain = null) {
     if (entry.survey?.publicPath !== publicPath) return false
     if (entry.survey?.status !== 'live') return false
     if (!clientDomain) return true
-    const client = loadClients().find(c => c.id === entry.survey?.clientId)
-    return client && clientDomainFromName(client.name) === clientDomain
+    return surveyHostMatches(clientDomain, { planId: 'starter', surveyDomain: null })
+      || clientDomain === SURVEYFORGE_HOST
   })
   return match || null
 }

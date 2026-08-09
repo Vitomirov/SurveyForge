@@ -8,14 +8,17 @@ import {
   dateSuffix,
   buildPublicPath,
   buildSurveyPublicUrl,
+  buildShareableSurveyUrl,
   buildLocalTakeUrl,
   parseSurveyHost,
-  clientDomainFromName,
+  normalizeSurveyDomain,
+  resolveSurveyHost,
   previewPublicPath,
   resolvePublicPath,
   displayPublicPath,
   isPublicPathLocked,
   ensureUniquePublicPath,
+  SURVEYFORGE_HOST,
 } from '../shared/surveyUrl.js'
 
 test('slugify normalizes project names', () => {
@@ -32,9 +35,33 @@ test('buildPublicPath combines slug and date', () => {
   assert.equal(path, 'brand-tracking-060826')
 })
 
-test('buildSurveyPublicUrl matches target structure', () => {
-  const url = buildSurveyPublicUrl('acme', 'brand-tracking-060826')
-  assert.equal(url, 'https://surveys.acme/brand-tracking-060826')
+test('buildSurveyPublicUrl uses surveys prefix for SurveyForge host', () => {
+  const url = buildSurveyPublicUrl(SURVEYFORGE_HOST, 'brand-tracking-060826')
+  assert.equal(url, 'https://surveys.surveyforge/brand-tracking-060826')
+})
+
+test('buildSurveyPublicUrl uses direct host for enterprise domains', () => {
+  const url = buildSurveyPublicUrl('cocacola.com', 'brand-tracking-060826')
+  assert.equal(url, 'https://cocacola.com/brand-tracking-060826')
+})
+
+test('resolveSurveyHost picks org domain for enterprise', () => {
+  assert.equal(resolveSurveyHost({ planId: 'enterprise', surveyDomain: 'cocacola.com' }), 'cocacola.com')
+  assert.equal(resolveSurveyHost({ planId: 'starter', surveyDomain: 'cocacola.com' }), SURVEYFORGE_HOST)
+})
+
+test('buildShareableSurveyUrl requires enterprise domain', () => {
+  const survey = { id: 's1', title: 'Brand Tracking' }
+  const today = dateSuffix(new Date())
+  assert.equal(
+    buildShareableSurveyUrl({ survey, planId: 'enterprise', surveyDomain: 'cocacola.com' }),
+    `https://cocacola.com/brand-tracking-${today}`,
+  )
+  assert.equal(buildShareableSurveyUrl({ survey, planId: 'enterprise', surveyDomain: '' }), null)
+  assert.equal(
+    buildShareableSurveyUrl({ survey, planId: 'starter' }),
+    `https://surveys.surveyforge/brand-tracking-${today}`,
+  )
 })
 
 test('buildLocalTakeUrl uses hash route', () => {
@@ -42,13 +69,15 @@ test('buildLocalTakeUrl uses hash route', () => {
   assert.equal(url, 'http://localhost:5173#/take/abc-123')
 })
 
-test('parseSurveyHost extracts client domain', () => {
-  assert.equal(parseSurveyHost('surveys.acme.com'), 'acme.com')
+test('parseSurveyHost extracts surveyforge and enterprise domains', () => {
+  assert.equal(parseSurveyHost('surveys.surveyforge'), 'surveyforge')
+  assert.equal(parseSurveyHost('cocacola.com'), 'cocacola.com')
   assert.equal(parseSurveyHost('localhost'), null)
 })
 
-test('clientDomainFromName slugifies client names', () => {
-  assert.equal(clientDomainFromName('DMR Group'), 'dmr-group')
+test('normalizeSurveyDomain strips protocol and validates host', () => {
+  assert.equal(normalizeSurveyDomain('https://CocaCola.com/'), 'cocacola.com')
+  assert.equal(normalizeSurveyDomain('not a domain'), null)
 })
 
 test('resolvePublicPath preserves path while live', () => {
@@ -56,9 +85,10 @@ test('resolvePublicPath preserves path while live', () => {
   assert.equal(resolvePublicPath(survey), 'fixed-path-010126')
 })
 
-test('previewPublicPath generates from title when missing', () => {
-  const survey = { title: 'My Survey', createdAt: '2026-01-01T00:00:00.000Z' }
-  assert.equal(previewPublicPath(survey), 'my-survey-010126')
+test('previewPublicPath generates from title using today', () => {
+  const survey = { title: 'My Survey' }
+  const today = dateSuffix(new Date())
+  assert.equal(previewPublicPath(survey), `my-survey-${today}`)
 })
 
 test('ensureUniquePublicPath appends suffix on collision', () => {
@@ -71,8 +101,9 @@ test('ensureUniquePublicPath appends suffix on collision', () => {
 })
 
 test('displayPublicPath follows name until live', () => {
-  const draft = { title: 'New Name', createdAt: '2026-08-06T00:00:00.000Z', publicPath: 'old-name-060826', status: 'draft' }
-  assert.equal(displayPublicPath(draft), 'new-name-060826')
+  const today = dateSuffix(new Date())
+  const draft = { title: 'New Name', publicPath: 'old-name-060826', status: 'draft' }
+  assert.equal(displayPublicPath(draft), `new-name-${today}`)
 
   const live = { ...draft, status: 'live' }
   assert.equal(displayPublicPath(live), 'old-name-060826')

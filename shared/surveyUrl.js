@@ -1,5 +1,17 @@
 // ─── White-label survey URL helpers (shared by client + server) ─────────────
-// Target shape: https://surveys.{clientDomain}/{project-slug-ddmmyy}
+// Enterprise: https://{org-domain}/{project-slug-ddmmyy}
+// Starter / Professional: https://surveys.surveyforge/{project-slug-ddmmyy}
+
+export const SURVEYFORGE_HOST = 'surveyforge.com'
+
+/** Normalize a survey host/domain. */
+export function normalizeSurveyDomain(domain) {
+  const raw = String(domain || '').trim().toLowerCase()
+  if (!raw) return null
+  const cleaned = raw.replace(/^https?:\/\//, '').replace(/\/.*$/, '').replace(/\.$/, '')
+  if (/^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(cleaned)) return cleaned
+  return null
+}
 
 /** Lowercase slug safe for URL paths. */
 export function slugify(text) {
@@ -28,16 +40,41 @@ export function buildPublicPath(name, date = new Date()) {
   return `${base}-${dateSuffix(date)}`
 }
 
-/** Client subdomain label from a display name (e.g. "DMR Group" → "dmr-group"). */
-export function clientDomainFromName(name) {
-  return slugify(name)
+export function isEnterprisePlan(planId) {
+  return planId === 'enterprise'
 }
 
-/** Full public survey URL on a white-label host. */
-export function buildSurveyPublicUrl(clientDomain, publicPath, { protocol = 'https' } = {}) {
-  const domain = clientDomain || 'client'
+/** Host label for a survey link based on plan and org domain. */
+export function resolveSurveyHost({ planId = 'starter', surveyDomain } = {}) {
+  if (isEnterprisePlan(planId)) {
+    return normalizeSurveyDomain(surveyDomain) || SURVEYFORGE_HOST
+  }
+  return SURVEYFORGE_HOST
+}
+
+/** Full public survey URL. Enterprise uses the org domain; other plans use SurveyForge. */
+export function buildSurveyPublicUrl(host, publicPath, { protocol = 'https' } = {}) {
   const path = publicPath || 'survey'
-  return `${protocol}://surveys.${domain}/${path}`
+  const domain = host || SURVEYFORGE_HOST
+  if (domain.includes('.')) {
+    return `${protocol}://${domain}/${path}`
+  }
+  return `${protocol}://${domain}/${path}`
+}
+
+/** Whether a request host matches the configured survey host. */
+export function surveyHostMatches(requestDomain, { planId = 'starter', surveyDomain } = {}) {
+  const expected = resolveSurveyHost({ planId, surveyDomain })
+  return String(requestDomain || '').trim().toLowerCase() === expected
+}
+
+/** Builder share link — single entry point for display/copy. */
+export function buildShareableSurveyUrl({ survey, planId = 'starter', surveyDomain, protocol = 'https' } = {}) {
+  if (!survey?.id) return null
+  if (isEnterprisePlan(planId) && !normalizeSurveyDomain(surveyDomain)) return null
+  const host = resolveSurveyHost({ planId, surveyDomain })
+  const path = displayPublicPath(survey)
+  return buildSurveyPublicUrl(host, path, { protocol })
 }
 
 /** Local dev/test link — always works on the current host. */
@@ -46,22 +83,23 @@ export function buildLocalTakeUrl(surveyId, origin = typeof window !== 'undefine
   return `${base}#/take/${surveyId}`
 }
 
-/** Extract client domain from hostname like surveys.acme.com */
+/** Extract survey host from hostname (surveys.surveyforge or cocacola.com). */
 export function parseSurveyHost(hostname) {
   const host = String(hostname || '').split(':')[0].toLowerCase()
-  const match = host.match(/^surveys\.([a-z0-9-]+(?:\.[a-z0-9-]+)*)$/)
-  return match ? match[1] : null
+  const surveysMatch = host.match(/^surveys\.([a-z0-9-]+(?:\.[a-z0-9-]+)*)$/)
+  if (surveysMatch) return surveysMatch[1]
+  if (host !== 'localhost' && normalizeSurveyDomain(host)) return host
+  return null
 }
 
-/** Name used when generating a public path slug. */
+/** Name used when generating a public path slug (survey title only). */
 export function surveyPathName(survey) {
-  return survey?.internalName?.trim() || survey?.title?.trim() || 'survey'
+  return survey?.title?.trim() || 'survey'
 }
 
-/** Preview path from the current survey name. */
+/** Preview path from the current survey name (date = today). */
 export function previewPublicPath(survey) {
-  const date = survey?.createdAt ? new Date(survey.createdAt) : new Date()
-  return buildPublicPath(surveyPathName(survey), date)
+  return buildPublicPath(surveyPathName(survey))
 }
 
 /** Live surveys keep a fixed path; drafts follow the current name. */

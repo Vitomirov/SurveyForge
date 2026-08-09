@@ -11,14 +11,14 @@ import { DEFAULT_DATE_FORMAT } from '@/constants/surveyDefaults'
 import { isOnDNCListAsync, loadDNCListAsync } from '@/utils/dncStore'
 import { checkTermination, evalBlock, buildBlockCause } from '@/utils/terminationEngine'
 import { resolveBranchTargetPage } from '@/utils/branchEngine'
-import { resolvePageExternalRedirect } from '@/utils/externalRedirectEngine'
+import { resolvePageExternalRedirect, openExternalRedirect } from '@/utils/externalRedirectEngine'
 import { validateAnswer } from '@/utils/answerValidation'
 import { buildQuestionNumberById } from '@/utils/questionHelpers'
 import { prefetchModule, prefetchCommonQuestions } from '@/utils/routePrefetch'
 import { usePageNavigationLock } from '@/hooks/usePageNavigationLock'
 import { QUESTION_LOADERS } from './questions/questionLoaders'
 import { QuestionRenderer } from './questions'
-import { CoverPage, CompletionScreen, TerminationScreen, ClosedSurveyScreen } from './screens'
+import { CoverPage, CompletionScreen, TerminationScreen, ClosedSurveyScreen, ExternalRedirectScreen } from './screens'
 
 export function SurveyPreview({ survey, items, onClose, isPublic = false }) {
   const [responses, setResponses]       = useState({})
@@ -28,6 +28,7 @@ export function SurveyPreview({ survey, items, onClose, isPublic = false }) {
   const [submitted, setSubmitted]       = useState(false)
   const [terminated, setTerminated]     = useState(false)
   const [terminatedBy, setTerminatedBy] = useState(null)
+  const [redirectedTo, setRedirectedTo] = useState(null)
   const [showCover, setShowCover]       = useState(survey?.showCoverPage !== false)
   const [lockVisitKey, setLockVisitKey] = useState(0)
   const bumpLockVisit = () => setLockVisitKey(k => k + 1)
@@ -84,7 +85,7 @@ export function SurveyPreview({ survey, items, onClose, isPublic = false }) {
   const currentQuestions = currentItems.filter(i => i.itemType === 'question')
   const totalPages       = pages.length
   const currentPageLockSeconds = navigationLockByPage[currentPage] || 0
-  const isSurveyContentActive = !showCover && !submitted && !terminated
+  const isSurveyContentActive = !showCover && !submitted && !terminated && !redirectedTo
     && !(isPublic && survey?.status === 'closed')
   const { isLocked: isNavigationLocked, remainingSeconds } = usePageNavigationLock(
     currentPageLockSeconds,
@@ -123,7 +124,7 @@ export function SurveyPreview({ survey, items, onClose, isPublic = false }) {
 
   const reset = () => {
     setResponses({}); setCompanions({}); setErrors({}); setCurrentPage(0)
-    setSubmitted(false); setTerminated(false); setTerminatedBy(null)
+    setSubmitted(false); setTerminated(false); setTerminatedBy(null); setRedirectedTo(null)
     setShowCover(survey?.showCoverPage !== false)
     bumpLockVisit()
     if (fpEnabled) {
@@ -180,7 +181,7 @@ export function SurveyPreview({ survey, items, onClose, isPublic = false }) {
     return finalStatus
   }
 
-  const performExternalRedirect = (url, responseSnapshot) => {
+  const persistRedirectResponse = async (url, responseSnapshot, doDownload = false) => {
     const entry = {
       ...buildEntry('partial'),
       responses: responseSnapshot,
@@ -189,12 +190,21 @@ export function SurveyPreview({ survey, items, onClose, isPublic = false }) {
     if (survey?.id) {
       if (useApi) {
         const save = isPublic ? savePublicResponse : saveResponseApi
-        save(survey.id, entry).catch(err => console.error('Failed to save response before redirect', err))
+        save(survey.id, entry).catch(err => console.error('Failed to save redirect response', err))
       } else {
         saveResponse(survey.id, entry)
       }
     }
-    window.location.assign(url)
+    if (doDownload) {
+      const csv = generateCSV(items, [entry], survey)
+      downloadCSV(csv, `${(survey?.title || 'survey').replace(/\s+/g, '_')}_redirected.csv`)
+    }
+  }
+
+  const performExternalRedirect = (url, responseSnapshot) => {
+    openExternalRedirect(url)
+    persistRedirectResponse(url, responseSnapshot)
+    setRedirectedTo(url)
   }
 
   const handleChange = (question, val) => {
@@ -299,7 +309,7 @@ export function SurveyPreview({ survey, items, onClose, isPublic = false }) {
       </header>
 
       {/* Progress bar */}
-      {totalPages > 1 && !terminated && !submitted && !showCover && (
+      {totalPages > 1 && !terminated && !submitted && !redirectedTo && !showCover && (
         <div className="bg-white border-b border-ink-100 px-4 sm:px-6 py-2">
           <div className="max-w-2xl mx-auto">
             <div className="flex justify-between text-xs text-ink-400 mb-1.5">
@@ -318,6 +328,14 @@ export function SurveyPreview({ survey, items, onClose, isPublic = false }) {
         <ClosedSurveyScreen settings={survey?.settings} />
       ) : showCover ? (
         <CoverPage survey={survey} onStart={() => { setShowCover(false); bumpLockVisit() }} isPublic={isPublic} />
+      ) : redirectedTo ? (
+        <ExternalRedirectScreen
+          settings={survey?.settings}
+          redirectUrl={redirectedTo}
+          onReset={reset}
+          onDownload={() => persistRedirectResponse(redirectedTo, responses, true)}
+          isPublic={isPublic}
+        />
       ) : terminated ? (
         <TerminationScreen settings={survey?.settings} terminatedBy={terminatedBy} onReset={reset} onDownload={() => persistAndDownload('terminated', terminatedBy, true)} isPublic={isPublic} />
       ) : submitted ? (

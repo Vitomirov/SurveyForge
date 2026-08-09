@@ -1,10 +1,11 @@
 import {
   buildPublicPath,
-  clientDomainFromName,
   isPublicPathLocked,
   previewPublicPath,
+  surveyHostMatches,
   surveyPathName,
 } from '../../../shared/surveyUrl.js'
+import { readSurveyDomain } from './orgSettings.js'
 
 export { resolvePublicPath } from '../../../shared/surveyUrl.js'
 
@@ -20,8 +21,7 @@ async function pathIsTaken(prisma, candidate, surveyId) {
 export async function assignPublicPath(prisma, survey) {
   const surveyId = survey.id
   const name = surveyPathName(survey)
-  const date = survey.createdAt ? new Date(survey.createdAt) : new Date()
-  const base = buildPublicPath(name, date)
+  const base = buildPublicPath(name)
   const start = isPublicPathLocked(survey) ? survey.publicPath : base
 
   const publicPath = await (async () => {
@@ -40,13 +40,12 @@ export async function assignPublicPath(prisma, survey) {
   }
 }
 
-/** Match a survey row to a white-label client subdomain. */
-export function surveyMatchesClientDomain(row, clientDomain, clientById) {
-  if (!clientDomain) return true
-  const clientId = row.survey?.clientId
-  if (!clientId) return false
-  const client = clientById.get(clientId)
-  return client ? clientDomainFromName(client.name) === clientDomain : false
+/** Match a survey row to the request host via org plan + survey domain. */
+export function surveyMatchesRequestHost(row, requestDomain, org) {
+  if (!requestDomain) return true
+  const planId = org?.subscription?.planId || 'starter'
+  const surveyDomain = readSurveyDomain(org?.settings)
+  return surveyHostMatches(requestDomain, { planId, surveyDomain })
 }
 
 export async function findPublicSurvey(prisma, publicPath, clientDomain = null) {
@@ -60,20 +59,24 @@ export async function findPublicSurvey(prisma, publicPath, clientDomain = null) 
 
   if (!clientDomain) return live[0]
 
-  const clientIds = [...new Set(live.map(r => r.survey?.clientId).filter(Boolean))]
-  const clients = clientIds.length
-    ? await prisma.client.findMany({ where: { id: { in: clientIds } } })
-    : []
-  const clientById = new Map(clients.map(c => [c.id, c]))
+  const orgIds = [...new Set(live.map(r => r.organizationId))]
+  const orgs = await prisma.organization.findMany({
+    where: { id: { in: orgIds } },
+    include: { subscription: true },
+  })
+  const orgById = new Map(orgs.map(o => [o.id, o]))
 
-  return live.find(r => surveyMatchesClientDomain(r, clientDomain, clientById)) || null
+  return live.find(r => surveyMatchesRequestHost(r, clientDomain, orgById.get(r.organizationId))) || null
 }
 
 export function clientDomainFromRequest(request) {
   const host = request.headers['x-forwarded-host'] || request.headers.host || ''
-  const hostname = host.split(':')[0]
-  const fromHost = hostname.match(/^surveys\.(.+)$/i)
-  if (fromHost) return fromHost[1].toLowerCase()
+  const hostname = host.split(':')[0].toLowerCase()
+  const fromSurveys = hostname.match(/^surveys\.(.+)$/i)
+  if (fromSurveys) return fromSurveys[1].toLowerCase()
+  if (/^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(hostname) && hostname !== 'localhost') {
+    return hostname
+  }
   const q = request.query?.client
   return q ? String(q).toLowerCase() : null
 }

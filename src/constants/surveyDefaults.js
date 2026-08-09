@@ -9,4 +9,6 @@ export const DEFAULT_SCREEN_MESSAGES = {
   terminateMessage: 'Unfortunately, you do not qualify for this survey.',
   closedTitle:      'This survey is now closed.',
   closedMessage:    'Thank you for your interest. This survey is no longer accepting responses.',
+  redirectTitle:    'Thank you for your responses.',
+  redirectMessage:  'This survey is now complete. The next step has been opened in a new browser tab.',
 }
