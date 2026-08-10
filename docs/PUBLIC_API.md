@@ -1,4 +1,4 @@
-# SurveyForge — Public API Reference
+# Rescope Surveys — Public API Reference
 
 This document describes the module layout and stable import paths after the phased refactor (Phases 0–10). Use it when extending question types, wiring new features, or onboarding contributors.
 

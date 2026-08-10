@@ -19,7 +19,7 @@ await migratePlatformLists(app.prisma)
 
 try {
   await app.listen({ port: config.port, host: '0.0.0.0' })
-  app.log.info(`SurveyForge API listening on http://127.0.0.1:${config.port}`)
+  app.log.info(`Rescope Surveys API listening on http://127.0.0.1:${config.port}`)
 } catch (err) {
   app.log.error(err)
   process.exit(1)

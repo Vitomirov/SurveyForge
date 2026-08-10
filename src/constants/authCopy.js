@@ -51,7 +51,7 @@ export const AUTH_BILLING = {
   invoices:            'Invoices',
   noInvoices:          'No invoices yet.',
   supportHeading:      'Support',
-  supportSubtitle:     'Message the SurveyForge team',
+  supportSubtitle:     'Message the Rescope Surveys team',
   supportPlaceholder:  'Describe your question or issue…',
   send:                'Send message',
   platformHeading:     'Platform console',

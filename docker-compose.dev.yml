@@ -1,5 +1,6 @@
-# Optional override for local npm dev: expose Postgres on the host.
-# Usage: docker compose -f docker-compose.yml -f docker-compose.dev.yml up postgres -d
+# Dev override — expose Postgres on the host for npm dev + DBeaver.
+# Usage: npm run db:up
+# Reset: npm run db:reset
 services:
   postgres:
     ports:

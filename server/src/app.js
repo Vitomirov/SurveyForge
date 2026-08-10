@@ -31,7 +31,7 @@ export async function buildApp() {
 
   app.get('/health', async () => ({
     ok: true,
-    service: 'surveyforge-api',
+    service: 'rescopesurveys-api',
     timestamp: new Date().toISOString(),
   }))
 

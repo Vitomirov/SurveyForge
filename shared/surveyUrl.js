@@ -1,7 +1,7 @@
 // ─── White-label survey URL helpers (shared by client + server) ─────────────
 // Target shape: https://surveys.{clientDomain}/{project-slug-ddmmyy}
 
-export const SURVEYFORGE_HOST = 'surveyforge.com'
+export const RESCOPESURVEYS_HOST = 'rescopesurveys.com'
 
 /** Normalize a survey host/domain. */
 export function normalizeSurveyDomain(domain) {
@@ -46,15 +46,15 @@ export function isEnterprisePlan(planId) {
 /** Host label for a survey link based on plan and org domain. */
 export function resolveSurveyHost({ planId = 'starter', surveyDomain } = {}) {
   if (isEnterprisePlan(planId)) {
-    return normalizeSurveyDomain(surveyDomain) || SURVEYFORGE_HOST
+    return normalizeSurveyDomain(surveyDomain) || RESCOPESURVEYS_HOST
   }
-  return SURVEYFORGE_HOST
+  return RESCOPESURVEYS_HOST
 }
 
 /** Full public survey URL on a white-label host. */
 export function buildSurveyPublicUrl(host, publicPath, { protocol = 'https' } = {}) {
   const path = publicPath || 'survey'
-  const domain = host || SURVEYFORGE_HOST
+  const domain = host || RESCOPESURVEYS_HOST
   return `${protocol}://surveys.${domain}/${path}`
 }
 
@@ -79,7 +79,7 @@ export function buildLocalTakeUrl(surveyId, origin = typeof window !== 'undefine
   return `${base}#/take/${surveyId}`
 }
 
-/** Extract survey host from hostname (surveys.surveyforge or cocacola.com). */
+/** Extract survey host from hostname (surveys.rescopesurveys or cocacola.com). */
 export function parseSurveyHost(hostname) {
   const host = String(hostname || '').split(':')[0].toLowerCase()
   const surveysMatch = host.match(/^surveys\.([a-z0-9-]+(?:\.[a-z0-9-]+)*)$/)

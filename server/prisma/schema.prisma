@@ -1,4 +1,4 @@
-// SurveyForge — multi-organization SaaS schema
+// Rescope Surveys — multi-organization SaaS schema
 // Same codebase supports single-tenant enterprise deployments via env + isolated DB.
 // DB columns use entity-prefixed names (e.g. organization_name) for clarity in raw SQL.
 

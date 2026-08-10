@@ -1,4 +1,4 @@
-# SurveyForge — full stack (Postgres + API + web UI).
+# Rescope Surveys — full stack (Postgres + API + web UI).
 #
 # Partner / fast start (pull pre-built images from Docker Hub):
 #   docker compose pull
@@ -16,28 +16,29 @@
 #   ./scripts/publish-docker.sh
 #
 # Database only (local npm dev with `npm run dev:all`):
-#   docker compose up postgres -d
+#   npm run db:up
+#   # or: docker compose -f docker-compose.yml -f docker-compose.dev.yml up postgres -d
 
 services:
   postgres:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_USER: surveyforge
-      POSTGRES_PASSWORD: surveyforge
-      POSTGRES_DB: surveyforge
+      POSTGRES_USER: rescopesurveys
+      POSTGRES_PASSWORD: rescopesurveys
+      POSTGRES_DB: rescopesurveys
     volumes:
       - pgdata:/var/lib/postgresql/data
     # Host port is only needed for local npm dev (`docker compose -f docker-compose.yml -f docker-compose.dev.yml up postgres -d`).
     # Full stack / partner pull does not expose Postgres on the host.
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U surveyforge -d surveyforge']
+      test: ['CMD-SHELL', 'pg_isready -U rescopesurveys -d rescopesurveys']
       interval: 5s
       timeout: 5s
       retries: 5
 
   api:
-    image: ${DOCKERHUB_USER:-vitomirov}/surveyforge-api:${IMAGE_TAG:-latest}
+    image: ${DOCKERHUB_USER:-vitomirov}/rescopesurveys-api:${IMAGE_TAG:-latest}
     build:
       context: .
       dockerfile: server/Dockerfile
@@ -46,7 +47,7 @@ services:
       postgres:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgresql://surveyforge:surveyforge@postgres:5432/surveyforge
+      DATABASE_URL: postgresql://rescopesurveys:rescopesurveys@postgres:5432/rescopesurveys
       PORT: 3003
       NODE_ENV: production
       JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
@@ -54,7 +55,7 @@ services:
       - '3003'
 
   web:
-    image: ${DOCKERHUB_USER:-vitomirov}/surveyforge-web:${IMAGE_TAG:-latest}
+    image: ${DOCKERHUB_USER:-vitomirov}/rescopesurveys-web:${IMAGE_TAG:-latest}
     build:
       context: .
       dockerfile: Dockerfile

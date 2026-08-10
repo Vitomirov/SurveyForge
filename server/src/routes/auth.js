@@ -42,7 +42,7 @@ export async function registerAuthRoutes(app) {
     const uname = username.trim()
     const email = uname.includes('@')
       ? uname.toLowerCase()
-      : `${uname.toLowerCase()}@surveyforge.local`
+      : `${uname.toLowerCase()}@rescopesurveys.local`
 
     // Login resolves users by username/email across all orgs, so both must be
     // globally unique for authentication to stay unambiguous.

@@ -139,7 +139,7 @@ export async function registerPlatformRoutes(app) {
     }
 
     const uname = username.trim()
-    const email = uname.includes('@') ? uname.toLowerCase() : `${uname.toLowerCase()}@surveyforge.local`
+    const email = uname.includes('@') ? uname.toLowerCase() : `${uname.toLowerCase()}@rescopesurveys.local`
 
     const dup = await app.prisma.user.findFirst({
       where: { organizationId: request.organizationId, email },

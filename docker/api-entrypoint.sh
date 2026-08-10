@@ -4,5 +4,5 @@ set -e
 echo "Running database migrations..."
 npx prisma migrate deploy
 
-echo "Starting SurveyForge API..."
+echo "Starting Rescope Surveys API..."
 exec node src/index.js

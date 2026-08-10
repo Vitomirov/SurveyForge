@@ -5,7 +5,7 @@ import {
   previewPublicPath,
   ensureUniquePublicPath,
   surveyHostMatches,
-  SURVEYFORGE_HOST,
+  RESCOPESURVEYS_HOST,
 } from '@shared/surveyUrl.js'
 
 const LIBRARY_KEY = 'sf_survey_library'
@@ -66,7 +66,7 @@ export function loadSurveyByPublicPath(publicPath, clientDomain = null) {
     if (entry.survey?.status !== 'live') return false
     if (!clientDomain) return true
     return surveyHostMatches(clientDomain, { planId: 'starter', surveyDomain: null })
-      || clientDomain === SURVEYFORGE_HOST
+      || clientDomain === RESCOPESURVEYS_HOST
   })
   return match || null
 }

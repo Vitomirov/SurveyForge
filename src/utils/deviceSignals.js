@@ -19,7 +19,7 @@ function canvasFingerprint() {
     ctx.fillRect(125, 1, 62, 20)
     ctx.fillStyle = '#069'
     ctx.font      = '14px Arial'
-    ctx.fillText('SurveyForge 🔒1', 2, 15)
+    ctx.fillText('Rescope Surveys 🔒1', 2, 15)
     ctx.fillStyle = 'rgba(102,204,0,0.7)'
     ctx.fillText('SurveyForgggge 🔒1', 4, 17)
     return hash32(c.toDataURL())

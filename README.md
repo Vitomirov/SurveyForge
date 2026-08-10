@@ -1,4 +1,4 @@
-# SurveyForge
+# Rescope Surveys
 
 Browser-based survey authoring and delivery platform for market research and CX teams. React SPA with an optional Fastify/Prisma/PostgreSQL backend — same codebase supports **offline localStorage mode** and **multi-tenant API mode**.
 

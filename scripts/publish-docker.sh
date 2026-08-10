@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build and push SurveyForge images to Docker Hub.
+# Build and push Rescope Surveys images to Docker Hub.
 # Prerequisites: docker login
 #
 # Usage:
@@ -14,8 +14,8 @@ cd "$ROOT"
 USER="${DOCKERHUB_USER:-vitomirov}"
 TAG="${1:-latest}"
 
-API_IMAGE="${USER}/surveyforge-api:${TAG}"
-WEB_IMAGE="${USER}/surveyforge-web:${TAG}"
+API_IMAGE="${USER}/rescopesurveys-api:${TAG}"
+WEB_IMAGE="${USER}/rescopesurveys-web:${TAG}"
 
 echo "Building ${API_IMAGE}..."
 docker build -t "${API_IMAGE}" -f server/Dockerfile .
@@ -24,8 +24,8 @@ echo "Building ${WEB_IMAGE}..."
 docker build -t "${WEB_IMAGE}" --build-arg VITE_USE_API=true .
 
 if [[ "${TAG}" == "latest" ]]; then
-  docker tag "${API_IMAGE}" "${USER}/surveyforge-api:latest"
-  docker tag "${WEB_IMAGE}" "${USER}/surveyforge-web:latest"
+  docker tag "${API_IMAGE}" "${USER}/rescopesurveys-api:latest"
+  docker tag "${WEB_IMAGE}" "${USER}/rescopesurveys-web:latest"
 fi
 
 echo "Pushing ${API_IMAGE}..."

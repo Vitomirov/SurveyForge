@@ -4,13 +4,13 @@ import { provisionOrgBilling } from './billingDefaults.js'
 import { ROLES } from './roles.js'
 
 const DEFAULT_ORG_NAME = 'Default Organization'
-const PLATFORM_ORG_NAME = 'SurveyForge Platform'
+const PLATFORM_ORG_NAME = 'Rescope Surveys Platform'
 const ADMIN_USERNAME   = 'admin'
-const ADMIN_EMAIL      = 'admin@surveyforge.local'
+const ADMIN_EMAIL      = 'admin@rescopesurveys.local'
 const ADMIN_PASSWORD   = 'admin123'
 
 const VENDOR_USERNAME = process.env.PLATFORM_OWNER_USERNAME || 'vendor'
-const VENDOR_EMAIL    = process.env.PLATFORM_OWNER_EMAIL || 'vendor@surveyforge.local'
+const VENDOR_EMAIL    = process.env.PLATFORM_OWNER_EMAIL || 'vendor@rescopesurveys.local'
 const VENDOR_PASSWORD = process.env.PLATFORM_OWNER_PASSWORD || 'vendor123'
 
 export async function seedPlatformLists(prisma, organizationId) {
