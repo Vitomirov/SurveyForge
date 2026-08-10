@@ -35,14 +35,14 @@ test('buildPublicPath combines slug and date', () => {
   assert.equal(path, 'brand-tracking-060826')
 })
 
-test('buildSurveyPublicUrl uses surveys prefix for SurveyForge host', () => {
+test('buildSurveyPublicUrl uses surveys subdomain for SurveyForge host', () => {
   const url = buildSurveyPublicUrl(SURVEYFORGE_HOST, 'brand-tracking-060826')
-  assert.equal(url, 'https://surveys.surveyforge/brand-tracking-060826')
+  assert.equal(url, 'https://surveys.surveyforge.com/brand-tracking-060826')
 })
 
-test('buildSurveyPublicUrl uses direct host for enterprise domains', () => {
+test('buildSurveyPublicUrl uses surveys subdomain for enterprise domains', () => {
   const url = buildSurveyPublicUrl('cocacola.com', 'brand-tracking-060826')
-  assert.equal(url, 'https://cocacola.com/brand-tracking-060826')
+  assert.equal(url, 'https://surveys.cocacola.com/brand-tracking-060826')
 })
 
 test('resolveSurveyHost picks org domain for enterprise', () => {
@@ -55,12 +55,12 @@ test('buildShareableSurveyUrl requires enterprise domain', () => {
   const today = dateSuffix(new Date())
   assert.equal(
     buildShareableSurveyUrl({ survey, planId: 'enterprise', surveyDomain: 'cocacola.com' }),
-    `https://cocacola.com/brand-tracking-${today}`,
+    `https://surveys.cocacola.com/brand-tracking-${today}`,
   )
   assert.equal(buildShareableSurveyUrl({ survey, planId: 'enterprise', surveyDomain: '' }), null)
   assert.equal(
     buildShareableSurveyUrl({ survey, planId: 'starter' }),
-    `https://surveys.surveyforge/brand-tracking-${today}`,
+    `https://surveys.surveyforge.com/brand-tracking-${today}`,
   )
 })
 
@@ -69,9 +69,9 @@ test('buildLocalTakeUrl uses hash route', () => {
   assert.equal(url, 'http://localhost:5173#/take/abc-123')
 })
 
-test('parseSurveyHost extracts surveyforge and enterprise domains', () => {
-  assert.equal(parseSurveyHost('surveys.surveyforge'), 'surveyforge')
-  assert.equal(parseSurveyHost('cocacola.com'), 'cocacola.com')
+test('parseSurveyHost extracts client domain from surveys subdomain', () => {
+  assert.equal(parseSurveyHost('surveys.surveyforge.com'), 'surveyforge.com')
+  assert.equal(parseSurveyHost('surveys.cocacola.com'), 'cocacola.com')
   assert.equal(parseSurveyHost('localhost'), null)
 })
 

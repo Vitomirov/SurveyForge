@@ -1,6 +1,5 @@
 // ─── White-label survey URL helpers (shared by client + server) ─────────────
-// Enterprise: https://{org-domain}/{project-slug-ddmmyy}
-// Starter / Professional: https://surveys.surveyforge/{project-slug-ddmmyy}
+// Target shape: https://surveys.{clientDomain}/{project-slug-ddmmyy}
 
 export const SURVEYFORGE_HOST = 'surveyforge.com'
 
@@ -52,14 +51,11 @@ export function resolveSurveyHost({ planId = 'starter', surveyDomain } = {}) {
   return SURVEYFORGE_HOST
 }
 
-/** Full public survey URL. Enterprise uses the org domain; other plans use SurveyForge. */
+/** Full public survey URL on a white-label host. */
 export function buildSurveyPublicUrl(host, publicPath, { protocol = 'https' } = {}) {
   const path = publicPath || 'survey'
   const domain = host || SURVEYFORGE_HOST
-  if (domain.includes('.')) {
-    return `${protocol}://${domain}/${path}`
-  }
-  return `${protocol}://${domain}/${path}`
+  return `${protocol}://surveys.${domain}/${path}`
 }
 
 /** Whether a request host matches the configured survey host. */
