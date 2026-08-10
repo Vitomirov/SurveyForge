@@ -1,13 +1,15 @@
-import { resolveClientRecord, resolveTopicRecord } from '../lib/platformIds.js'
+import { resolveClientRecord, resolveTopicRecord, resolveSurveyTypeRecord } from '../lib/platformIds.js'
 import { ownerFromSurvey, CREATOR_SELECT } from '../lib/surveyOwner.js'
 import { surveyScope } from '../lib/authz.js'
 
-function surveyMeta(row, questionCount = 0, { clients = [], topics = [] } = {}) {
+function surveyMeta(row, questionCount = 0, { clients = [], topics = [], surveyTypes = [] } = {}) {
   const survey = row.survey
   const clientId = survey?.clientId ?? ''
   const topicId = survey?.topicId ?? ''
+  const surveyTypeId = survey?.surveyType ?? ''
   const client = resolveClientRecord(clientId, clients)
   const topic = resolveTopicRecord(topicId, topics)
+  const surveyType = resolveSurveyTypeRecord(surveyTypeId, surveyTypes)
   return {
     id:           row.id,
     title:        survey?.title ?? 'Untitled Survey',
@@ -19,7 +21,8 @@ function surveyMeta(row, questionCount = 0, { clients = [], topics = [] } = {}) 
     topicId:      topic?.id ?? topicId,
     clientName:   client?.name ?? '',
     topicName:    topic?.name ?? '',
-    surveyType:   survey?.surveyType ?? '',
+    surveyType:   surveyType?.id ?? surveyTypeId,
+    surveyTypeName: surveyType?.name ?? '',
     questionCount,
     ...ownerFromSurvey(row),
   }
@@ -65,12 +68,16 @@ export async function registerDashboardRoutes(app) {
 
     const surveyIds = rows.map(r => r.id)
 
-    const [clients, topics, groups] = await Promise.all([
+    const [clients, topics, surveyTypes, groups] = await Promise.all([
       app.prisma.client.findMany({
         where: { organizationId: orgId },
         select: { id: true, name: true },
       }),
       app.prisma.topic.findMany({
+        where: { organizationId: orgId },
+        select: { id: true, name: true },
+      }),
+      app.prisma.surveyType.findMany({
         where: { organizationId: orgId },
         select: { id: true, name: true },
       }),
@@ -91,7 +98,7 @@ export async function registerDashboardRoutes(app) {
 
     return {
       surveys: rows.map(row => ({
-        ...surveyMeta(row, countQuestions(row.items), { clients, topics }),
+        ...surveyMeta(row, countQuestions(row.items), { clients, topics, surveyTypes }),
         stats: statsMap[row.id] || emptyStats(),
       })),
     }

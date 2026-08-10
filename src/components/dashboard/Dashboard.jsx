@@ -18,13 +18,13 @@ import {
   metaToLibraryEntry, patchSurvey,
 } from '@/api/surveys'
 import { getDashboard } from '@/api/dashboard'
-import { fetchClients, fetchTopics } from '@/api/platform'
+import { fetchClients, fetchTopics, fetchSurveyTypes } from '@/api/platform'
 import {
-  loadClients, loadTopics,
-  SURVEY_TYPES, SURVEY_STATUSES,
+  loadClients, loadTopics, loadSurveyTypes,
+  SURVEY_STATUSES,
 } from '@/utils/platformStore'
 import { countResponsesForSurveys } from '@/utils/responseStore'
-import { resolveClientName, resolveTopicName } from '@/utils/platformResolve'
+import { resolveClientName, resolveTopicName, resolveSurveyTypeName } from '@/utils/platformResolve'
 import { InlineLoader, useToast } from '@/components/ui'
 import { prefetchBuilder, prefetchPreview } from '@/utils/routePrefetch'
 import {
@@ -175,6 +175,7 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
   const [apiSurveys, setApiSurveys] = useState([])
   const [apiClients, setApiClients] = useState([])
   const [apiTopics,  setApiTopics]  = useState([])
+  const [apiSurveyTypes, setApiSurveyTypes] = useState([])
   const [apiLoading, setApiLoading] = useState(useApi)
   const [search, setSearch]         = useState('')
   const [filterStatus, setFilterStatus] = useState('')
@@ -209,9 +210,12 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
         }
       }
       setApiSurveys(data.surveys.map(metaToLibraryEntry))
-      const [clients, topics] = await Promise.all([fetchClients(), fetchTopics()])
+      const [clients, topics, surveyTypes] = await Promise.all([
+        fetchClients(), fetchTopics(), fetchSurveyTypes(),
+      ])
       setApiClients(clients)
       setApiTopics(topics)
+      setApiSurveyTypes(surveyTypes)
     } catch (err) {
       console.error('Failed to load dashboard', err)
       if (err.status === 403) {
@@ -270,11 +274,17 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
     () => (useApi ? apiTopics : loadTopics()),
     [useApi, apiTopics, tick]
   )
+  const surveyTypes = useMemo(
+    () => (useApi ? apiSurveyTypes : loadSurveyTypes()),
+    [useApi, apiSurveyTypes, tick]
+  )
 
   const clientMap = useMemo(() =>
     Object.fromEntries(clients.map(c => [c.id, c.name])), [clients])
   const topicMap  = useMemo(() =>
     Object.fromEntries(topics.map(t => [t.id, t.name])),  [topics])
+  const typeMap   = useMemo(() =>
+    Object.fromEntries(surveyTypes.map(t => [t.id, t.name])), [surveyTypes])
 
   const displayClient = useCallback(
     (survey) => resolveClientName(survey?.clientId, clients, survey?.clientName)
@@ -288,8 +298,12 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
       || '',
     [topics, topicMap]
   )
-  const typeMap   = Object.fromEntries(SURVEY_TYPES.map(t => [t.id, t.label]))
-
+  const displayType = useCallback(
+    (survey) => resolveSurveyTypeName(survey?.surveyType, surveyTypes, survey?.surveyTypeName)
+      || typeMap[survey?.surveyType]
+      || '',
+    [surveyTypes, typeMap]
+  )
   const ownerOptions = useMemo(() => {
     if (!isAdmin) return []
     const map = new Map()
@@ -518,8 +532,8 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
               options: clients.map(c => ({ value: c.id, label: c.name })) },
             { label: 'Topic', value: filterTopic, setter: setFilterTopic,
               options: topics.map(t => ({ value: t.id, label: t.name })) },
-            { label: 'Type', value: filterType, setter: setFilterType,
-              options: SURVEY_TYPES.map(t => ({ value: t.id, label: t.label })) },
+            { label: 'Audience', value: filterType, setter: setFilterType,
+              options: surveyTypes.map(t => ({ value: t.id, label: t.name })) },
             ...(isAdmin ? [{
               label: 'Owner', value: filterOwner, setter: setFilterOwner,
               options: ownerOptions.map(([id, name]) => ({ value: id, label: name })),
@@ -626,9 +640,9 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
                           <span>{qCount} question{qCount !== 1 ? 's' : ''}</span>
                           {displayClient(sv) && <span>{displayClient(sv)}</span>}
                           {displayTopic(sv) && <span>{displayTopic(sv)}</span>}
-                          {sv.surveyType && (
+                          {displayType(sv) && (
                             <span className="font-medium text-brand-600 bg-brand-50 px-1.5 py-0.5 rounded">
-                              {typeMap[sv.surveyType]}
+                              {displayType(sv)}
                             </span>
                           )}
                           {isAdmin && entry.ownerName && (
@@ -740,12 +754,12 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
                           {displayTopic(sv) && (
                             <p className="text-xs text-ink-600">{displayTopic(sv)}</p>
                           )}
-                          {sv.surveyType && (
+                          {displayType(sv) && (
                             <span className="text-xs font-medium text-brand-600 bg-brand-50 px-1.5 py-0.5 rounded">
-                              {typeMap[sv.surveyType]}
+                              {displayType(sv)}
                             </span>
                           )}
-                          {!displayTopic(sv) && !sv.surveyType && (
+                          {!displayTopic(sv) && !displayType(sv) && (
                             <span className="text-ink-300 text-xs">—</span>
                           )}
                         </div>

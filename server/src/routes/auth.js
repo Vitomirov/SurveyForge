@@ -1,5 +1,4 @@
 import { verifyPassword, hashPassword } from '../lib/password.js'
-import { seedPlatformLists } from '../lib/seed.js'
 import { provisionOrgBilling } from '../lib/billingDefaults.js'
 
 function buildSession(user, organizationName = null) {
@@ -60,13 +59,11 @@ export async function registerAuthRoutes(app) {
 
     const passwordHash = await hashPassword(password)
 
-    // Create org, seed its lists, and create the admin atomically so a failure
-    // never leaves an orphan organization behind.
+    // Create org and admin atomically so a failure never leaves an orphan org behind.
     const { org, user } = await app.prisma.$transaction(async (tx) => {
       const org = await tx.organization.create({
         data: { name: organizationName.trim(), settings: {} },
       })
-      await seedPlatformLists(tx, org.id)
       await provisionOrgBilling(tx, org.id)
       const user = await tx.user.create({
         data: {

@@ -5,7 +5,7 @@ import { findAccessibleSurvey } from '../lib/surveyAccess.js'
 import { assignPublicPath } from '../lib/surveyPublicPath.js'
 
 async function loadPlatformLists(prisma, organizationId) {
-  const [clients, topics] = await Promise.all([
+  const [clients, topics, surveyTypes] = await Promise.all([
     prisma.client.findMany({
       where: { organizationId },
       select: { id: true, name: true },
@@ -14,8 +14,12 @@ async function loadPlatformLists(prisma, organizationId) {
       where: { organizationId },
       select: { id: true, name: true },
     }),
+    prisma.surveyType.findMany({
+      where: { organizationId },
+      select: { id: true, name: true },
+    }),
   ])
-  return { clients, topics }
+  return { clients, topics, surveyTypes }
 }
 
 export async function registerSurveyRoutes(app) {
@@ -79,7 +83,7 @@ export async function registerSurveyRoutes(app) {
         }
       }
 
-      const { clients, topics } = await loadPlatformLists(app.prisma, request.organizationId)
+      const { clients, topics, surveyTypes } = await loadPlatformLists(app.prisma, request.organizationId)
 
       const rawSurvey = survey !== undefined
         ? { ...survey, id, updatedAt: new Date().toISOString() }
@@ -87,7 +91,7 @@ export async function registerSurveyRoutes(app) {
       const { survey: withPath, publicPath } = await assignPublicPath(app.prisma, rawSurvey)
 
       const surveyData = (survey !== undefined || needsPublicPath)
-        ? normalizeSurveyPlatformIds(withPath, clients, topics)
+        ? normalizeSurveyPlatformIds(withPath, clients, topics, surveyTypes)
         : undefined
 
       const updated = await app.prisma.survey.update({
@@ -118,14 +122,14 @@ export async function registerSurveyRoutes(app) {
       return reply.code(400).send({ error: 'New surveys require survey object and items array' })
     }
 
-    const { clients, topics } = await loadPlatformLists(app.prisma, request.organizationId)
+    const { clients, topics, surveyTypes } = await loadPlatformLists(app.prisma, request.organizationId)
 
     const { survey: withPath, publicPath } = await assignPublicPath(
       app.prisma,
       { ...survey, id, updatedAt: new Date().toISOString() },
     )
 
-    const surveyData = normalizeSurveyPlatformIds(withPath, clients, topics)
+    const surveyData = normalizeSurveyPlatformIds(withPath, clients, topics, surveyTypes)
 
     const created = await app.prisma.survey.create({
       data: {

@@ -1,21 +1,24 @@
 import { useState, useEffect, useCallback } from 'react'
 import { X, Plus, Trash2, Edit3, Check, Settings, Eye, EyeOff } from 'lucide-react'
 import {
-  loadClients, loadTopics, addClient, updateClient, deleteClient,
+  loadClients, loadTopics, loadSurveyTypes,
+  addClient, updateClient, deleteClient,
   addTopic, updateTopic, deleteTopic,
+  addSurveyType, updateSurveyType, deleteSurveyType,
 } from '@/utils/platformStore'
 import { getUsers, addUser, updateUser, deleteUser } from '@/utils/authStore'
 import { useApi } from '@/config/api'
 import {
   fetchClients, createClient, updateClientApi, deleteClientApi,
   fetchTopics, createTopic, updateTopicApi, deleteTopicApi,
+  fetchSurveyTypes, createSurveyType, updateSurveyTypeApi, deleteSurveyTypeApi,
   fetchUsers, createUser, updateUserApi, deleteUserApi,
 } from '@/api/platform'
 import { roleLabel } from '@/utils/permissions'
 import { AUTH_TEAM } from '@/constants/authCopy'
 
-// ─── Editable list (clients / topics) ─────────────────────────────────────
-function EditableList({ label, items, onAdd, onUpdate, onDelete, placeholder }) {
+// ─── Editable list (clients / topics / types) ───────────────────────────────
+function EditableList({ label, description, items, onAdd, onUpdate, onDelete, placeholder }) {
   const [newText,   setNewText]   = useState('')
   const [editingId, setEditingId] = useState(null)
   const [editText,  setEditText]  = useState('')
@@ -29,8 +32,12 @@ function EditableList({ label, items, onAdd, onUpdate, onDelete, placeholder }) 
   const commitEdit = () => { if (editText.trim()) onUpdate(editingId, editText.trim()); setEditingId(null) }
 
   return (
-    <div>
-      <p className="text-xs font-bold text-ink-500 uppercase tracking-wider mb-3">{label}</p>
+    <div className="rounded-xl border border-ink-100 bg-ink-50/40 p-4">
+      <p className="text-sm font-semibold text-ink-800">{label}</p>
+      {description && (
+        <p className="text-xs text-ink-400 mt-1 mb-3 leading-relaxed">{description}</p>
+      )}
+      {!description && <div className="mb-3" />}
       <div className="space-y-1.5 mb-3">
         {items.map(item => (
           <div key={item.id} className="flex items-center gap-2 group">
@@ -52,7 +59,11 @@ function EditableList({ label, items, onAdd, onUpdate, onDelete, placeholder }) 
             )}
           </div>
         ))}
-        {items.length === 0 && <p className="text-xs text-ink-300 italic py-2">No items yet.</p>}
+        {items.length === 0 && (
+          <p className="text-xs text-ink-400 italic py-2 px-2">
+            None yet — add your first below. Labels are optional and used for filtering surveys.
+          </p>
+        )}
       </div>
       <div className="flex gap-2">
         <input type="text" value={newText} onChange={e => setNewText(e.target.value)}
@@ -259,6 +270,7 @@ function UserManager({ users, setUsers }) {
 export function PlatformSettings({ onClose }) {
   const [clients, setClients] = useState(loadClients)
   const [topics,  setTopics]  = useState(loadTopics)
+  const [surveyTypes, setSurveyTypes] = useState(loadSurveyTypes)
   const [users,   setUsers]   = useState(getUsers)
   const [tab,     setTab]     = useState('lists')
   const [loading, setLoading] = useState(useApi)
@@ -267,9 +279,12 @@ export function PlatformSettings({ onClose }) {
     if (!useApi) return
     setLoading(true)
     try {
-      const [c, t, u] = await Promise.all([fetchClients(), fetchTopics(), fetchUsers()])
+      const [c, t, st, u] = await Promise.all([
+        fetchClients(), fetchTopics(), fetchSurveyTypes(), fetchUsers(),
+      ])
       setClients(c)
       setTopics(t)
+      setSurveyTypes(st)
       setUsers(u)
     } catch (err) {
       console.error('Failed to load platform settings', err)
@@ -336,16 +351,43 @@ export function PlatformSettings({ onClose }) {
     setTopics(deleteTopic(id))
   }
 
+  const handleAddSurveyType = async (name) => {
+    if (useApi) {
+      const surveyType = await createSurveyType(name)
+      setSurveyTypes(prev => [...prev, surveyType])
+      return
+    }
+    setSurveyTypes(addSurveyType(name))
+  }
+
+  const handleUpdateSurveyType = async (id, name) => {
+    if (useApi) {
+      const surveyType = await updateSurveyTypeApi(id, name)
+      setSurveyTypes(prev => prev.map(t => t.id === id ? surveyType : t))
+      return
+    }
+    setSurveyTypes(updateSurveyType(id, name))
+  }
+
+  const handleDeleteSurveyType = async (id) => {
+    if (useApi) {
+      await deleteSurveyTypeApi(id)
+      setSurveyTypes(prev => prev.filter(t => t.id !== id))
+      return
+    }
+    setSurveyTypes(deleteSurveyType(id))
+  }
+
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
+      <div className="bg-white rounded-2xl w-full max-w-4xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
         <div className="flex items-center gap-3 px-5 py-4 border-b border-ink-100 shrink-0">
           <div className="w-8 h-8 rounded-lg bg-ink-800 flex items-center justify-center">
             <Settings size={16} className="text-white" />
           </div>
           <div className="flex-1">
             <h2 className="text-base font-bold text-ink-800">Platform Settings</h2>
-            <p className="text-xs text-ink-400">Manage shared lists and user access</p>
+            <p className="text-xs text-ink-400">Define classification labels for filtering and analysis</p>
           </div>
           <button onClick={onClose} className="p-2 text-ink-400 hover:text-ink-700 hover:bg-ink-100 rounded-lg transition-all">
             <X size={18} />
@@ -353,7 +395,7 @@ export function PlatformSettings({ onClose }) {
         </div>
 
         <div className="flex border-b border-ink-100 px-5 shrink-0">
-          {[['lists', 'Clients & Topics'], ['users', 'Users']].map(([id, label]) => (
+          {[['lists', 'Classification labels'], ['users', 'Users']].map(([id, label]) => (
             <button key={id} onClick={() => setTab(id)}
               className={`text-sm font-medium px-1 py-3 mr-6 border-b-2 transition-colors ${
                 tab === id ? 'border-brand-500 text-brand-700' : 'border-transparent text-ink-500 hover:text-ink-700'
@@ -367,17 +409,40 @@ export function PlatformSettings({ onClose }) {
           {loading ? (
             <p className="text-sm text-ink-400 text-center py-8">Loading settings…</p>
           ) : tab === 'lists' ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
-              <EditableList label="Clients" items={clients}
-                onAdd={handleAddClient}
-                onUpdate={handleUpdateClient}
-                onDelete={handleDeleteClient}
-                placeholder="New client name…" />
-              <EditableList label="Topics" items={topics}
-                onAdd={handleAddTopic}
-                onUpdate={handleUpdateTopic}
-                onDelete={handleDeleteTopic}
-                placeholder="New topic…" />
+            <div className="space-y-5">
+              <p className="text-sm text-ink-500 leading-relaxed">
+                Add the labels your team uses to organise surveys. They appear when tagging surveys
+                and as filters on the dashboard — only what you define here, nothing preset.
+              </p>
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                <EditableList
+                  label="Clients"
+                  description="Who the survey is for — e.g. Acme Corp, Internal."
+                  items={clients}
+                  onAdd={handleAddClient}
+                  onUpdate={handleUpdateClient}
+                  onDelete={handleDeleteClient}
+                  placeholder="Add client…"
+                />
+                <EditableList
+                  label="Topics"
+                  description="Subject area — e.g. Brand tracking, UX research."
+                  items={topics}
+                  onAdd={handleAddTopic}
+                  onUpdate={handleUpdateTopic}
+                  onDelete={handleDeleteTopic}
+                  placeholder="Add topic…"
+                />
+                <EditableList
+                  label="Audience types"
+                  description="Respondent profile — e.g. Consumer, B2B, HCP."
+                  items={surveyTypes}
+                  onAdd={handleAddSurveyType}
+                  onUpdate={handleUpdateSurveyType}
+                  onDelete={handleDeleteSurveyType}
+                  placeholder="Add audience type…"
+                />
+              </div>
             </div>
           ) : (
             <UserManager users={users} setUsers={setUsers} />

@@ -50,6 +50,31 @@ export async function deleteTopicApi(id) {
   return apiFetch(`/api/platform/topics/${encodeURIComponent(id)}`, { method: 'DELETE' })
 }
 
+export async function fetchSurveyTypes() {
+  const data = await apiFetch('/api/platform/survey-types')
+  return data.surveyTypes
+}
+
+export async function createSurveyType(name) {
+  const data = await apiFetch('/api/platform/survey-types', {
+    method: 'POST',
+    body: JSON.stringify({ name }),
+  })
+  return data.surveyType
+}
+
+export async function updateSurveyTypeApi(id, name) {
+  const data = await apiFetch(`/api/platform/survey-types/${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ name }),
+  })
+  return data.surveyType
+}
+
+export async function deleteSurveyTypeApi(id) {
+  return apiFetch(`/api/platform/survey-types/${encodeURIComponent(id)}`, { method: 'DELETE' })
+}
+
 export async function fetchUsers() {
   const data = await apiFetch('/api/platform/users')
   return data.users

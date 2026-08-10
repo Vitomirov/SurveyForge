@@ -22,6 +22,7 @@ model Organization {
   responses    Response[]
   clients      Client[]
   topics       Topic[]
+  surveyTypes  SurveyType[]
   subscription Subscription?
   invoices     Invoice[]
   supportThread SupportThread?
@@ -113,6 +114,18 @@ model Topic {
 
   @@index([organizationId])
   @@map("topics")
+}
+
+model SurveyType {
+  id             String   @id
+  organizationId String   @map("organization_id")
+  name           String   @map("survey_type_name")
+  createdAt      DateTime @default(now()) @map("survey_type_created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@map("survey_types")
 }
 
 model DncEntry {

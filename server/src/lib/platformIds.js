@@ -1,25 +1,26 @@
-/** Canonical platform lists — IDs must match src/utils/platformStore.js defaults. */
-export const CANONICAL_CLIENTS = [
-  { id: 'c_dmr', name: 'DMR' },
-  { id: 'c_fsi', name: 'FSI' },
-  { id: 'c_apg', name: 'APG' },
-]
+/** Legacy hardcoded IDs from pre-database platform lists — resolve old survey metadata only. */
+const LEGACY_CLIENT_NAMES = {
+  c_dmr: 'DMR',
+  c_fsi: 'FSI',
+  c_apg: 'APG',
+}
 
-export const CANONICAL_TOPICS = [
-  { id: 't_beauty',     name: 'Beauty' },
-  { id: 't_education',  name: 'Education' },
-  { id: 't_healthcare', name: 'Healthcare' },
-  { id: 't_gaming',     name: 'Gaming' },
-  { id: 't_pets',       name: 'Pets' },
-]
+const LEGACY_TOPIC_NAMES = {
+  t_beauty:     'Beauty',
+  t_education:  'Education',
+  t_healthcare: 'Healthcare',
+  t_gaming:     'Gaming',
+  t_pets:       'Pets',
+}
 
-const LEGACY_CLIENT_NAMES = Object.fromEntries(
-  CANONICAL_CLIENTS.map(c => [c.id, c.name])
-)
-
-const LEGACY_TOPIC_NAMES = Object.fromEntries(
-  CANONICAL_TOPICS.map(t => [t.id, t.name])
-)
+/** Legacy audience-type slugs stored in survey.surveyType before org-managed lists. */
+const LEGACY_SURVEY_TYPE_NAMES = {
+  consumer:  'Consumer',
+  b2b:       'B2B',
+  hcp:       'HCP',
+  patient:   'Patient',
+  caregiver: 'Caregiver',
+}
 
 export function resolveClientRecord(clientId, clients) {
   if (!clientId) return null
@@ -39,8 +40,17 @@ export function resolveTopicRecord(topicId, topics) {
   return null
 }
 
-/** Remap legacy client/topic IDs to current org records before persisting. */
-export function normalizeSurveyPlatformIds(survey, clients, topics) {
+export function resolveSurveyTypeRecord(surveyTypeId, surveyTypes) {
+  if (!surveyTypeId) return null
+  const direct = surveyTypes.find(t => t.id === surveyTypeId)
+  if (direct) return direct
+  const legacyName = LEGACY_SURVEY_TYPE_NAMES[surveyTypeId]
+  if (legacyName) return surveyTypes.find(t => t.name === legacyName) ?? null
+  return null
+}
+
+/** Remap legacy client/topic/type IDs to current org records before persisting. */
+export function normalizeSurveyPlatformIds(survey, clients, topics, surveyTypes = []) {
   if (!survey || typeof survey !== 'object') return survey
   const next = { ...survey }
   if (next.clientId) {
@@ -50,6 +60,10 @@ export function normalizeSurveyPlatformIds(survey, clients, topics) {
   if (next.topicId) {
     const topic = resolveTopicRecord(next.topicId, topics)
     if (topic) next.topicId = topic.id
+  }
+  if (next.surveyType) {
+    const type = resolveSurveyTypeRecord(next.surveyType, surveyTypes)
+    if (type) next.surveyType = type.id
   }
   return next
 }

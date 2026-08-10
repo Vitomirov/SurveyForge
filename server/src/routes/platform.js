@@ -120,6 +120,55 @@ export async function registerPlatformRoutes(app) {
     return { ok: true }
   })
 
+  // ─── Survey types (read: all authenticated; write: admin) ──────────────
+  app.get('/api/platform/survey-types', async (request) => {
+    const rows = await app.prisma.surveyType.findMany({
+      where: { organizationId: request.organizationId },
+      orderBy: { name: 'asc' },
+    })
+    return { surveyTypes: rows.map(r => ({ id: r.id, name: r.name })) }
+  })
+
+  app.post('/api/platform/survey-types', { preHandler: adminOnly }, async (request, reply) => {
+    const { name } = request.body ?? {}
+    if (!name?.trim()) return reply.code(400).send({ error: 'Name is required' })
+
+    const row = await app.prisma.surveyType.create({
+      data: {
+        id: newId('st'),
+        organizationId: request.organizationId,
+        name: name.trim(),
+      },
+    })
+    return { surveyType: { id: row.id, name: row.name } }
+  })
+
+  app.patch('/api/platform/survey-types/:id', { preHandler: adminOnly }, async (request, reply) => {
+    const { name } = request.body ?? {}
+    if (!name?.trim()) return reply.code(400).send({ error: 'Name is required' })
+
+    const existing = await app.prisma.surveyType.findFirst({
+      where: { id: request.params.id, organizationId: request.organizationId },
+    })
+    if (!existing) return reply.code(404).send({ error: 'Survey type not found' })
+
+    const row = await app.prisma.surveyType.update({
+      where: { id: existing.id },
+      data: { name: name.trim() },
+    })
+    return { surveyType: { id: row.id, name: row.name } }
+  })
+
+  app.delete('/api/platform/survey-types/:id', { preHandler: adminOnly }, async (request, reply) => {
+    const existing = await app.prisma.surveyType.findFirst({
+      where: { id: request.params.id, organizationId: request.organizationId },
+    })
+    if (!existing) return reply.code(404).send({ error: 'Survey type not found' })
+
+    await app.prisma.surveyType.delete({ where: { id: existing.id } })
+    return { ok: true }
+  })
+
   // ─── Users (admin only) ────────────────────────────────────────────────
   app.get('/api/platform/users', { preHandler: adminOnly }, async (request) => {
     const rows = await app.prisma.user.findMany({

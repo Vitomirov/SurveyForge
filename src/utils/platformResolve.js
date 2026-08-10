@@ -14,6 +14,14 @@ const LEGACY_TOPIC_NAMES = {
   t_pets:       'Pets',
 }
 
+const LEGACY_SURVEY_TYPE_NAMES = {
+  consumer:  'Consumer',
+  b2b:       'B2B',
+  hcp:       'HCP',
+  patient:   'Patient',
+  caregiver: 'Caregiver',
+}
+
 function resolveRecord(id, list, legacyNames) {
   if (!id) return null
   const direct = list.find(item => item.id === id)
@@ -31,4 +39,9 @@ export function resolveClientName(clientId, clients, fallback = '') {
 export function resolveTopicName(topicId, topics, fallback = '') {
   if (fallback) return fallback
   return resolveRecord(topicId, topics, LEGACY_TOPIC_NAMES)?.name ?? ''
+}
+
+export function resolveSurveyTypeName(surveyTypeId, surveyTypes, fallback = '') {
+  if (fallback) return fallback
+  return resolveRecord(surveyTypeId, surveyTypes, LEGACY_SURVEY_TYPE_NAMES)?.name ?? ''
 }

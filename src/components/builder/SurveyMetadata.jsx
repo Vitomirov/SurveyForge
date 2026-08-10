@@ -1,39 +1,63 @@
-import { useState, useEffect } from 'react'
-import { Tag, AlertCircle, CheckCircle2 } from 'lucide-react'
+import { useState, useEffect, lazy, Suspense, useCallback } from 'react'
+import { Tag, AlertCircle, CheckCircle2, Plus } from 'lucide-react'
 import {
-  SURVEY_TYPES, SURVEY_STATUSES,
-  loadClients, loadTopics,
+  SURVEY_STATUSES,
+  loadClients, loadTopics, loadSurveyTypes,
 } from '@/utils/platformStore'
-import { fetchClients, fetchTopics } from '@/api/platform'
+import { fetchClients, fetchTopics, fetchSurveyTypes } from '@/api/platform'
 import { useApi } from '@/config/api'
+import { getSession } from '@/utils/authStore'
+import { canManagePlatform } from '@/utils/permissions'
 import { isSurveyCodeTaken } from '@/utils/surveyLibrary'
 import { ShareableSurveyUrl } from './ShareableSurveyUrl'
 
+const PlatformSettings = lazy(() => import('@/components/dashboard/PlatformSettings.jsx'))
+
 const CODE_RE = /^[A-Z0-9_-]{1,20}$/i
+
+function LabelSelect({ label, value, options, onChange }) {
+  return (
+    <div>
+      <label className="text-xs text-ink-500 mb-1 block">{label}</label>
+      <select
+        value={value || ''}
+        onChange={e => onChange(e.target.value)}
+        className="input-base text-sm"
+      >
+        <option value="">— None —</option>
+        {options.map(o => (
+          <option key={o.id} value={o.id}>{o.name}</option>
+        ))}
+      </select>
+    </div>
+  )
+}
 
 export function SurveyMetadata({ survey, dispatch }) {
   const [clients, setClients] = useState(loadClients)
   const [topics,  setTopics]  = useState(loadTopics)
+  const [surveyTypes, setSurveyTypes] = useState(loadSurveyTypes)
   const [codeError, setCodeError] = useState('')
+  const [showLabels, setShowLabels] = useState(false)
+  const canManage = canManagePlatform(getSession())
 
-  // Reload platform lists when the panel opens (API lists when backend is enabled)
-  useEffect(() => {
+  const refreshLists = useCallback(() => {
     if (!useApi) {
       setClients(loadClients())
       setTopics(loadTopics())
+      setSurveyTypes(loadSurveyTypes())
       return
     }
-    let cancelled = false
-    Promise.all([fetchClients(), fetchTopics()])
-      .then(([c, t]) => {
-        if (!cancelled) {
-          setClients(c)
-          setTopics(t)
-        }
+    Promise.all([fetchClients(), fetchTopics(), fetchSurveyTypes()])
+      .then(([c, t, st]) => {
+        setClients(c)
+        setTopics(t)
+        setSurveyTypes(st)
       })
       .catch(err => console.error('Failed to load platform lists', err))
-    return () => { cancelled = true }
   }, [])
+
+  useEffect(() => { refreshLists() }, [refreshLists])
 
   const set = (field, value) =>
     dispatch({ type: 'SET_SURVEY_FIELD', field, value })
@@ -45,11 +69,12 @@ export function SurveyMetadata({ survey, dispatch }) {
     setCodeError('')
   }
 
-  const statusMeta = SURVEY_STATUSES.find(s => s.id === (survey.status || 'draft'))
+  const hasLabels = clients.length + topics.length + surveyTypes.length > 0
+  const showClassification = hasLabels || survey.clientId || survey.topicId || survey.surveyType
 
   return (
     <div className="mt-3 border-t border-ink-100 pt-3">
-      <p className="text-xs font-semibold text-ink-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+      <p className="text-xs font-semibold text-ink-400 uppercase tracking-wider mb-1 flex items-center gap-1.5">
         <Tag size={12} /> Internal Labels
         <span className="ml-1 text-ink-300 font-normal normal-case tracking-normal">— visible to admins only</span>
       </p>
@@ -91,76 +116,69 @@ export function SurveyMetadata({ survey, dispatch }) {
         {/* Status */}
         <div>
           <label className="text-xs text-ink-500 mb-1 block">Status</label>
-          <div className="flex items-center gap-2">
-            <select
-              value={survey.status || 'draft'}
-              onChange={e => set('status', e.target.value)}
-              className="input-base text-sm flex-1"
-            >
-              {SURVEY_STATUSES.map(s => (
-                <option key={s.id} value={s.id}>{s.label}</option>
-              ))}
-            </select>
-            {statusMeta && (
-              <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border shrink-0 ${statusMeta.color}`}>
-                {statusMeta.label}
-              </span>
+          <select
+            value={survey.status || 'draft'}
+            onChange={e => set('status', e.target.value)}
+            className="input-base text-sm w-full"
+          >
+            {SURVEY_STATUSES.map(s => (
+              <option key={s.id} value={s.id}>{s.label}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="col-span-2 pt-1 border-t border-ink-50">
+          <div className="flex items-center justify-between gap-3 mb-2 mt-1">
+            <div className="min-w-0">
+              <p className="text-[11px] font-semibold text-ink-400 uppercase tracking-wider">Classification</p>
+              <p className="text-xs text-ink-400 mt-0.5">Optional tags for filtering on the dashboard.</p>
+            </div>
+            {canManage && (
+              <button
+                type="button"
+                onClick={() => setShowLabels(true)}
+                className="shrink-0 flex items-center gap-1.5 text-xs font-medium text-brand-600 hover:text-brand-700 px-2.5 py-1.5 rounded-lg border border-brand-200 hover:bg-brand-50 transition-all"
+              >
+                <Plus size={13} />
+                {hasLabels ? 'Manage labels' : 'Add labels'}
+              </button>
             )}
           </div>
-        </div>
 
-        {/* Client */}
-        <div>
-          <label className="text-xs text-ink-500 mb-1 block">Client</label>
-          <select
-            value={survey.clientId || ''}
-            onChange={e => set('clientId', e.target.value)}
-            className="input-base text-sm"
-          >
-            <option value="">— Select client —</option>
-            {clients.map(c => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
-          </select>
-        </div>
-
-        {/* Topic */}
-        <div>
-          <label className="text-xs text-ink-500 mb-1 block">Topic</label>
-          <select
-            value={survey.topicId || ''}
-            onChange={e => set('topicId', e.target.value)}
-            className="input-base text-sm"
-          >
-            <option value="">— Select topic —</option>
-            {topics.map(t => (
-              <option key={t.id} value={t.id}>{t.name}</option>
-            ))}
-          </select>
-        </div>
-
-        {/* Survey type */}
-        <div className="col-span-2">
-          <label className="text-xs text-ink-500 mb-1 block">Survey type</label>
-          <div className="flex gap-2 flex-wrap">
-            {SURVEY_TYPES.map(t => (
-              <button
-                key={t.id}
-                onClick={() => set('surveyType', survey.surveyType === t.id ? '' : t.id)}
-                className={`text-sm font-medium px-3 py-1.5 rounded-lg border-2 transition-all ${
-                  survey.surveyType === t.id
-                    ? 'border-brand-500 bg-brand-50 text-brand-700'
-                    : 'border-ink-200 text-ink-600 hover:border-ink-300'
-                }`}
-              >
-                {t.label}
-              </button>
-            ))}
-          </div>
+          {showClassification ? (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <LabelSelect
+                label="Client"
+                value={survey.clientId}
+                options={clients}
+                onChange={v => set('clientId', v)}
+              />
+              <LabelSelect
+                label="Topic"
+                value={survey.topicId}
+                options={topics}
+                onChange={v => set('topicId', v)}
+              />
+              <LabelSelect
+                label="Audience type"
+                value={survey.surveyType}
+                options={surveyTypes}
+                onChange={v => set('surveyType', v)}
+              />
+            </div>
+          ) : !canManage && (
+            <p className="text-xs text-ink-400 italic">Ask an admin to set up labels.</p>
+          )}
         </div>
       </div>
 
       <ShareableSurveyUrl survey={survey} clients={clients} />
+
+      {showLabels && (
+        <Suspense fallback={null}>
+          <PlatformSettings onClose={() => { setShowLabels(false); refreshLists() }} />
+        </Suspense>
+      )}
     </div>
   )
 }
