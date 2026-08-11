@@ -43,7 +43,8 @@ export function SurveyPreview({ survey, items, onClose, isPublic = false, isEmbe
   // the respondent reaches the end the data is already ready to attach.
   const themeVars = brandThemeToCssVars(branding?.theme)
   const displayLogo = survey?.companyLogo || branding?.logo || null
-  const hidePlatformBranding = branding?.hidePlatformBranding && !branding?.theme?.showPoweredBy
+  // Pro/Enterprise: hidePlatformBranding from API — never show footer unless starter plan
+  const showPoweredByFooter = isPublic && branding?.hidePlatformBranding !== true
   const { rootRef, postCompleted, postTerminated } = useEmbedMessaging({
     enabled: isEmbed && isPublic,
     surveyId: survey?.id,
@@ -480,7 +481,7 @@ export function SurveyPreview({ survey, items, onClose, isPublic = false, isEmbe
         </>
       )}
 
-      {isPublic && !hidePlatformBranding && (
+      {showPoweredByFooter && (
         <footer className="py-3 text-center text-xs text-ink-400 border-t border-ink-100">
           Powered by {APP_NAME}
         </footer>

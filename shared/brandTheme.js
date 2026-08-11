@@ -29,7 +29,7 @@ export const DEFAULT_BRAND_THEME = {
   borderRadius: 'md',
   buttonVariant: 'solid',
   inputStyle: 'default',
-  showPoweredBy: true,
+  showPoweredBy: false,
 }
 
 const FONT_BY_KEY = Object.fromEntries(APPROVED_FONTS.map(f => [f.key, f]))

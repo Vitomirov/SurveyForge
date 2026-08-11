@@ -176,14 +176,9 @@ export function BrandKitPanel({ onClose }) {
           </div>
         </div>
 
-        <label className="flex items-center gap-2 text-sm text-ink-600">
-          <input
-            type="checkbox"
-            checked={theme.showPoweredBy !== false}
-            onChange={e => setTheme(t => ({ ...t, showPoweredBy: e.target.checked }))}
-          />
-          Show powered-by footer on public surveys
-        </label>
+        <p className="text-xs text-ink-400 mt-3">
+          Professional and Enterprise plans hide the platform footer on public surveys by default.
+        </p>
 
         {planFeatures.embed && (
           <div>
