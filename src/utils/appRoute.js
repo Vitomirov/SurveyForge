@@ -5,12 +5,14 @@
 //   #/builder/:id     edit (unknown id = new draft)
 //   #/preview/:id     preview
 //   #/take/:id        public taker — no auth
+//   #/embed/:id       embedded taker — no auth, minimal chrome
 // White-label path URLs also resolve on surveys.{client}.com/{publicPath}
+// Embedded path URLs resolve on surveys.{client}.com/embed/{publicPath}
 import { useMemo, useSyncExternalStore } from 'react'
 import { parseSurveyHost } from '@shared/surveyUrl.js'
 
-const DASHBOARD = { view: 'dashboard', id: null, byPath: false, clientDomain: null }
-const VIEWS     = ['builder', 'preview', 'take']
+const DASHBOARD = { view: 'dashboard', id: null, byPath: false, clientDomain: null, isEmbed: false }
+const VIEWS     = ['builder', 'preview', 'take', 'embed']
 
 function pathSlug(pathname = window.location.pathname) {
   const slug = pathname.replace(/^\//, '').split('/').filter(Boolean)[0]
@@ -18,13 +20,36 @@ function pathSlug(pathname = window.location.pathname) {
   return slug
 }
 
+function embedPathSlug(pathname = window.location.pathname) {
+  const match = pathname.match(/^\/embed\/([^/]+)/)
+  return match ? match[1] : null
+}
+
+function hashPath(hash = '') {
+  return String(hash).split('?')[0]
+}
+
 export function parseRoute(hash = window.location.hash, pathname = window.location.pathname) {
-  const [, view, id] = (hash || '').match(/^#\/([a-z]+)\/([^/?]+)$/) || []
+  const [, view, id] = hashPath(hash).match(/^#\/([a-z]+)\/([^/]+)$/) || []
+  if (view === 'embed') {
+    return { view: 'take', id, byPath: false, clientDomain: null, isEmbed: true }
+  }
   if (VIEWS.includes(view)) {
-    return { view, id, byPath: false, clientDomain: null }
+    return { view, id, byPath: false, clientDomain: null, isEmbed: false }
   }
 
   const clientDomain = parseSurveyHost(window.location.hostname)
+  const embedSlug = clientDomain ? embedPathSlug(pathname) : null
+  if (embedSlug) {
+    return {
+      view: 'take',
+      id: embedSlug,
+      byPath: true,
+      clientDomain,
+      isEmbed: true,
+    }
+  }
+
   const slug = clientDomain ? pathSlug(pathname) : null
   if (slug) {
     return {
@@ -32,6 +57,7 @@ export function parseRoute(hash = window.location.hash, pathname = window.locati
       id: slug,
       byPath: true,
       clientDomain,
+      isEmbed: false,
     }
   }
 

@@ -26,6 +26,7 @@ import { useApi } from '@/config/api'
 import { buildItemMeta, buildAvailableQuestionsByIndex, buildGroupQuestionCounts } from '@/utils/builderLayout'
 import { generateTemplateCSV, downloadCSV } from '@/utils/csvExport'
 import { APP_NAME } from '@/constants/branding'
+import { useSurveyBranding } from '@/hooks/useSurveyBranding'
 import { DEFAULT_DATE_FORMAT, DEFAULT_SCREEN_MESSAGES } from '@/constants/surveyDefaults'
 import { resolveNavigationLockSeconds } from '@/constants/navigationLock'
 import { prefetchCommonEditors, prefetchPreview, prefetchModule } from '@/utils/routePrefetch'
@@ -138,6 +139,7 @@ export function SurveyBuilder({ initialState, initialRevision = null, onBackToDa
   }
 
   const draggedItem = state.items.find(i => i.id === dragActiveId)
+  const previewBranding = useSurveyBranding(state.survey, { enabled: state.showPreview })
 
   // ── Preview mode ───────────────────────────────────────────────────────
   if (state.showPreview) {
@@ -147,6 +149,7 @@ export function SurveyBuilder({ initialState, initialRevision = null, onBackToDa
           survey={state.survey}
           items={state.items}
           onClose={() => dispatch({ type: 'SET_PREVIEW', show: false })}
+          branding={previewBranding}
         />
       </Suspense>
     )

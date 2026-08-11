@@ -1,5 +1,34 @@
 import { upsertResponse } from './responses.js'
 import { clientDomainFromRequest, findPublicSurvey } from '../lib/surveyPublicPath.js'
+import { buildPublicBrandingPayload } from '../lib/publicBranding.js'
+import { readEmbedAllowedOrigins } from '../lib/orgSettings.js'
+import { buildFrameAncestorsDirective } from '../../../shared/embedProtocol.js'
+import { createRateLimiter, clientIp } from '../lib/rateLimit.js'
+
+const responseRateLimit = createRateLimiter({ windowMs: 60_000, max: 30 })
+
+async function loadOrgBrandingContext(prisma, organizationId) {
+  const [org, subscription] = await Promise.all([
+    prisma.organization.findUnique({
+      where: { id: organizationId },
+      select: { settings: true },
+    }),
+    prisma.subscription.findUnique({
+      where: { organizationId },
+      select: { planId: true },
+    }),
+  ])
+  return {
+    settings: org?.settings,
+    planId: subscription?.planId || 'starter',
+  }
+}
+
+function applyEmbedSecurityHeaders(reply, { isEmbed, embedOrigins }) {
+  if (!isEmbed) return
+  const directive = buildFrameAncestorsDirective(embedOrigins)
+  reply.header('Content-Security-Policy', `frame-ancestors ${directive}`)
+}
 
 async function dncEmailsForSurvey(prisma, surveyRow) {
   const rows = await prisma.dncEntry.findMany({
@@ -24,9 +53,16 @@ export async function registerPublicRoutes(app) {
     const row = await findPublicSurvey(app.prisma, request.params.publicPath, clientDomain)
     if (!row) return reply.code(404).send({ error: 'Survey not found' })
 
+    const isEmbed = request.query?.embed === '1' || request.query?.embed === 'true'
+    const { settings, planId } = await loadOrgBrandingContext(app.prisma, row.organizationId)
+    const branding = buildPublicBrandingPayload(settings, row.survey, planId)
+    const embedOrigins = readEmbedAllowedOrigins(settings)
+    applyEmbedSecurityHeaders(reply, { isEmbed, embedOrigins })
+
     return {
       survey: row.survey,
       items:  row.items,
+      branding,
     }
   })
 
@@ -34,9 +70,16 @@ export async function registerPublicRoutes(app) {
     const row = await loadLivePublicSurvey(app, request.params.id, reply)
     if (!row) return
 
+    const isEmbed = request.query?.embed === '1' || request.query?.embed === 'true'
+    const { settings, planId } = await loadOrgBrandingContext(app.prisma, row.organizationId)
+    const branding = buildPublicBrandingPayload(settings, row.survey, planId)
+    const embedOrigins = readEmbedAllowedOrigins(settings)
+    applyEmbedSecurityHeaders(reply, { isEmbed, embedOrigins })
+
     return {
       survey: row.survey,
       items:  row.items,
+      branding,
     }
   })
 
@@ -48,6 +91,12 @@ export async function registerPublicRoutes(app) {
   })
 
   app.post('/api/public/surveys/:id/responses', async (request, reply) => {
+    const ip = clientIp(request)
+    const limit = responseRateLimit(`responses:${ip}`)
+    if (!limit.allowed) {
+      return reply.code(429).send({ error: 'Too many requests. Please try again later.' })
+    }
+
     const row = await loadLivePublicSurvey(app, request.params.id, reply)
     if (!row) return
 

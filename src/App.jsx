@@ -11,6 +11,8 @@ import { prefetchForRoute } from '@/utils/routePrefetch'
 import { useRoute, nav } from '@/utils/appRoute'
 import { SURVEY_NOT_FOUND_MESSAGE, SURVEY_NOT_FOUND_TITLE } from '@/constants/errors'
 
+import { useSurveyBranding } from '@/hooks/useSurveyBranding'
+
 const LoginPage     = lazy(() => import('@/components/auth/LoginPage.jsx'))
 const Dashboard     = lazy(() => import('@/components/dashboard/Dashboard.jsx'))
 const SurveyBuilder = lazy(() => import('@/components/builder/SurveyBuilder.jsx'))
@@ -19,14 +21,15 @@ const SurveyPreview = lazy(() => import('@/components/taker/SurveyPreview.jsx'))
 prefetchForRoute()
 
 /** Load the survey named by the route — public payload for the taker link. */
-async function fetchEntry(view, id, { byPath = false, clientDomain = null } = {}) {
+async function fetchEntry(view, id, { byPath = false, clientDomain = null, isEmbed = false } = {}) {
   if (useApi) {
     const { getSurvey, getPublicSurvey, getPublicSurveyByPath, payloadToLibraryEntry } =
       await import('@/api/surveys')
+    const embedOpts = { embed: isEmbed }
     const payload = view === 'take'
       ? (byPath
-        ? await getPublicSurveyByPath(id, clientDomain)
-        : await getPublicSurvey(id))
+        ? await getPublicSurveyByPath(id, clientDomain, embedOpts)
+        : await getPublicSurvey(id, embedOpts))
       : await getSurvey(id)
     return payloadToLibraryEntry(id, payload)
   }
@@ -36,18 +39,18 @@ async function fetchEntry(view, id, { byPath = false, clientDomain = null } = {}
 }
 
 /** Survey for the current route: 'loading' | 'ready' | 'missing' | 'error'. */
-function useSurveyEntry(view, id, { byPath = false, clientDomain = null } = {}) {
+function useSurveyEntry(view, id, { byPath = false, clientDomain = null, isEmbed = false } = {}) {
   const [state, setState] = useState(() => ({ status: id ? 'loading' : 'ready', entry: null }))
 
   useEffect(() => {
     if (!id) { setState({ status: 'ready', entry: null }); return }
     let alive = true
     setState({ status: 'loading', entry: null })
-    fetchEntry(view, id, { byPath, clientDomain })
+    fetchEntry(view, id, { byPath, clientDomain, isEmbed })
       .then(entry => { if (alive) setState({ status: entry ? 'ready' : 'missing', entry }) })
       .catch(err  => { if (alive) setState({ status: err?.status === 404 ? 'missing' : 'error', entry: null }) })
     return () => { alive = false }
-  }, [view, id, byPath, clientDomain])
+  }, [view, id, byPath, clientDomain, isEmbed])
 
   return state
 }
@@ -87,12 +90,25 @@ function builderState(id, entry) {
   }
 }
 
+function PreviewPage({ entry, onClose }) {
+  const branding = useSurveyBranding(entry?.survey, { enabled: Boolean(entry?.survey) })
+  return (
+    <SurveyPreview
+      survey={entry.survey}
+      items={entry.items || []}
+      onClose={onClose}
+      isPublic={false}
+      branding={branding}
+    />
+  )
+}
+
 export default function App() {
   const [session, setSession] = useState(getSession)
   const { toast }             = useToast()
-  const { view, id, byPath, clientDomain } = useRoute()
+  const { view, id, byPath, clientDomain, isEmbed } = useRoute()
   const isPublic              = view === 'take'
-  const { status, entry }     = useSurveyEntry(view, isPublic || session ? id : null, { byPath, clientDomain })
+  const { status, entry }     = useSurveyEntry(view, isPublic || session ? id : null, { byPath, clientDomain, isEmbed })
 
   useEffect(() => {
     return onAuthInvalidated((code) => {
@@ -117,7 +133,14 @@ export default function App() {
     if (status !== 'ready')   return <NotFound />
     return (
       <Page title="Survey error" label="Loading survey…">
-        <SurveyPreview survey={entry.survey} items={entry.items || []} onClose={null} isPublic />
+        <SurveyPreview
+          survey={entry.survey}
+          items={entry.items || []}
+          onClose={null}
+          isPublic
+          isEmbed={isEmbed}
+          branding={entry.branding}
+        />
       </Page>
     )
   }
@@ -150,7 +173,7 @@ export default function App() {
     if (status !== 'ready')   return <NotFound onBack={back} />
     return (
       <Page title="Preview error" label="Loading preview…" onReset={back}>
-        <SurveyPreview survey={entry.survey} items={entry.items || []} onClose={back} isPublic={false} />
+        <PreviewPage entry={entry} onClose={back} />
       </Page>
     )
   }

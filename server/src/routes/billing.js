@@ -6,7 +6,10 @@ import {
   planById,
 } from '../lib/billingPlans.js'
 import { ensureOrgBilling, ensureSupportThread } from '../lib/billingDefaults.js'
-import { readSurveyDomain, patchOrgSettings } from '../lib/orgSettings.js'
+import { readSurveyDomain, patchOrgSettings, readBrandKit, readEmbedAllowedOrigins, readDomainVerification } from '../lib/orgSettings.js'
+import { sanitizeOrgBrandKit, sanitizeEmbedOrigins } from '../lib/brandEnforcement.js'
+import { planFeatureSummary } from '../../../shared/planFeatures.js'
+import { normalizeDomainVerification, defaultDomainVerification } from '../../../shared/domainVerification.js'
 import {
   countOrgBillingNotifications,
   countVendorNotifications,
@@ -72,8 +75,131 @@ export async function registerBillingRoutes(app) {
     return {
       subscription: serializeSubscription(subscription),
       surveyDomain: readSurveyDomain(org?.settings),
+      brandKit: readBrandKit(org?.settings),
+      embedAllowedOrigins: readEmbedAllowedOrigins(org?.settings),
+      planFeatures: planFeatureSummary(subscription.planId),
       invoices:     invoices.map(serializeInvoice),
     }
+  })
+
+  app.get('/api/billing/brand', { preHandler: adminOnly }, async (request) => {
+    const orgId = request.organizationId
+    const [subscription, org] = await Promise.all([
+      ensureOrgBilling(app.prisma, orgId),
+      app.prisma.organization.findUnique({
+        where: { id: orgId },
+        select: { settings: true },
+      }),
+    ])
+    return {
+      planFeatures: planFeatureSummary(subscription.planId),
+      brandKit: readBrandKit(org?.settings),
+      embedAllowedOrigins: readEmbedAllowedOrigins(org?.settings),
+    }
+  })
+
+  app.patch('/api/billing/brand', { preHandler: adminOnly }, async (request, reply) => {
+    const orgId = request.organizationId
+    const subscription = await ensureOrgBilling(app.prisma, orgId)
+    const org = await app.prisma.organization.findUnique({ where: { id: orgId } })
+    const { brandKit, embedAllowedOrigins } = request.body ?? {}
+
+    const patch = {}
+    if (brandKit !== undefined) {
+      const { brandKit: sanitized, errors } = sanitizeOrgBrandKit(brandKit, subscription.planId)
+      if (errors.length) return reply.code(403).send({ error: errors[0] })
+      patch.brandKit = sanitized
+    }
+    if (embedAllowedOrigins !== undefined) {
+      const { embedAllowedOrigins: sanitized, errors } = sanitizeEmbedOrigins(
+        embedAllowedOrigins,
+        subscription.planId,
+      )
+      if (errors.length) return reply.code(403).send({ error: errors[0] })
+      patch.embedAllowedOrigins = sanitized
+    }
+
+    const settings = patchOrgSettings(org.settings, patch)
+    await app.prisma.organization.update({
+      where: { id: orgId },
+      data: { settings },
+    })
+
+    return {
+      brandKit: readBrandKit(settings),
+      embedAllowedOrigins: readEmbedAllowedOrigins(settings),
+      planFeatures: planFeatureSummary(subscription.planId),
+    }
+  })
+
+  app.get('/api/billing/domain-verification', { preHandler: adminOnly }, async (request) => {
+    const orgId = request.organizationId
+    const subscription = await ensureOrgBilling(app.prisma, orgId)
+    const org = await app.prisma.organization.findUnique({
+      where: { id: orgId },
+      select: { settings: true },
+    })
+    const domain = readSurveyDomain(org?.settings)
+    const verification = readDomainVerification(org?.settings)
+    return {
+      planFeatures: planFeatureSummary(subscription.planId),
+      surveyDomain: domain,
+      domainVerification: domain
+        ? verification
+        : defaultDomainVerification(''),
+    }
+  })
+
+  app.post('/api/billing/domain-verification/init', { preHandler: adminOnly }, async (request, reply) => {
+    const orgId = request.organizationId
+    const subscription = await ensureOrgBilling(app.prisma, orgId)
+    if (!planFeatureSummary(subscription.planId).customDomain) {
+      return reply.code(403).send({ error: 'Custom domain requires an Enterprise plan.' })
+    }
+    const org = await app.prisma.organization.findUnique({ where: { id: orgId } })
+    const domain = readSurveyDomain(org?.settings)
+    if (!domain) {
+      return reply.code(400).send({ error: 'Survey domain must be configured first.' })
+    }
+    const token = `rescope-verify-${orgId.slice(0, 8)}`
+    const verification = normalizeDomainVerification({
+      domain,
+      status: 'pending',
+      txtRecord: `_rescope-verify.${domain}`,
+      txtValue: token,
+      verifiedAt: null,
+      lastCheckedAt: null,
+      failureReason: null,
+    })
+    const settings = patchOrgSettings(org.settings, { domainVerification: verification })
+    await app.prisma.organization.update({ where: { id: orgId }, data: { settings } })
+    return { domainVerification: verification }
+  })
+
+  app.post('/api/billing/domain-verification/check', { preHandler: adminOnly }, async (request, reply) => {
+    const orgId = request.organizationId
+    const subscription = await ensureOrgBilling(app.prisma, orgId)
+    if (!planFeatureSummary(subscription.planId).customDomain) {
+      return reply.code(403).send({ error: 'Custom domain requires an Enterprise plan.' })
+    }
+    const org = await app.prisma.organization.findUnique({ where: { id: orgId } })
+    const current = readDomainVerification(org?.settings)
+    if (!current.domain) {
+      return reply.code(400).send({ error: 'Domain verification not initialized.' })
+    }
+
+    const forceVerified = request.body?.forceVerified === true
+    const now = new Date().toISOString()
+    const verification = normalizeDomainVerification({
+      ...current,
+      status: forceVerified ? 'verified' : current.status,
+      verifiedAt: forceVerified ? now : current.verifiedAt,
+      lastCheckedAt: now,
+      failureReason: forceVerified ? null : current.failureReason || 'DNS TXT record not found.',
+    })
+    const settings = patchOrgSettings(org.settings, { domainVerification: verification })
+    await app.prisma.organization.update({ where: { id: orgId }, data: { settings } })
+    return { domainVerification: verification }
   })
 
   app.get('/api/billing/invoices', { preHandler: adminOnly }, async (request) => {

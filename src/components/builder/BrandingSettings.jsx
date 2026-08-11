@@ -1,5 +1,8 @@
-import { useRef } from 'react'
-import { Image as ImageIcon, X, Upload } from 'lucide-react'
+import { useRef, useState, useEffect } from 'react'
+import { Image as ImageIcon, X, Upload, Lock } from 'lucide-react'
+import { useApi } from '@/config/api'
+import { fetchBrandKit } from '@/api/billing'
+import { canUseBrandKit } from '@shared/planFeatures.js'
 
 const MAX_LOGO_BYTES = 2 * 1024 * 1024 // 2MB — logos are small, no need for more
 
@@ -11,6 +14,16 @@ const POSITIONS = [
 
 export function BrandingSettings({ survey, dispatch }) {
   const fileInputRef = useRef(null)
+  const [planId, setPlanId] = useState('starter')
+
+  useEffect(() => {
+    if (!useApi) return
+    fetchBrandKit()
+      .then(data => setPlanId(data.planFeatures?.planId || 'starter'))
+      .catch(() => {})
+  }, [])
+
+  const brandingAllowed = canUseBrandKit(planId)
 
   const handleFile = (file) => {
     if (!file || !file.type.startsWith('image/')) return
@@ -36,6 +49,19 @@ export function BrandingSettings({ survey, dispatch }) {
     dispatch({ type: 'SET_SURVEY_FIELD', field: 'companyLogo', value: null })
 
   const position = survey.logoPosition || 'left'
+
+  if (!brandingAllowed) {
+    return (
+      <div className="mt-3 border-t border-ink-100 pt-3">
+        <p className="text-xs font-semibold text-ink-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+          <Lock size={12} /> Branding
+        </p>
+        <p className="text-xs text-ink-500 bg-ink-50 border border-ink-100 rounded-lg px-3 py-2">
+          Custom logo and theme styling are available on Professional and Enterprise plans.
+        </p>
+      </div>
+    )
+  }
 
   return (
     <div className="mt-3 border-t border-ink-100 pt-3">

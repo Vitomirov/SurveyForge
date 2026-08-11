@@ -28,13 +28,17 @@ export async function migrateLocalLibrary(surveys) {
 }
 
 /** Public taker route — live surveys only, no auth. */
-export async function getPublicSurvey(id) {
-  return apiFetch(`/api/public/surveys/${encodeURIComponent(id)}`)
+export async function getPublicSurvey(id, { embed = false } = {}) {
+  const qs = embed ? '?embed=1' : ''
+  return apiFetch(`/api/public/surveys/${encodeURIComponent(id)}${qs}`)
 }
 
 /** Public taker route by white-label path slug. */
-export async function getPublicSurveyByPath(publicPath, clientDomain = null) {
-  const qs = clientDomain ? `?client=${encodeURIComponent(clientDomain)}` : ''
+export async function getPublicSurveyByPath(publicPath, clientDomain = null, { embed = false } = {}) {
+  const params = new URLSearchParams()
+  if (clientDomain) params.set('client', clientDomain)
+  if (embed) params.set('embed', '1')
+  const qs = params.toString() ? `?${params.toString()}` : ''
   return apiFetch(`/api/public/s/${encodeURIComponent(publicPath)}${qs}`)
 }
 
@@ -74,5 +78,6 @@ export function payloadToLibraryEntry(id, payload) {
     revision: payload.revision,
     ownerId:   payload.ownerId ?? null,
     ownerName: payload.ownerName ?? '',
+    branding: payload.branding ?? null,
   }
 }

@@ -5,7 +5,7 @@ import {
   surveyHostMatches,
   surveyPathName,
 } from '../../../shared/surveyUrl.js'
-import { readSurveyDomain } from './orgSettings.js'
+import { readEffectiveSurveyDomain } from './orgSettings.js'
 
 export { resolvePublicPath } from '../../../shared/surveyUrl.js'
 
@@ -44,7 +44,7 @@ export async function assignPublicPath(prisma, survey) {
 export function surveyMatchesRequestHost(row, requestDomain, org) {
   if (!requestDomain) return true
   const planId = org?.subscription?.planId || 'starter'
-  const surveyDomain = readSurveyDomain(org?.settings)
+  const surveyDomain = readEffectiveSurveyDomain(org?.settings, planId)
   return surveyHostMatches(requestDomain, { planId, surveyDomain })
 }
 

@@ -19,9 +19,11 @@ export function CompletionScreen({ onReset, onDownload, isPublic = false }) {
         )}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-2 sm:gap-3">
           {!isPublic && <button onClick={onReset} className="btn-ghost border border-ink-200 justify-center">← Restart</button>}
-          <button onClick={onDownload} className="btn-primary flex items-center gap-2 justify-center">
-            <Download size={14} /> Download CSV
-          </button>
+          {!isPublic && (
+            <button onClick={onDownload} className="btn-primary flex items-center gap-2 justify-center">
+              <Download size={14} /> Download CSV
+            </button>
+          )}
         </div>
       </div>
     </div>

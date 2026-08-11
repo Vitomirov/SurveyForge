@@ -16,11 +16,14 @@ import { validateAnswer } from '@/utils/answerValidation'
 import { buildQuestionNumberById } from '@/utils/questionHelpers'
 import { prefetchModule, prefetchCommonQuestions } from '@/utils/routePrefetch'
 import { usePageNavigationLock } from '@/hooks/usePageNavigationLock'
+import { useEmbedMessaging } from '@/hooks/useEmbedMessaging'
+import { brandThemeToCssVars } from '@shared/brandTheme.js'
+import { APP_NAME } from '@/constants/branding'
 import { QUESTION_LOADERS } from './questions/questionLoaders'
 import { QuestionRenderer } from './questions'
 import { CoverPage, CompletionScreen, TerminationScreen, ClosedSurveyScreen, ExternalRedirectScreen } from './screens'
 
-export function SurveyPreview({ survey, items, onClose, isPublic = false }) {
+export function SurveyPreview({ survey, items, onClose, isPublic = false, isEmbed = false, branding = null }) {
   const [responses, setResponses]       = useState({})
   const [companions, setCompanions]     = useState({})  // { questionId: { optionId: text } }
   const [errors, setErrors]             = useState({})
@@ -38,6 +41,13 @@ export function SurveyPreview({ survey, items, onClose, isPublic = false }) {
   // ── Collect device/browser fingerprint once, on mount ──────────────────
   // Runs in the background regardless of cover page state, so by the time
   // the respondent reaches the end the data is already ready to attach.
+  const themeVars = brandThemeToCssVars(branding?.theme)
+  const displayLogo = survey?.companyLogo || branding?.logo || null
+  const hidePlatformBranding = branding?.hidePlatformBranding && !branding?.theme?.showPoweredBy
+  const { rootRef, postCompleted, postTerminated } = useEmbedMessaging({
+    enabled: isEmbed && isPublic,
+    surveyId: survey?.id,
+  })
   const fpEnabled = survey?.settings?.fingerprinting?.enabled
   const fpSignals = survey?.settings?.fingerprinting?.signals
   useEffect(() => {
@@ -272,17 +282,30 @@ export function SurveyPreview({ survey, items, onClose, isPublic = false }) {
     }
   }
 
+  useEffect(() => {
+    if (submitted && isEmbed) postCompleted()
+  }, [submitted, isEmbed, postCompleted])
+
+  useEffect(() => {
+    if (terminated && isEmbed) postTerminated()
+  }, [terminated, isEmbed, postTerminated])
+
   const progress = totalPages > 1 ? Math.round((currentPage / totalPages) * 100) : 0
 
   return (
-    <div className="min-h-screen bg-ink-50 flex flex-col">
-      {/* Header */}
+    <div
+      ref={rootRef}
+      className="survey-theme min-h-screen flex flex-col"
+      style={{ ...themeVars, backgroundColor: 'var(--sf-bg)', color: 'var(--sf-text)', fontFamily: 'var(--sf-font)' }}
+    >
+      {/* Header — hidden in embed mode for minimal chrome */}
+      {!isEmbed && (
       <header className="bg-white border-b border-ink-200 sticky top-0 z-30 safe-top">
         <div className="max-w-screen-xl mx-auto px-4 sm:px-6 min-h-14 py-2 sm:py-0 flex items-center gap-2 sm:gap-3">
-          {survey?.companyLogo && (
-            <img src={survey.companyLogo} alt="Logo" className="h-6 sm:h-7 w-auto max-w-[100px] sm:max-w-[120px] object-contain shrink-0" />
+          {displayLogo && (
+            <img src={displayLogo} alt="Logo" className="h-6 sm:h-7 w-auto max-w-[100px] sm:max-w-[120px] object-contain shrink-0" />
           )}
-          <h1 className="text-sm font-semibold text-ink-800 flex-1 truncate min-w-0">{survey?.title || 'Survey'}</h1>
+          <h1 className="text-sm font-semibold flex-1 truncate min-w-0" style={{ color: 'var(--sf-text)' }}>{survey?.title || 'Survey'}</h1>
           {fpEnabled && (
             <span
               title={fpStatus === 'done' ? 'Fingerprint data collected for this session' : 'Collecting fingerprint…'}
@@ -307,6 +330,14 @@ export function SurveyPreview({ survey, items, onClose, isPublic = false }) {
           )}
         </div>
       </header>
+      )}
+
+      {/* Embed mode: compact title bar only */}
+      {isEmbed && displayLogo && (
+        <div className="px-4 py-3 flex justify-center border-b border-ink-100 bg-white/80">
+          <img src={displayLogo} alt="Logo" className="h-8 max-w-[160px] object-contain" />
+        </div>
+      )}
 
       {/* Progress bar */}
       {totalPages > 1 && !terminated && !submitted && !redirectedTo && !showCover && (
@@ -317,7 +348,7 @@ export function SurveyPreview({ survey, items, onClose, isPublic = false }) {
               <span>{progress}% complete</span>
             </div>
             <div className="h-1.5 bg-ink-100 rounded-full overflow-hidden">
-              <div className="h-full bg-brand-500 rounded-full transition-all duration-500" style={{ width: `${progress}%` }} />
+              <div className="h-full rounded-full transition-all duration-500" style={{ width: `${progress}%`, backgroundColor: 'var(--sf-primary)' }} />
             </div>
           </div>
         </div>
@@ -447,6 +478,12 @@ export function SurveyPreview({ survey, items, onClose, isPublic = false }) {
             </div>
           </div>
         </>
+      )}
+
+      {isPublic && !hidePlatformBranding && (
+        <footer className="py-3 text-center text-xs text-ink-400 border-t border-ink-100">
+          Powered by {APP_NAME}
+        </footer>
       )}
     </div>
   )

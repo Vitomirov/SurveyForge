@@ -22,3 +22,29 @@ export async function postBillingSupportMessage(body) {
     body: { body },
   })
 }
+
+export async function fetchBrandKit() {
+  return apiFetch('/api/billing/brand')
+}
+
+export async function patchBrandKit(body) {
+  return apiFetch('/api/billing/brand', {
+    method: 'PATCH',
+    body,
+  })
+}
+
+export async function fetchDomainVerification() {
+  return apiFetch('/api/billing/domain-verification')
+}
+
+export async function initDomainVerification() {
+  return apiFetch('/api/billing/domain-verification/init', { method: 'POST' })
+}
+
+export async function checkDomainVerification(body = {}) {
+  return apiFetch('/api/billing/domain-verification/check', {
+    method: 'POST',
+    body,
+  })
+}

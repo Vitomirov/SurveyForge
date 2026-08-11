@@ -3,6 +3,7 @@ import { ownerFromSurvey, CREATOR_SELECT } from '../lib/surveyOwner.js'
 import { surveyScope } from '../lib/authz.js'
 import { findAccessibleSurvey } from '../lib/surveyAccess.js'
 import { assignPublicPath } from '../lib/surveyPublicPath.js'
+import { enforceSurveyBranding, loadOrgPlanContext } from '../lib/brandEnforcement.js'
 
 async function loadPlatformLists(prisma, organizationId) {
   const [clients, topics, surveyTypes] = await Promise.all([
@@ -85,8 +86,12 @@ export async function registerSurveyRoutes(app) {
 
       const { clients, topics, surveyTypes } = await loadPlatformLists(app.prisma, request.organizationId)
 
+      const { planId } = await loadOrgPlanContext(app.prisma, request.organizationId)
       const rawSurvey = survey !== undefined
-        ? { ...survey, id, updatedAt: new Date().toISOString() }
+        ? enforceSurveyBranding(
+          { ...survey, id, updatedAt: new Date().toISOString() },
+          planId,
+        )
         : { ...existing.survey, id }
       const { survey: withPath, publicPath } = await assignPublicPath(app.prisma, rawSurvey)
 
@@ -123,10 +128,14 @@ export async function registerSurveyRoutes(app) {
     }
 
     const { clients, topics, surveyTypes } = await loadPlatformLists(app.prisma, request.organizationId)
+    const { planId } = await loadOrgPlanContext(app.prisma, request.organizationId)
 
     const { survey: withPath, publicPath } = await assignPublicPath(
       app.prisma,
-      { ...survey, id, updatedAt: new Date().toISOString() },
+      enforceSurveyBranding(
+        { ...survey, id, updatedAt: new Date().toISOString() },
+        planId,
+      ),
     )
 
     const surveyData = normalizeSurveyPlatformIds(withPath, clients, topics, surveyTypes)

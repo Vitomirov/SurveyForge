@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { CreditCard, MessageSquare, Send } from 'lucide-react'
+import { CreditCard, MessageSquare, Send, Palette, Globe } from 'lucide-react'
 import { useApi } from '@/config/api'
 import { AUTH_BILLING, AUTH_ERRORS } from '@/constants/authCopy'
 import {
@@ -10,6 +10,8 @@ import {
 } from '@/api/billing'
 import { InlineLoader, Modal, StatusPill, useToast } from '@/components/ui'
 import { formatMoney, formatDate } from '@/utils/format'
+import { BrandKitPanel } from './BrandKitPanel.jsx'
+import { DomainVerificationPanel } from './DomainVerificationPanel.jsx'
 
 function SupportSection({ onSent }) {
   const { toast } = useToast()
@@ -89,6 +91,8 @@ export function BillingPanel({ onClose, onOpen }) {
   const { toast } = useToast()
   const [loading, setLoading] = useState(useApi)
   const [overview, setOverview] = useState(null)
+  const [showBrandKit, setShowBrandKit] = useState(false)
+  const [showDomain, setShowDomain] = useState(false)
 
   useEffect(() => {
     if (!useApi) {
@@ -153,6 +157,15 @@ export function BillingPanel({ onClose, onOpen }) {
             </div>
           )}
 
+          <div className="flex flex-wrap gap-2">
+            <button type="button" onClick={() => setShowBrandKit(true)} className="btn-ghost border border-ink-200 text-sm">
+              <Palette size={15} /> Brand Kit
+            </button>
+            <button type="button" onClick={() => setShowDomain(true)} className="btn-ghost border border-ink-200 text-sm">
+              <Globe size={15} /> Custom domain
+            </button>
+          </div>
+
           <div>
             <h3 className="text-sm font-semibold text-ink-800 mb-3">{AUTH_BILLING.invoices}</h3>
             {invoices.length === 0 ? (
@@ -193,6 +206,16 @@ export function BillingPanel({ onClose, onOpen }) {
             <SupportSection onSent={onOpen} />
           </div>
         </>
+      )}
+      {showBrandKit && (
+        <Modal icon={Palette} title="Brand Kit" onClose={() => setShowBrandKit(false)} bodyClassName="p-0">
+          <BrandKitPanel onClose={() => setShowBrandKit(false)} />
+        </Modal>
+      )}
+      {showDomain && (
+        <Modal icon={Globe} title="Custom domain" onClose={() => setShowDomain(false)} bodyClassName="p-0">
+          <DomainVerificationPanel onClose={() => setShowDomain(false)} />
+        </Modal>
       )}
     </Modal>
   )

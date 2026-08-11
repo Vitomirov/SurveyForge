@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="sr">
+<head>
+  <meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Embed test — Rescope Surveys</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, sans-serif;
+      margin: 0;
+      padding: 24px;
+      background: #f1f5f9;
+      color: #0f172a;
+    }
+    h1 { font-size: 1.25rem; margin: 0 0 8px; }
+    p { margin: 0 0 16px; color: #64748b; font-size: 0.875rem; }
+    .wrap {
+      max-width: 900px;
+      margin: 0 auto;
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 20px;
+    }
+    iframe {
+      width: 100%;
+      border: 0;
+      border-radius: 8px;
+      background: #fff;
+      min-height: 400px;
+    }
+    .log {
+      margin-top: 16px;
+      padding: 12px;
+      background: #0f172a;
+      color: #e2e8f0;
+      border-radius: 8px;
+      font-family: monospace;
+      font-size: 12px;
+      max-height: 160px;
+      overflow-y: auto;
+    }
+    .warn {
+      background: #fffbeb;
+      border: 1px solid #fcd34d;
+      color: #92400e;
+      padding: 12px;
+      border-radius: 8px;
+      font-size: 0.875rem;
+      margin-bottom: 16px;
+    }
+    code { background: #f1f5f9; padding: 2px 6px; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Test iframe embed (lokalno)</h1>
+    <p>Ova stranica simulira tvoj sajt koji ugrađuje anketu.</p>
+
+    <div id="warn" class="warn" hidden></div>
+
+    <iframe id="survey" title="Survey embed" loading="lazy"
+      sandbox="allow-scripts allow-same-origin allow-forms allow-popups"></iframe>
+
+    <div class="log" id="log">Čekam postMessage događaje…</div>
+  </div>
+
+  <script>
+    const params = new URLSearchParams(window.location.search)
+    const surveyId = params.get('id')
+
+    const warn = document.getElementById('warn')
+    const iframe = document.getElementById('survey')
+    const log = document.getElementById('log')
+
+    function appendLog(line) {
+      const ts = new Date().toLocaleTimeString()
+      log.textContent += `\n[${ts}] ${line}`
+      log.scrollTop = log.scrollHeight
+    }
+
+    if (!surveyId) {
+      warn.hidden = false
+      warn.innerHTML = 'Dodaj ID ankete u URL: <code>/embed-test.html?id=TVOJ_SURVEY_ID</code>'
+    } else {
+      iframe.src = `${window.location.origin}/#/embed/${encodeURIComponent(surveyId)}`
+      appendLog(`iframe src = ${iframe.src}`)
+    }
+
+    window.addEventListener('message', (event) => {
+      const data = event.data
+      if (!data || data.source !== 'rescope-survey') return
+      appendLog(`${data.type} (height: ${data.height ?? '—'})`)
+      if (data.type === 'rescope-survey:resize' && data.height) {
+        iframe.style.height = `${Math.max(400, data.height)}px`
+      }
+    })
+  </script>
+</body>
+</html>

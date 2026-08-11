@@ -178,3 +178,23 @@
 .safe-bottom {
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
+
+/* ── Branded survey taker (scoped CSS variables) ───────────────────────── */
+.survey-theme .btn-primary {
+  background-color: var(--sf-primary, #2563eb);
+  color: var(--sf-button-text, #fff);
+  border-radius: var(--sf-radius, 10px);
+}
+.survey-theme .btn-primary:hover {
+  filter: brightness(0.92);
+}
+.survey-theme .input-base {
+  border-radius: var(--sf-radius, 10px);
+}
+.survey-theme .input-base:focus {
+  --tw-ring-color: var(--sf-primary, #2563eb);
+}
+.survey-theme .btn-copy {
+  color: var(--sf-primary, #2563eb);
+  border-color: color-mix(in srgb, var(--sf-primary, #2563eb) 30%, transparent);
+}
