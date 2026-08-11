@@ -1,6 +1,6 @@
-import { hashPassword } from '../lib/password.js'
-import { requireRole } from '../lib/authz.js'
-import { ROLES, isAdminRole, ROLE_VALUES } from '../lib/roles.js'
+import { hashPassword } from '../lib/auth/password.js'
+import { requireRole } from '../lib/auth/authz.js'
+import { ROLES, isAdminRole, ROLE_VALUES } from '../lib/auth/roles.js'
 
 const newId = (prefix) => `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`
 const adminOnly = requireRole(ROLES.ADMIN)

@@ -4,8 +4,8 @@
  */
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { resolveQuestionRuleTarget } from '../src/utils/resolveQuestionRuleTarget.js'
-import { resolveExternalRedirectUrl } from '../src/utils/externalRedirectEngine.js'
+import { resolveQuestionRuleTarget } from '../src/utils/survey/engines/resolveQuestionRuleTarget.js'
+import { resolveExternalRedirectUrl } from '../src/utils/survey/engines/externalRedirectEngine.js'
 
 const optA = 'opt_a'
 const optB = 'opt_b'

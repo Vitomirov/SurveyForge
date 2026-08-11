@@ -5,16 +5,16 @@ import {
   addClient, updateClient, deleteClient,
   addTopic, updateTopic, deleteTopic,
   addSurveyType, updateSurveyType, deleteSurveyType,
-} from '@/utils/platformStore'
-import { getUsers, addUser, updateUser, deleteUser } from '@/utils/authStore'
+} from '@/utils/data/platformStore'
+import { getUsers, addUser, updateUser, deleteUser } from '@/utils/data/authStore'
 import { useApi } from '@/config/api'
 import {
   fetchClients, createClient, updateClientApi, deleteClientApi,
   fetchTopics, createTopic, updateTopicApi, deleteTopicApi,
   fetchSurveyTypes, createSurveyType, updateSurveyTypeApi, deleteSurveyTypeApi,
   fetchUsers, createUser, updateUserApi, deleteUserApi,
-} from '@/api/platform'
-import { roleLabel } from '@/utils/permissions'
+} from '@/api/platform/platform'
+import { roleLabel } from '@/utils/platform/permissions'
 import { AUTH_TEAM } from '@/constants/authCopy'
 
 // ─── Editable list (clients / topics / types) ───────────────────────────────

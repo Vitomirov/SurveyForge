@@ -1,14 +1,14 @@
 import { useState, useEffect, lazy, Suspense } from 'react'
-import { ErrorBoundary } from '@/components/shared/ErrorBoundary'
+import { ErrorBoundary } from '@/components/shared/infra/ErrorBoundary'
 import { PageLoader, useToast } from '@/components/ui'
 import { INITIAL_STATE } from '@/store/initialState'
 import { newSurveyId } from '@/store/id'
-import { getSession, logout } from '@/utils/authStore'
-import { onAuthInvalidated } from '@/api/authEvents'
+import { getSession, logout } from '@/utils/data/authStore'
+import { onAuthInvalidated } from '@/api/auth/authEvents'
 import { AUTH_ERRORS } from '@/constants/authCopy'
 import { useApi } from '@/config/api'
-import { prefetchForRoute } from '@/utils/routePrefetch'
-import { useRoute, nav } from '@/utils/appRoute'
+import { prefetchForRoute } from '@/utils/routing/routePrefetch'
+import { useRoute, nav } from '@/utils/routing/appRoute'
 import { SURVEY_NOT_FOUND_MESSAGE, SURVEY_NOT_FOUND_TITLE } from '@/constants/errors'
 
 import { useSurveyBranding } from '@/hooks/useSurveyBranding'
@@ -24,7 +24,7 @@ prefetchForRoute()
 async function fetchEntry(view, id, { byPath = false, clientDomain = null, isEmbed = false } = {}) {
   if (useApi) {
     const { getSurvey, getPublicSurvey, getPublicSurveyByPath, payloadToLibraryEntry } =
-      await import('@/api/surveys')
+      await import('@/api/survey/surveys')
     const embedOpts = { embed: isEmbed }
     const payload = view === 'take'
       ? (byPath
@@ -33,7 +33,7 @@ async function fetchEntry(view, id, { byPath = false, clientDomain = null, isEmb
       : await getSurvey(id)
     return payloadToLibraryEntry(id, payload)
   }
-  const { loadSurvey, loadSurveyByPublicPath } = await import('@/utils/surveyLibrary')
+  const { loadSurvey, loadSurveyByPublicPath } = await import('@/utils/data/surveyLibrary')
   if (view === 'take' && byPath) return loadSurveyByPublicPath(id, clientDomain)
   return loadSurvey(id)
 }

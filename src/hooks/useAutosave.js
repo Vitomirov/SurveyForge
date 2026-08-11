@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { upsertSurvey } from '@/utils/surveyLibrary'
-import { patchSurvey } from '@/api/surveys'
+import { upsertSurvey } from '@/utils/data/surveyLibrary'
+import { patchSurvey } from '@/api/survey/surveys'
 import { ApiError } from '@/api/client'
 import { useApi } from '@/config/api'
 

@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
-import { buildPipedOptions } from '@/utils/piping'
-import { LazyComponent } from '@/components/shared/LazyComponent'
+import { buildPipedOptions } from '@/utils/survey/questions/piping'
+import { LazyComponent } from '@/components/shared/infra/LazyComponent'
 import { QUESTION_LOADERS } from './questionLoaders'
 
 const QUESTION_FALLBACK = <div className="h-8 animate-pulse bg-ink-100 rounded" />

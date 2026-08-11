@@ -1,9 +1,9 @@
 import { upsertResponse } from './responses.js'
-import { clientDomainFromRequest, findPublicSurvey } from '../lib/surveyPublicPath.js'
-import { buildPublicBrandingPayload } from '../lib/publicBranding.js'
-import { readEmbedAllowedOrigins } from '../lib/orgSettings.js'
+import { clientDomainFromRequest, findPublicSurvey } from '../lib/survey/surveyPublicPath.js'
+import { buildPublicBrandingPayload } from '../lib/branding/publicBranding.js'
+import { readEmbedAllowedOrigins } from '../lib/platform/orgSettings.js'
 import { buildFrameAncestorsDirective } from '../../../shared/embedProtocol.js'
-import { createRateLimiter, clientIp } from '../lib/rateLimit.js'
+import { createRateLimiter, clientIp } from '../lib/survey/rateLimit.js'
 
 const responseRateLimit = createRateLimiter({ windowMs: 60_000, max: 30 })
 

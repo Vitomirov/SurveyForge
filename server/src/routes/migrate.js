@@ -1,5 +1,5 @@
 /** Dev-only: import localStorage library snapshots into Postgres. */
-import { surveyScope } from '../lib/authz.js'
+import { surveyScope } from '../lib/auth/authz.js'
 
 export async function registerMigrateRoutes(app, { isDev }) {
   if (!isDev) return

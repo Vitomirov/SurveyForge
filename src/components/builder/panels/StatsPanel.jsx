@@ -1,4 +1,4 @@
-import { QUESTION_TYPES, TYPE_COLORS, TYPE_ICONS } from '@/utils/questionHelpers'
+import { QUESTION_TYPES, TYPE_COLORS, TYPE_ICONS } from '@/utils/survey/questions/questionHelpers'
 import { BarChart3 } from 'lucide-react'
 
 export function StatsPanel({ items }) {

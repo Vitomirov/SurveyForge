@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useApi } from '@/config/api'
-import { getPublicSurvey } from '@/api/surveys'
-import { fetchBrandKit } from '@/api/billing'
+import { getPublicSurvey } from '@/api/survey/surveys'
+import { fetchBrandKit } from '@/api/platform/billing'
 import { mergeBrandThemes, DEFAULT_BRAND_THEME } from '@shared/brandTheme.js'
 
 /** Load org branding for preview/test modes (builder Preview does not use public take route). */

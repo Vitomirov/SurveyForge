@@ -86,7 +86,7 @@ Granular imports also available from `@/store` (same exports).
 
 ### Question metadata (SSOT)
 
-`@/utils/questionHelpers.js`
+`@/utils/survey/questions/questionHelpers.js`
 
 - `QUESTION_TYPES`, `QUESTION_TYPE_KEYS` — canonical type list
 - `TYPE_ICONS`, `TYPE_COLORS` — builder UI tokens

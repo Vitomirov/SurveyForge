@@ -5,7 +5,7 @@ import {
   fetchDomainVerification,
   initDomainVerification,
   checkDomainVerification,
-} from '@/api/billing'
+} from '@/api/platform/billing'
 import { InlineLoader, useToast } from '@/components/ui'
 
 export function DomainVerificationPanel({ onClose }) {

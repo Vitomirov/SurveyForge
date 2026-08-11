@@ -9,8 +9,8 @@ import { createHmac } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { isAdmin, requireRole, surveyScope } from '../server/src/lib/authz.js'
-import { ROLES, isAdminRole } from '../server/src/lib/roles.js'
+import { isAdmin, requireRole, surveyScope } from '../server/src/lib/auth/authz.js'
+import { ROLES, isAdminRole } from '../server/src/lib/auth/roles.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const rootEnv = readFileSync(resolve(__dirname, '../.env'), 'utf8')

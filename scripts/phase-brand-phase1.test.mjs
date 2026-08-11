@@ -8,8 +8,8 @@ import { readFileSync } from 'node:fs'
 import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { makeApi, provisionOrg, surveyId } from './lib/rbacFixtures.mjs'
-import { enforceSurveyBranding, sanitizeOrgBrandKit, sanitizeEmbedOrigins } from '../server/src/lib/brandEnforcement.js'
-import { buildPublicBrandingPayload } from '../server/src/lib/publicBranding.js'
+import { enforceSurveyBranding, sanitizeOrgBrandKit, sanitizeEmbedOrigins } from '../server/src/lib/branding/brandEnforcement.js'
+import { buildPublicBrandingPayload } from '../server/src/lib/branding/publicBranding.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const rootEnv = readFileSync(resolve(__dirname, '../.env'), 'utf8')

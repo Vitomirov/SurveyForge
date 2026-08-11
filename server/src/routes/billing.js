@@ -1,13 +1,13 @@
-import { requireRole, requirePlatformOwner } from '../lib/authz.js'
-import { ROLES } from '../lib/roles.js'
+import { requireRole, requirePlatformOwner } from '../lib/auth/authz.js'
+import { ROLES } from '../lib/auth/roles.js'
 import {
   serializeSubscription,
   serializeInvoice,
   planById,
-} from '../lib/billingPlans.js'
-import { ensureOrgBilling, ensureSupportThread } from '../lib/billingDefaults.js'
-import { readSurveyDomain, patchOrgSettings, readBrandKit, readEmbedAllowedOrigins, readDomainVerification } from '../lib/orgSettings.js'
-import { sanitizeOrgBrandKit, sanitizeEmbedOrigins } from '../lib/brandEnforcement.js'
+} from '../lib/billing/billingPlans.js'
+import { ensureOrgBilling, ensureSupportThread } from '../lib/billing/billingDefaults.js'
+import { readSurveyDomain, patchOrgSettings, readBrandKit, readEmbedAllowedOrigins, readDomainVerification } from '../lib/platform/orgSettings.js'
+import { sanitizeOrgBrandKit, sanitizeEmbedOrigins } from '../lib/branding/brandEnforcement.js'
 import { planFeatureSummary } from '../../../shared/planFeatures.js'
 import { normalizeDomainVerification, defaultDomainVerification } from '../../../shared/domainVerification.js'
 import {
@@ -15,7 +15,7 @@ import {
   countVendorNotifications,
   markOrgBillingSeen,
   markVendorThreadSeen,
-} from '../lib/billingNotifications.js'
+} from '../lib/billing/billingNotifications.js'
 
 const adminOnly = requireRole(ROLES.ADMIN)
 

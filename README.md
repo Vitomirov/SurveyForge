@@ -168,7 +168,7 @@ All engines receive the flat `items` array and current `responses` object. `buil
 
 ### Question type registry
 
-Canonical types live in `src/utils/questionHelpers.js`. Each type requires:
+Canonical types live in `src/utils/survey/questions/questionHelpers.js`. Each type requires:
 
 1. Factory defaults in `store/factories.js`
 2. Builder editor in `components/builder/editors/` (registry in `editors/index.js`)

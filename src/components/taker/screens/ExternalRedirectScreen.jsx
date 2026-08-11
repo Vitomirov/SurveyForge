@@ -1,6 +1,6 @@
 import { ExternalLink, Download } from 'lucide-react'
 import { DEFAULT_SCREEN_MESSAGES } from '@/constants/surveyDefaults'
-import { openExternalRedirect } from '@/utils/externalRedirectEngine'
+import { openExternalRedirect } from '@/utils/survey/engines/externalRedirectEngine'
 
 export function ExternalRedirectScreen({
   settings,

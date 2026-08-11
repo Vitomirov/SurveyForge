@@ -1,4 +1,4 @@
-import { isChoiceType } from '@/utils/questionHelpers'
+import { isChoiceType } from '@/utils/survey/questions/questionHelpers'
 import {
   OPEN_TEXT_PLACEHOLDER,
   OPEN_TEXT_PLACEHOLDER_UNICODE,

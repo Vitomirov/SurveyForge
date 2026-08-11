@@ -7,8 +7,8 @@ loadEnv({ path: resolve(__dirname, '../../.env') })
 
 import { buildApp } from './app.js'
 import { loadConfig } from './config.js'
-import { seedDefaultAdmin, seedPlatformOwner } from './lib/seed.js'
-import { migratePlatformLists } from './lib/migratePlatformLists.js'
+import { seedDefaultAdmin, seedPlatformOwner } from './lib/platform/seed.js'
+import { migratePlatformLists } from './lib/platform/migratePlatformLists.js'
 
 const config = loadConfig()
 

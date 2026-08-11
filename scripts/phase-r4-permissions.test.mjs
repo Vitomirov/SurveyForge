@@ -16,7 +16,7 @@ import {
   canManageBilling,
   roleLabel,
   filterSurveysForSession,
-} from '../src/utils/permissions.js'
+} from '../src/utils/platform/permissions.js'
 
 const adminSession = { userId: 'a1', role: ROLES.ADMIN, name: 'CEO' }
 const editorSession = { userId: 'e1', role: ROLES.EDITOR, name: 'Employee' }

@@ -6,7 +6,7 @@ import {
   ConditionBuilder,
   ConditionSummaryInline,
   buildConditionLogicString,
-} from '@/components/shared/ConditionBuilder'
+} from '@/components/shared/conditions/ConditionBuilder'
 
 // ─── Condition summary for collapsed view ──────────────────────────────────
 function CollapsedSummary({ conditions, questions }) {

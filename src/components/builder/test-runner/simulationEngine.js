@@ -3,10 +3,10 @@
 // Walks page-by-page, logging every decision and checking termination.
 // ═══════════════════════════════════════════════════════════════════════════
 
-import { buildVisiblePages } from '@/utils/visibilityEngine'
-import { evalBlock, checkTermination } from '@/utils/terminationEngine'
-import { resolveBranchTargetPage } from '@/utils/branchEngine'
-import { resolvePageExternalRedirect } from '@/utils/externalRedirectEngine'
+import { buildVisiblePages } from '@/utils/survey/engines/visibilityEngine'
+import { evalBlock, checkTermination } from '@/utils/survey/engines/terminationEngine'
+import { resolveBranchTargetPage } from '@/utils/survey/engines/branchEngine'
+import { resolvePageExternalRedirect } from '@/utils/survey/engines/externalRedirectEngine'
 import { clip } from './branchAnalysis'
 import { buildResponses } from './answerGeneration'
 

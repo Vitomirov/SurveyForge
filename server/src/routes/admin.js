@@ -1,10 +1,10 @@
-import { requireRole } from '../lib/authz.js'
-import { ROLES } from '../lib/roles.js'
+import { requireRole } from '../lib/auth/authz.js'
+import { ROLES } from '../lib/auth/roles.js'
 import {
   buildStatsMap,
   employeeSummary,
   surveyRowMeta,
-} from '../lib/employeeStats.js'
+} from '../lib/platform/employeeStats.js'
 
 const adminOnly = requireRole(ROLES.ADMIN)
 

@@ -1,9 +1,9 @@
-import { normalizeSurveyPlatformIds } from '../lib/platformIds.js'
-import { ownerFromSurvey, CREATOR_SELECT } from '../lib/surveyOwner.js'
-import { surveyScope } from '../lib/authz.js'
-import { findAccessibleSurvey } from '../lib/surveyAccess.js'
-import { assignPublicPath } from '../lib/surveyPublicPath.js'
-import { enforceSurveyBranding, loadOrgPlanContext } from '../lib/brandEnforcement.js'
+import { normalizeSurveyPlatformIds } from '../lib/platform/platformIds.js'
+import { ownerFromSurvey, CREATOR_SELECT } from '../lib/auth/surveyOwner.js'
+import { surveyScope } from '../lib/auth/authz.js'
+import { findAccessibleSurvey } from '../lib/auth/surveyAccess.js'
+import { assignPublicPath } from '../lib/survey/surveyPublicPath.js'
+import { enforceSurveyBranding, loadOrgPlanContext } from '../lib/branding/brandEnforcement.js'
 
 async function loadPlatformLists(prisma, organizationId) {
   const [clients, topics, surveyTypes] = await Promise.all([

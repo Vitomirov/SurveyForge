@@ -1,5 +1,5 @@
-import { isChoiceType } from '@/utils/questionHelpers'
-import { LazyComponent } from '@/components/shared/LazyComponent'
+import { isChoiceType } from '@/utils/survey/questions/questionHelpers'
+import { LazyComponent } from '@/components/shared/infra/LazyComponent'
 import { EDITOR_LOADERS, loadChoiceEditor } from './editorLoaders'
 
 const EDITOR_FALLBACK = <div className="h-8 animate-pulse bg-ink-100 rounded" />

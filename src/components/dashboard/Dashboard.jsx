@@ -8,7 +8,7 @@ import {
 } from 'lucide-react'
 import {
   loadLibrary, deleteSurvey, duplicateSurvey, buildClonedSurvey,
-} from '@/utils/surveyLibrary'
+} from '@/utils/data/surveyLibrary'
 import { useApi } from '@/config/api'
 import { APP_NAME } from '@/constants/branding'
 import { AUTH_COPY, AUTH_ERRORS } from '@/constants/authCopy'
@@ -16,23 +16,23 @@ import { DEFAULT_SURVEY_TITLE } from '@/constants/surveyDefaults'
 import {
   getSurvey, deleteSurveyApi, migrateLocalLibrary,
   metaToLibraryEntry, patchSurvey,
-} from '@/api/surveys'
-import { getDashboard } from '@/api/dashboard'
-import { fetchClients, fetchTopics, fetchSurveyTypes } from '@/api/platform'
+} from '@/api/survey/surveys'
+import { getDashboard } from '@/api/platform/dashboard'
+import { fetchClients, fetchTopics, fetchSurveyTypes } from '@/api/platform/platform'
 import {
   loadClients, loadTopics, loadSurveyTypes,
   SURVEY_STATUSES,
-} from '@/utils/platformStore'
-import { countResponsesForSurveys } from '@/utils/responseStore'
-import { resolveClientName, resolveTopicName, resolveSurveyTypeName } from '@/utils/platformResolve'
+} from '@/utils/data/platformStore'
+import { countResponsesForSurveys } from '@/utils/data/responseStore'
+import { resolveClientName, resolveTopicName, resolveSurveyTypeName } from '@/utils/platform/platformResolve'
 import { InlineLoader, useToast } from '@/components/ui'
-import { prefetchBuilder, prefetchPreview } from '@/utils/routePrefetch'
+import { prefetchBuilder, prefetchPreview } from '@/utils/routing/routePrefetch'
 import {
   canManagePlatform, canSeeAllSurveys, filterSurveysForSession, roleLabel,
   canViewBilling, canManageBilling,
-} from '@/utils/permissions'
-import { fetchBillingNotifications } from '@/api/billing'
-import { fetchVendorNotifications } from '@/api/vendor'
+} from '@/utils/platform/permissions'
+import { fetchBillingNotifications } from '@/api/platform/billing'
+import { fetchVendorNotifications } from '@/api/platform/vendor'
 
 const PlatformSettings = lazy(() => import('./PlatformSettings.jsx'))
 const TeamPanel        = lazy(() => import('./TeamPanel.jsx'))

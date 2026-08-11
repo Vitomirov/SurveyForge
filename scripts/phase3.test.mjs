@@ -3,8 +3,8 @@
  */
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { buildQuestionNumberById } from '../src/utils/questionHelpers.js'
-import { resolvePipingTokens } from '../src/utils/piping.js'
+import { buildQuestionNumberById } from '../src/utils/survey/questions/questionHelpers.js'
+import { resolvePipingTokens } from '../src/utils/survey/questions/piping.js'
 
 test('buildQuestionNumberById assigns sequential numbers to questions only', () => {
   const items = [

@@ -6,7 +6,7 @@ import assert from 'node:assert/strict'
 import {
   buildAvailableQuestionsByIndex,
   buildItemMeta,
-} from '../src/utils/builderLayout.js'
+} from '../src/utils/format/builderLayout.js'
 
 test('buildAvailableQuestionsByIndex returns cumulative questions in O(n) pass', () => {
   const items = [

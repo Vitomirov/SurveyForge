@@ -1,4 +1,4 @@
-import { findAccessibleSurvey } from '../lib/surveyAccess.js'
+import { findAccessibleSurvey } from '../lib/auth/surveyAccess.js'
 
 function normalizeEmail(email) {
   return String(email || '').toLowerCase().trim()

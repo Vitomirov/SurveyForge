@@ -3,7 +3,7 @@ import { GripVertical, Trash2, ChevronDown, ChevronRight, Image as ImageIcon, X,
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { RichTextEditor, VisibilityEditor } from '@/components/shared'
-import { visibilitySummary } from '@/utils/visibilityEngine'
+import { visibilitySummary } from '@/utils/survey/engines/visibilityEngine'
 
 const MAX_IMAGE_BYTES = 4 * 1024 * 1024
 

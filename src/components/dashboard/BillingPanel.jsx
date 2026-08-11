@@ -7,9 +7,9 @@ import {
   fetchBillingSupport,
   postBillingSupportMessage,
   markBillingSeen,
-} from '@/api/billing'
+} from '@/api/platform/billing'
 import { InlineLoader, Modal, StatusPill, useToast } from '@/components/ui'
-import { formatMoney, formatDate } from '@/utils/format'
+import { formatMoney, formatDate } from '@/utils/format/format'
 import { BrandKitPanel } from './BrandKitPanel.jsx'
 import { DomainVerificationPanel } from './DomainVerificationPanel.jsx'
 
@@ -122,6 +122,7 @@ export function BillingPanel({ onClose, onOpen }) {
   const invoices = overview?.invoices ?? []
 
   return (
+    <>
     <Modal
       icon={CreditCard}
       title={AUTH_BILLING.heading}
@@ -207,17 +208,32 @@ export function BillingPanel({ onClose, onOpen }) {
           </div>
         </>
       )}
-      {showBrandKit && (
-        <Modal icon={Palette} title="Brand Kit" onClose={() => setShowBrandKit(false)} bodyClassName="p-0">
-          <BrandKitPanel onClose={() => setShowBrandKit(false)} />
-        </Modal>
-      )}
-      {showDomain && (
-        <Modal icon={Globe} title="Custom domain" onClose={() => setShowDomain(false)} bodyClassName="p-0">
-          <DomainVerificationPanel onClose={() => setShowDomain(false)} />
-        </Modal>
-      )}
     </Modal>
+    {showBrandKit && (
+      <Modal
+        icon={Palette}
+        title="Brand Kit"
+        onClose={() => setShowBrandKit(false)}
+        bodyClassName="p-0"
+        footer={null}
+        zIndex="z-[60]"
+      >
+        <BrandKitPanel onClose={() => setShowBrandKit(false)} />
+      </Modal>
+    )}
+    {showDomain && (
+      <Modal
+        icon={Globe}
+        title="Custom domain"
+        onClose={() => setShowDomain(false)}
+        bodyClassName="p-0"
+        footer={null}
+        zIndex="z-[60]"
+      >
+        <DomainVerificationPanel onClose={() => setShowDomain(false)} />
+      </Modal>
+    )}
+    </>
   )
 }
 

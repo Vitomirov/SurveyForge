@@ -12,7 +12,7 @@
 import { readFileSync } from 'fs'
 import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
-import { QUESTION_TYPES, QUESTION_TYPE_KEYS, isChoiceType, TYPE_COLORS, TYPE_ICONS } from '../src/utils/questionHelpers.js'
+import { QUESTION_TYPES, QUESTION_TYPE_KEYS, isChoiceType, TYPE_COLORS, TYPE_ICONS } from '../src/utils/survey/questions/questionHelpers.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const ROOT = join(__dirname, '..')

@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { Palette } from 'lucide-react'
 import { useApi } from '@/config/api'
-import { fetchBrandKit, patchBrandKit } from '@/api/billing'
+import { fetchBrandKit, patchBrandKit } from '@/api/platform/billing'
 import { InlineLoader, useToast } from '@/components/ui'
 import {
   APPROVED_FONTS,
@@ -27,6 +27,7 @@ export function BrandKitPanel({ onClose }) {
   const [theme, setTheme] = useState({ ...DEFAULT_BRAND_THEME })
   const [embedOrigins, setEmbedOrigins] = useState('')
   const [errors, setErrors] = useState([])
+  const errorsRef = useRef(null)
 
   const load = useCallback(async () => {
     if (!useApi) {
@@ -49,9 +50,18 @@ export function BrandKitPanel({ onClose }) {
   useEffect(() => { load() }, [load])
 
   const onSave = async () => {
+    if (!useApi) {
+      toast({ message: 'Brand Kit requires API mode', type: 'error' })
+      return
+    }
+
     const { theme: validated, errors: validationErrors } = validateBrandTheme(theme)
     setErrors(validationErrors)
-    if (validationErrors.length) return
+    if (validationErrors.length) {
+      toast({ message: validationErrors[0], type: 'error' })
+      errorsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+      return
+    }
 
     setSaving(true)
     try {
@@ -98,7 +108,10 @@ export function BrandKitPanel({ onClose }) {
       </p>
 
       {errors.length > 0 && (
-        <div className="mb-4 text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2">
+        <div
+          ref={errorsRef}
+          className="mb-4 text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2"
+        >
           {errors.map(e => <p key={e}>{e}</p>)}
         </div>
       )}

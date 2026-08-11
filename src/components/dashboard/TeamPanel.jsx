@@ -2,11 +2,11 @@ import { useState, useEffect, useCallback } from 'react'
 import { Users, ChevronLeft, Clock } from 'lucide-react'
 import { useApi } from '@/config/api'
 import { AUTH_TEAM, AUTH_ERRORS } from '@/constants/authCopy'
-import { fetchEmployees, fetchEmployeeDetail } from '@/api/admin'
-import { roleLabel } from '@/utils/permissions'
-import { SURVEY_STATUSES } from '@/utils/platformStore'
+import { fetchEmployees, fetchEmployeeDetail } from '@/api/platform/admin'
+import { roleLabel } from '@/utils/platform/permissions'
+import { SURVEY_STATUSES } from '@/utils/data/platformStore'
 import { InlineLoader, Modal, useToast } from '@/components/ui'
-import { formatDate } from '@/utils/format'
+import { formatDate } from '@/utils/format/format'
 
 const fmtDate = (iso) => formatDate(iso, { fallback: AUTH_TEAM.noActivity })
 

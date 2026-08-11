@@ -1,8 +1,8 @@
-import { fpColumns } from '@/utils/deviceSignals'
+import { fpColumns } from '../format/deviceSignals.js'
 import { rowsToCSV, rowsToCSVLines } from './csvFormatting'
 import { formatAnswer } from './formatAnswer'
 import { sampleValue, fpSampleValue } from './sampleValue'
-import { applyFilters } from '@/utils/responseStore'
+import { applyFilters } from '../data/responseStore.js'
 
 function buildHeaders(surveyItems, survey) {
   const questions  = surveyItems.filter(i => i.itemType === 'question')

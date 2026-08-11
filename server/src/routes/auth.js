@@ -1,5 +1,5 @@
-import { verifyPassword, hashPassword } from '../lib/password.js'
-import { provisionOrgBilling } from '../lib/billingDefaults.js'
+import { verifyPassword, hashPassword } from '../lib/auth/password.js'
+import { provisionOrgBilling } from '../lib/billing/billingDefaults.js'
 
 function buildSession(user, organizationName = null) {
   return {

@@ -23,14 +23,14 @@ import {
 import { AddPanel, StatsPanel, EmptyState } from '@/components/builder/panels'
 import { useAutosave } from '@/hooks/useAutosave'
 import { useApi } from '@/config/api'
-import { buildItemMeta, buildAvailableQuestionsByIndex, buildGroupQuestionCounts } from '@/utils/builderLayout'
+import { buildItemMeta, buildAvailableQuestionsByIndex, buildGroupQuestionCounts } from '@/utils/format/builderLayout'
 import { generateTemplateCSV, downloadCSV } from '@/utils/csvExport'
 import { APP_NAME } from '@/constants/branding'
 import { useSurveyBranding } from '@/hooks/useSurveyBranding'
 import { DEFAULT_DATE_FORMAT, DEFAULT_SCREEN_MESSAGES } from '@/constants/surveyDefaults'
 import { resolveNavigationLockSeconds } from '@/constants/navigationLock'
-import { prefetchCommonEditors, prefetchPreview, prefetchModule } from '@/utils/routePrefetch'
-import { isChoiceType } from '@/utils/questionHelpers'
+import { prefetchCommonEditors, prefetchPreview, prefetchModule } from '@/utils/routing/routePrefetch'
+import { isChoiceType } from '@/utils/survey/questions/questionHelpers'
 import { EDITOR_LOADERS, loadChoiceEditor } from '@/components/builder/editors/editorLoaders'
 import {
   Plus, Eye, BarChart3, Layers,
@@ -39,7 +39,7 @@ import {
 
 const SurveyPreview    = lazy(() => import('@/components/taker/SurveyPreview.jsx'))
 const SurveyTestRunner = lazy(() => import('@/components/builder/test-runner/SurveyTestRunner.jsx'))
-const ExportManager    = lazy(() => import('@/components/builder/ExportManager.jsx'))
+const ExportManager    = lazy(() => import('@/components/builder/managers/ExportManager.jsx'))
 
 export function SurveyBuilder({ initialState, initialRevision = null, onBackToDashboard }) {
   const [state, dispatch] = useReducer(surveyReducer, initialState || INITIAL_STATE)

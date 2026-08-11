@@ -3,13 +3,13 @@ import { Tag, AlertCircle, CheckCircle2, Plus } from 'lucide-react'
 import {
   SURVEY_STATUSES,
   loadClients, loadTopics, loadSurveyTypes,
-} from '@/utils/platformStore'
-import { fetchClients, fetchTopics, fetchSurveyTypes } from '@/api/platform'
+} from '@/utils/data/platformStore'
+import { fetchClients, fetchTopics, fetchSurveyTypes } from '@/api/platform/platform'
 import { useApi } from '@/config/api'
-import { getSession } from '@/utils/authStore'
-import { canManagePlatform } from '@/utils/permissions'
-import { isSurveyCodeTaken } from '@/utils/surveyLibrary'
-import { ShareableSurveyUrl } from './ShareableSurveyUrl'
+import { getSession } from '@/utils/data/authStore'
+import { canManagePlatform } from '@/utils/platform/permissions'
+import { isSurveyCodeTaken } from '@/utils/data/surveyLibrary'
+import { ShareableSurveyUrl } from './managers/ShareableSurveyUrl'
 
 const PlatformSettings = lazy(() => import('@/components/dashboard/PlatformSettings.jsx'))
 

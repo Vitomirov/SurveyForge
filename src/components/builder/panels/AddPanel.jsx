@@ -1,4 +1,4 @@
-import { QUESTION_TYPES, TYPE_COLORS, TYPE_ICONS, QUESTION_TYPE_GROUPS } from '@/utils/questionHelpers'
+import { QUESTION_TYPES, TYPE_COLORS, TYPE_ICONS, QUESTION_TYPE_GROUPS } from '@/utils/survey/questions/questionHelpers'
 import { SectionLabel } from '@/components/ui'
 import { Scissors, FolderPlus, FileText, Zap } from 'lucide-react'
 

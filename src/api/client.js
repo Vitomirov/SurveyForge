@@ -1,6 +1,6 @@
 import { useApi } from '@/config/api'
-import { getAuthToken, clearAuthToken } from '@/api/token'
-import { notifyAuthInvalidated } from '@/api/authEvents'
+import { getAuthToken, clearAuthToken } from '@/api/auth/token'
+import { notifyAuthInvalidated } from '@/api/auth/authEvents'
 import { AUTH_ERRORS } from '@/constants/authCopy'
 
 export class ApiError extends Error {

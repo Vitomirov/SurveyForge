@@ -1,6 +1,6 @@
-import { resolveClientRecord, resolveTopicRecord, resolveSurveyTypeRecord } from '../lib/platformIds.js'
-import { ownerFromSurvey, CREATOR_SELECT } from '../lib/surveyOwner.js'
-import { surveyScope } from '../lib/authz.js'
+import { resolveClientRecord, resolveTopicRecord, resolveSurveyTypeRecord } from '../lib/platform/platformIds.js'
+import { ownerFromSurvey, CREATOR_SELECT } from '../lib/auth/surveyOwner.js'
+import { surveyScope } from '../lib/auth/authz.js'
 
 function surveyMeta(row, questionCount = 0, { clients = [], topics = [], surveyTypes = [] } = {}) {
   const survey = row.survey

@@ -12,8 +12,8 @@ import {
   readEffectiveSurveyDomain,
   patchOrgSettings,
   readDomainVerification,
-} from '../server/src/lib/orgSettings.js'
-import { surveyMatchesRequestHost } from '../server/src/lib/surveyPublicPath.js'
+} from '../server/src/lib/platform/orgSettings.js'
+import { surveyMatchesRequestHost } from '../server/src/lib/survey/surveyPublicPath.js'
 import { resolveVerifiedSurveyDomain, isDomainVerified } from '../shared/domainVerification.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))

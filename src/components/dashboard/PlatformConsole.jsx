@@ -12,9 +12,9 @@ import {
   fetchVendorSupportThread,
   postVendorSupportMessage,
   markVendorThreadSeen,
-} from '@/api/vendor'
+} from '@/api/platform/vendor'
 import { InlineLoader, Modal, StatusPill, useToast } from '@/components/ui'
-import { formatMoney, formatDate } from '@/utils/format'
+import { formatMoney, formatDate } from '@/utils/format/format'
 import { normalizeSurveyDomain } from '@shared/surveyUrl.js'
 
 const PLANS = [

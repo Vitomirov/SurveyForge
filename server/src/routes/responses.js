@@ -1,5 +1,5 @@
-import { findAccessibleSurvey } from '../lib/surveyAccess.js'
-import { normalizeResponseEntry } from '../lib/responseNormalization.js'
+import { findAccessibleSurvey } from '../lib/auth/surveyAccess.js'
+import { normalizeResponseEntry } from '../lib/survey/responseNormalization.js'
 
 const DEFAULT_LIMIT = 50
 const MAX_LIMIT = 200
