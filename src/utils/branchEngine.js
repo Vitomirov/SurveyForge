@@ -2,11 +2,7 @@
 // Skip-to-page rules evaluated when the respondent clicks Next.
 
 import { findPageIndexForBreak } from '@/utils/visibilityEngine'
-import { evaluateQuestionRule, evaluateRulesWithLogic } from '@/utils/terminationEngine'
-import {
-  normalizeQuestionRuleLogic,
-  QUESTION_RULE_LOGIC,
-} from '@/utils/questionRuleLogic'
+import { resolveQuestionRuleTarget } from '@/utils/resolveQuestionRuleTarget'
 
 function resolveForwardBranchTarget(items, responses, targetBreakId, pages, currentPage) {
   if (!targetBreakId) return null
@@ -26,28 +22,18 @@ export function resolveBranchTargetPage(pageQuestions, responses, items, pages, 
     const rules = q.branchRules || []
     if (!rules.length) continue
 
-    const logic = normalizeQuestionRuleLogic(q.branchLogic)
-    const answer = responses[q.id]
-
-    if (logic === QUESTION_RULE_LOGIC.IF_ANY) {
-      // Preserve per-rule iteration: skip rules with no target or no match.
-      for (const rule of rules) {
-        const targetIdx = resolveForwardBranchTarget(
-          items, responses, rule.targetPageBreakId, pages, currentPage,
-        )
-        if (targetIdx === null) continue
-        if (!evaluateQuestionRule(rule, q, answer, responses, items)) continue
-        return targetIdx
-      }
-      continue
-    }
-
-    const { shouldFire } = evaluateRulesWithLogic(rules, logic, q, answer, responses, items)
-    if (!shouldFire) continue
-
-    const targetIdx = resolveForwardBranchTarget(
-      items, responses, q.branchNoneTargetPageBreakId, pages, currentPage,
-    )
+    const targetIdx = resolveQuestionRuleTarget({
+      rules,
+      logic: q.branchLogic,
+      question: q,
+      answer: responses[q.id],
+      responses,
+      allItems: items,
+      getRuleTarget: (rule) =>
+        resolveForwardBranchTarget(items, responses, rule.targetPageBreakId, pages, currentPage),
+      getFallbackTarget: () =>
+        resolveForwardBranchTarget(items, responses, q.branchNoneTargetPageBreakId, pages, currentPage),
+    })
     if (targetIdx !== null) return targetIdx
   }
   return null

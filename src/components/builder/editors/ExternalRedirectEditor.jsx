@@ -4,9 +4,12 @@ import { getBuilderConditionOptions } from '@/utils/questionOptions'
 import { isSafeExternalUrl } from '@/utils/externalRedirectEngine'
 import { TEXT_OPERATORS } from '@/utils/conditionConstants'
 import { TextOperatorSelect } from '@/components/shared/TextOperatorSelect'
+import { RuleLogicSelector } from './RuleLogicSelector'
+import { QUESTION_RULE_LOGIC, normalizeQuestionRuleLogic, questionRuleLogicSummary } from '@/utils/questionRuleLogic'
 
 function ExternalRedirectRuleCard({
   rule, ruleIndex, question, dispatch, onDelete, showChoiceRules, contextItems = [],
+  showExternalUrl = true,
 }) {
   const opts = getBuilderConditionOptions(question, contextItems)
   const isText = rule.ruleType === 'text' || question.questionType === 'open_text'
@@ -67,26 +70,30 @@ function ExternalRedirectRuleCard({
           </div>
         )}
 
-        <span className="text-xs text-emerald-500 flex-1 truncate ml-1">{summary()} → {urlPreview}</span>
+        <span className="text-xs text-emerald-500 flex-1 truncate ml-1">
+          {summary()}{showExternalUrl ? ` → ${urlPreview}` : ''}
+        </span>
         <button onClick={onDelete} className="p-1 text-emerald-400 hover:text-emerald-700 transition-colors shrink-0">
           <Trash2 size={12} />
         </button>
       </div>
 
       <div className="px-3 py-3 space-y-2.5">
-        <div>
-          <label className="text-xs text-ink-500 mb-1 block">External URL</label>
-          <input
-            type="url"
-            value={rule.externalUrl || ''}
-            onChange={e => update({ externalUrl: e.target.value })}
-            placeholder="https://example.com/landing-page"
-            className={`input-base py-1.5 text-sm ${!urlValid ? 'border-amber-400' : ''}`}
-          />
-          {!urlValid && (
-            <p className="text-xs text-amber-600 mt-1">Enter a valid http:// or https:// URL.</p>
-          )}
-        </div>
+        {showExternalUrl && (
+          <div>
+            <label className="text-xs text-ink-500 mb-1 block">External URL</label>
+            <input
+              type="url"
+              value={rule.externalUrl || ''}
+              onChange={e => update({ externalUrl: e.target.value })}
+              placeholder="https://example.com/landing-page"
+              className={`input-base py-1.5 text-sm ${!urlValid ? 'border-amber-400' : ''}`}
+            />
+            {!urlValid && (
+              <p className="text-xs text-amber-600 mt-1">Enter a valid http:// or https:// URL.</p>
+            )}
+          </div>
+        )}
 
         {isMatrix && (
           <>
@@ -216,10 +223,13 @@ function ExternalRedirectRuleCard({
 
 export function ExternalRedirectEditor({ question, dispatch, contextItems = [] }) {
   const rules = question.externalRedirectRules || []
+  const logic = normalizeQuestionRuleLogic(question.externalRedirectLogic)
+  const isIfNone = logic === QUESTION_RULE_LOGIC.IF_NONE
   const isChoiceQ = isChoiceType(question.questionType)
   const isPipedQ = question.pipedOptionsConfig?.enabled
   const isMatrixQ = isMatrixType(question.questionType)
   const showChoiceRule = isChoiceQ || isPipedQ
+  const noneUrlValid = !question.externalRedirectNoneUrl || isSafeExternalUrl(question.externalRedirectNoneUrl)
 
   const addRule = (ruleType) =>
     dispatch({ type: 'ADD_EXTERNAL_REDIRECT_RULE', questionId: question.id, ruleType })
@@ -227,13 +237,41 @@ export function ExternalRedirectEditor({ question, dispatch, contextItems = [] }
   const deleteRule = (ruleId) =>
     dispatch({ type: 'DELETE_EXTERNAL_REDIRECT_RULE', questionId: question.id, ruleId })
 
+  const setLogic = (val) =>
+    dispatch({ type: 'UPDATE_ITEM', id: question.id, patch: { externalRedirectLogic: val } })
+
+  const setNoneUrl = (externalRedirectNoneUrl) =>
+    dispatch({ type: 'UPDATE_ITEM', id: question.id, patch: { externalRedirectNoneUrl } })
+
   return (
     <div>
       {rules.length > 0 && (
         <div className="flex flex-wrap gap-1.5 mb-3 p-2 bg-emerald-50 border border-emerald-100 rounded-lg">
           <span className="text-xs bg-emerald-600 text-white px-2 py-0.5 rounded flex items-center gap-1">
-            <ExternalLink size={9} /> {rules.length} external redirect rule{rules.length !== 1 ? 's' : ''}
+            <ExternalLink size={9} /> {rules.length} external redirect rule{rules.length !== 1 ? 's' : ''} · <em>{questionRuleLogicSummary(logic)}</em>
           </span>
+        </div>
+      )}
+
+      {rules.length > 0 && (
+        <div className="mb-3">
+          <RuleLogicSelector purpose="redirect" value={logic} onChange={setLogic} />
+        </div>
+      )}
+
+      {isIfNone && rules.length > 0 && (
+        <div className="mb-3">
+          <label className="text-xs text-ink-500 mb-1 block">External URL (when no rules match)</label>
+          <input
+            type="url"
+            value={question.externalRedirectNoneUrl || ''}
+            onChange={e => setNoneUrl(e.target.value)}
+            placeholder="https://example.com/fallback"
+            className={`input-base py-1.5 text-sm ${!noneUrlValid ? 'border-amber-400' : ''}`}
+          />
+          {!noneUrlValid && (
+            <p className="text-xs text-amber-600 mt-1">Enter a valid http:// or https:// URL.</p>
+          )}
         </div>
       )}
 
@@ -249,6 +287,7 @@ export function ExternalRedirectEditor({ question, dispatch, contextItems = [] }
               onDelete={() => deleteRule(rule.id)}
               showChoiceRules={showChoiceRule}
               contextItems={contextItems}
+              showExternalUrl={!isIfNone}
             />
           ))}
         </div>
@@ -287,8 +326,20 @@ export function ExternalRedirectEditor({ question, dispatch, contextItems = [] }
 
       {rules.length > 0 && (
         <p className="text-xs text-ink-400 mt-3">
-          Matching rules open the link in a new tab and end the survey when the respondent clicks Next.
+          {isIfNone
+            ? 'Rules are checked when the respondent clicks Next. If none match, they are redirected to the fallback URL; otherwise the survey continues.'
+            : 'Matching rules open the link in a new tab and end the survey when the respondent clicks Next.'}
         </p>
+      )}
+
+      {isIfNone && rules.length > 0 && (
+        <div className="mt-3 p-2.5 bg-amber-50 border border-amber-200 rounded-lg">
+          <p className="text-xs text-amber-800">
+            <strong>Fallback mode active:</strong> respondent is redirected if their answer matches{' '}
+            <strong>none</strong> of the {rules.length} rule{rules.length !== 1 ? 's' : ''} above.
+            Matching any rule keeps them in the survey.
+          </p>
+        </div>
       )}
     </div>
   )

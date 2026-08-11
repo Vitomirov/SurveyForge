@@ -30,6 +30,20 @@ const OPTIONS = {
       compact: 'Skip if NONE fire',
     },
   },
+  redirect: {
+    if_any: {
+      title: 'Redirect if ANY rule fires',
+      desc: 'Send to an external URL when at least one condition is met. Each rule can have a different URL.',
+      example: 'e.g. "Yes" → partner.com, "No" → thank-you.com',
+      compact: 'Redirect if ANY rule fires',
+    },
+    if_none: {
+      title: 'Redirect if NONE of the rules fire',
+      desc: 'Continue the survey when a rule matches; otherwise redirect to the fallback URL.',
+      example: 'e.g. Must select "Expert" to stay; others are sent to an external page',
+      compact: 'Redirect if NONE fire',
+    },
+  },
 }
 
 const VARIANT_STYLES = {
@@ -44,6 +58,12 @@ const VARIANT_STYLES = {
     inactive: 'border-ink-200 text-ink-500',
     detailedActive: 'border-sky-400 bg-sky-50',
     radioActive: 'border-sky-600 bg-sky-600',
+  },
+  redirect: {
+    active: 'border-emerald-400 bg-emerald-50 text-emerald-700',
+    inactive: 'border-ink-200 text-ink-500',
+    detailedActive: 'border-emerald-400 bg-emerald-50',
+    radioActive: 'border-emerald-600 bg-emerald-600',
   },
 }
 

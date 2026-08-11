@@ -1,7 +1,7 @@
 // ─── External Redirect Engine ───────────────────────────────────────────────
-// Redirect on Next when a question rule matches. Reuses evaluateQuestionRule.
+// Redirect on Next when a question rule matches. Reuses shared rule evaluation.
 
-import { evaluateQuestionRule } from '@/utils/terminationEngine'
+import { resolveQuestionRuleTarget } from '@/utils/resolveQuestionRuleTarget'
 
 export function isSafeExternalUrl(url) {
   if (!url || typeof url !== 'string') return false
@@ -13,14 +13,25 @@ export function isSafeExternalUrl(url) {
   }
 }
 
-/** First matching rule on this question, or null. */
+function validUrl(url) {
+  return isSafeExternalUrl(url) ? url.trim() : null
+}
+
+/** Matching rule on this question, or null. */
 export function resolveExternalRedirectUrl(question, answer, responses, allItems) {
-  for (const rule of question.externalRedirectRules || []) {
-    if (!isSafeExternalUrl(rule.externalUrl)) continue
-    if (!evaluateQuestionRule(rule, question, answer, responses, allItems)) continue
-    return rule.externalUrl.trim()
-  }
-  return null
+  const rules = question.externalRedirectRules || []
+  if (!rules.length) return null
+
+  return resolveQuestionRuleTarget({
+    rules,
+    logic: question.externalRedirectLogic,
+    question,
+    answer,
+    responses,
+    allItems,
+    getRuleTarget: (rule) => validUrl(rule.externalUrl),
+    getFallbackTarget: () => validUrl(question.externalRedirectNoneUrl),
+  })
 }
 
 /** First matching rule across page questions (checked when respondent clicks Next). */

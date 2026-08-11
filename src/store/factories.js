@@ -90,6 +90,8 @@ export const makeQuestion = (questionType = 'single_select') => {
     branchLogic: 'if_any',
     branchNoneTargetPageBreakId: '',
     externalRedirectRules: [],
+    externalRedirectLogic: 'if_any',
+    externalRedirectNoneUrl: '',
 
     openTextConfig: {
       multiline: true,
