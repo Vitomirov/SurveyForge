@@ -1,32 +1,15 @@
 import { maxSurveys } from '../../../../shared/planFeatures.js'
+import { PLAN_CATALOG } from '../../../../shared/planCatalog.js'
 
 /** Subscription plan catalog — amounts in cents (USD). */
-export const PLANS = {
-  free_trial: {
-    id: 'free_trial',
-    name: 'Free Trial',
-    seats: 1,
-    priceCents: 0,
-  },
-  starter: {
-    id: 'starter',
-    name: 'Starter',
-    seats: 5,
-    priceCents: 4900,
-  },
-  professional: {
-    id: 'professional',
-    name: 'Professional',
-    seats: 25,
-    priceCents: 14900,
-  },
-  enterprise: {
-    id: 'enterprise',
-    name: 'Enterprise',
-    seats: 100,
-    priceCents: 49900,
-  },
-}
+export const PLANS = Object.fromEntries(
+  Object.entries(PLAN_CATALOG).map(([id, plan]) => [id, {
+    id: plan.id,
+    name: plan.name,
+    seats: plan.seats,
+    priceCents: plan.priceCents,
+  }]),
+)
 
 export const PLAN_IDS = new Set(Object.keys(PLANS))
 

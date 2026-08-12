@@ -195,3 +195,54 @@ test('vendor org is isolated — admin cannot read another org billing via vendo
   })
   assert.equal(detail.status, 403)
 })
+
+test('org admin lists self-service plan options', async () => {
+  const res = await api('/api/billing/plans', { token: fixtures.adminToken })
+  assert.equal(res.status, 200)
+  assert.ok(Array.isArray(res.data.plans))
+  assert.ok(res.data.plans.some(p => p.direction === 'current'))
+  assert.ok(res.data.plans.some(p => p.direction === 'upgrade' || p.direction === 'downgrade'))
+})
+
+test('org admin upgrades subscription from billing dashboard', async () => {
+  const trial = await api('/api/auth/signup', {
+    method: 'POST',
+    body: {
+      organizationName: `Upgrade Org ${unique}`,
+      name: 'Upgrade Admin',
+      username: `upgr_${unique}`,
+      password: 'testpass123',
+    },
+  })
+  assert.equal(trial.status, 201)
+
+  const upgrade = await api('/api/billing/subscription', {
+    method: 'PATCH',
+    token: trial.data.token,
+    body: { planId: 'starter' },
+  })
+  assert.equal(upgrade.status, 200)
+  assert.equal(upgrade.data.subscription.planId, 'starter')
+  assert.equal(upgrade.data.subscription.status, 'active')
+  assert.equal(upgrade.data.direction, 'upgrade')
+  assert.ok(upgrade.data.invoice)
+})
+
+test('downgrade blocked when team exceeds target seat limit', async () => {
+  const downgrade = await api('/api/billing/subscription', {
+    method: 'PATCH',
+    token: fixtures.adminToken,
+    body: { planId: 'free_trial' },
+  })
+  assert.equal(downgrade.status, 400)
+  assert.equal(downgrade.data.code, 'PLAN_NOT_AVAILABLE')
+})
+
+test('editor cannot change subscription plan', async () => {
+  const res = await api('/api/billing/subscription', {
+    method: 'PATCH',
+    token: fixtures.editorToken,
+    body: { planId: 'professional' },
+  })
+  assert.equal(res.status, 403)
+})

@@ -14,6 +14,7 @@ import {
   countOrgBillingNotifications,
   markOrgBillingSeen,
 } from '../lib/billing/billingNotifications.js'
+import { buildPlanChangeOptions, applyPlanChange } from '../lib/billing/changePlan.js'
 
 const adminOnly = requireRole(ROLES.ADMIN)
 
@@ -184,6 +185,41 @@ export async function registerBillingRoutes(app) {
       orderBy: { createdAt: 'desc' },
     })
     return { invoices: rows.map(serializeInvoice) }
+  })
+
+  app.get('/api/billing/plans', { preHandler: adminOnly }, async (request) => {
+    return buildPlanChangeOptions(app.prisma, request.organizationId)
+  })
+
+  app.patch('/api/billing/subscription', { preHandler: adminOnly }, async (request, reply) => {
+    const { planId } = request.body ?? {}
+    if (!planId || typeof planId !== 'string') {
+      return reply.code(400).send({ error: 'planId is required.' })
+    }
+
+    const result = await applyPlanChange(app.prisma, request.organizationId, planId)
+    if (!result.ok) {
+      return reply.code(result.blockers?.length ? 409 : 400).send({
+        error: result.error,
+        code: result.code,
+        blockers: result.blockers,
+      })
+    }
+
+    const invoices = await app.prisma.invoice.findMany({
+      where: { organizationId: request.organizationId },
+      orderBy: { createdAt: 'desc' },
+      take: 12,
+    })
+
+    return {
+      subscription: result.subscription,
+      planFeatures: result.planFeatures,
+      usage: result.usage,
+      invoice: result.invoice,
+      direction: result.direction,
+      invoices: invoices.map(serializeInvoice),
+    }
   })
 }
 
