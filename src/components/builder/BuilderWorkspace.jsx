@@ -21,7 +21,7 @@ export function BuilderWorkspace({
   onOpenMore,
 }) {
   return (
-    <div className="flex-1 min-h-0 max-w-screen-xl mx-auto w-full px-4 sm:px-6 py-4 sm:py-6 lg:py-0 flex flex-col lg:flex-row gap-4 lg:gap-6 lg:overflow-hidden">
+    <div className="flex-1 min-h-0 max-w-[1600px] mx-auto w-full px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-0 flex flex-col lg:flex-row gap-4 lg:gap-6 lg:overflow-hidden">
       <main className="flex-1 min-w-0 lg:flex lg:flex-col lg:min-h-0">
         <div className="lg:flex-1 lg:overflow-y-auto lg:min-h-0 lg:py-6 lg:pr-0.5">
           <SurveyHeaderCard survey={state.survey} dispatch={dispatch} />

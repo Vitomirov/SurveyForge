@@ -387,11 +387,18 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
   return (
     <div className="min-h-screen bg-surface flex flex-col">
       <Suspense fallback={
-        <header className="bg-white border-b border-ink-200 min-h-[4.25rem]" />
+        <header className="bg-white/95 backdrop-blur-md border-b border-ink-200/80 min-h-[4.25rem]" />
       }>
         <DashboardHeader
           session={session}
           onNewSurvey={onNewSurvey}
+          onGoHome={() => {
+            setShowAccount(false)
+            setShowSettings(false)
+            setShowTeam(false)
+            setShowBilling(false)
+            setShowPlatform(false)
+          }}
           onLogout={onLogout}
           onOpenAccount={() => setShowAccount(true)}
           onOpenSettings={() => { setShowSettings(true); refresh() }}

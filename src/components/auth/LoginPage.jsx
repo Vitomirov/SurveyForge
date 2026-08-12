@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import { Layers, Eye, EyeOff, AlertCircle } from 'lucide-react'
+import { Eye, EyeOff, AlertCircle } from 'lucide-react'
+import { AppLogo } from '@/components/shared/branding/AppLogo.jsx'
 import { login, signup, DEFAULT_CREDENTIALS } from '@/utils/data/authStore'
 import { prefetchDashboard, prefetchBuilder } from '@/utils/routing/routePrefetch'
 import { AUTH_COPY, AUTH_VALIDATION } from '@/constants/authCopy'
-import { APP_NAME, APP_TAGLINE } from '@/constants/branding'
+import { APP_TAGLINE } from '@/constants/branding'
 
 export function LoginPage({ onLogin }) {
   const [mode, setMode] = useState('login') // 'login' | 'signup'
@@ -64,14 +65,9 @@ export function LoginPage({ onLogin }) {
     <div className="min-h-screen bg-ink-50 flex items-center justify-center p-4 sm:p-6 safe-top safe-bottom">
       <div className="w-full max-w-sm">
         {/* Logo */}
-        <div className="flex items-center justify-center gap-3 mb-8">
-          <div className="w-10 h-10 bg-brand-600 rounded-xl flex items-center justify-center shadow-md">
-            <Layers size={20} className="text-white" />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold text-ink-900 tracking-tight">{APP_NAME}</h1>
-            <p className="text-xs text-ink-400">{APP_TAGLINE}</p>
-          </div>
+        <div className="flex flex-col items-center mb-8">
+          <AppLogo size="lg" className="w-[min(280px,80vw)]" />
+          <p className="text-xs text-ink-400 mt-3">{APP_TAGLINE}</p>
         </div>
 
         {/* Card */}
