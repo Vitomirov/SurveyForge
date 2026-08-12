@@ -17,7 +17,7 @@ import { buildQuestionNumberById } from '@/utils/survey/questions/questionHelper
 import { prefetchModule, prefetchCommonQuestions } from '@/utils/routing/routePrefetch'
 import { usePageNavigationLock } from '@/hooks/usePageNavigationLock'
 import { useEmbedMessaging } from '@/hooks/useEmbedMessaging'
-import { brandThemeToCssVars } from '@shared/brandTheme.js'
+import { brandThemeToCssVars, ensureBrandFontLoaded } from '@shared/brandTheme.js'
 import { APP_NAME } from '@/constants/branding'
 import { QUESTION_LOADERS } from './questions/questionLoaders'
 import { QuestionRenderer } from './questions'
@@ -42,6 +42,12 @@ export function SurveyPreview({ survey, items, onClose, isPublic = false, isEmbe
   // Runs in the background regardless of cover page state, so by the time
   // the respondent reaches the end the data is already ready to attach.
   const themeVars = brandThemeToCssVars(branding?.theme)
+  const buttonVariant = branding?.theme?.buttonVariant || 'solid'
+  const brandFontKey = branding?.theme?.fontKey
+
+  useEffect(() => {
+    if (brandFontKey) ensureBrandFontLoaded(brandFontKey)
+  }, [brandFontKey])
   const displayLogo = survey?.companyLogo || branding?.logo || null
   // Pro/Enterprise: hidePlatformBranding from API — never show footer unless starter plan
   const showPoweredByFooter = isPublic && branding?.hidePlatformBranding !== true
@@ -297,6 +303,7 @@ export function SurveyPreview({ survey, items, onClose, isPublic = false, isEmbe
     <div
       ref={rootRef}
       className="survey-theme min-h-screen flex flex-col"
+      data-sf-button-variant={buttonVariant}
       style={{ ...themeVars, backgroundColor: 'var(--sf-bg)', color: 'var(--sf-text)', fontFamily: 'var(--sf-font)' }}
     >
       {/* Header — hidden in embed mode for minimal chrome */}

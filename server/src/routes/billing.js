@@ -5,47 +5,17 @@ import {
   serializeInvoice,
   planById,
 } from '../lib/billing/billingPlans.js'
-import { ensureOrgBilling, ensureSupportThread } from '../lib/billing/billingDefaults.js'
+import { ensureOrgBilling } from '../lib/billing/billingDefaults.js'
 import { readSurveyDomain, patchOrgSettings, readBrandKit, readEmbedAllowedOrigins, readDomainVerification } from '../lib/platform/orgSettings.js'
 import { sanitizeOrgBrandKit, sanitizeEmbedOrigins } from '../lib/branding/brandEnforcement.js'
 import { planFeatureSummary } from '../../../shared/planFeatures.js'
 import { normalizeDomainVerification, defaultDomainVerification } from '../../../shared/domainVerification.js'
 import {
   countOrgBillingNotifications,
-  countVendorNotifications,
   markOrgBillingSeen,
-  markVendorThreadSeen,
 } from '../lib/billing/billingNotifications.js'
 
 const adminOnly = requireRole(ROLES.ADMIN)
-
-function messageRow(row) {
-  return {
-    id:        row.id,
-    body:      row.body,
-    createdAt: row.createdAt.toISOString(),
-    author: {
-      id:       row.author.id,
-      name:     row.author.name || row.author.username || row.author.email,
-      username: row.author.username || row.author.email,
-      role:     row.author.role,
-    },
-  }
-}
-
-async function loadSupportThread(prisma, organizationId) {
-  const thread = await ensureSupportThread(prisma, organizationId)
-  const messages = await prisma.supportMessage.findMany({
-    where: { threadId: thread.id },
-    orderBy: { createdAt: 'asc' },
-    include: {
-      author: {
-        select: { id: true, name: true, username: true, email: true, role: true },
-      },
-    },
-  })
-  return { thread, messages }
-}
 
 export async function registerBillingRoutes(app) {
   app.get('/api/billing/notifications', { preHandler: adminOnly }, async (request) => {
@@ -209,77 +179,17 @@ export async function registerBillingRoutes(app) {
     })
     return { invoices: rows.map(serializeInvoice) }
   })
-
-  app.get('/api/billing/support', { preHandler: adminOnly }, async (request) => {
-    const { thread, messages } = await loadSupportThread(app.prisma, request.organizationId)
-    return {
-      thread: {
-        id:     thread.id,
-        status: thread.status,
-      },
-      messages: messages.map(messageRow),
-    }
-  })
-
-  app.post('/api/billing/support/messages', { preHandler: adminOnly }, async (request, reply) => {
-    const body = request.body?.body?.trim()
-    if (!body) {
-      return reply.code(400).send({ error: 'Message body is required.' })
-    }
-
-    const thread = await ensureSupportThread(app.prisma, request.organizationId)
-    const row = await app.prisma.supportMessage.create({
-      data: {
-        threadId: thread.id,
-        authorId: request.auth.userId,
-        body,
-      },
-      include: {
-        author: {
-          select: { id: true, name: true, username: true, email: true, role: true },
-        },
-      },
-    })
-
-    await app.prisma.supportThread.update({
-      where: { id: thread.id },
-      data: { status: 'open', orgLastReadAt: new Date() },
-    })
-
-    return { message: messageRow(row) }
-  })
 }
 
 export async function registerVendorRoutes(app) {
-  app.get('/api/vendor/notifications', { preHandler: requirePlatformOwner }, async () => {
-    return countVendorNotifications(app.prisma)
-  })
-
-  app.post('/api/vendor/notifications/seen/:orgId', { preHandler: requirePlatformOwner }, async (request, reply) => {
-    const org = await app.prisma.organization.findUnique({
-      where: { id: request.params.orgId },
-      select: { id: true },
-    })
-    if (!org) return reply.code(404).send({ error: 'Organization not found' })
-    await markVendorThreadSeen(app.prisma, org.id)
-    return { ok: true }
-  })
-
   app.get('/api/vendor/organizations', { preHandler: requirePlatformOwner }, async () => {
-    const [orgs, notifications] = await Promise.all([
-      app.prisma.organization.findMany({
-        orderBy: { name: 'asc' },
-        include: {
-          subscription: true,
-          _count: { select: { users: true, surveys: true } },
-        },
-      }),
-      countVendorNotifications(app.prisma),
-    ])
-
-    const unreadByOrg = new Map(
-      notifications.organizations.map(o => [o.organizationId, o.unreadMessages])
-    )
+    const orgs = await app.prisma.organization.findMany({
+      orderBy: { name: 'asc' },
+      include: {
+        subscription: true,
+        _count: { select: { users: true, surveys: true } },
+      },
+    })
 
     return {
       organizations: orgs.map(org => ({
@@ -288,7 +198,6 @@ export async function registerVendorRoutes(app) {
         createdAt:    org.createdAt.toISOString(),
         userCount:    org._count.users,
         surveyCount:  org._count.surveys,
-        unreadMessages: unreadByOrg.get(org.id) ?? 0,
         subscription: org.subscription
           ? serializeSubscription(org.subscription)
           : null,
@@ -418,82 +327,5 @@ export async function registerVendorRoutes(app) {
     })
 
     return { invoice: serializeInvoice(updated) }
-  })
-
-  app.get('/api/vendor/support/threads', { preHandler: requirePlatformOwner }, async () => {
-    const threads = await app.prisma.supportThread.findMany({
-      orderBy: { updatedAt: 'desc' },
-      include: {
-        organization: { select: { id: true, name: true } },
-        messages: {
-          orderBy: { createdAt: 'desc' },
-          take: 1,
-          include: {
-            author: {
-              select: { id: true, name: true, username: true, email: true, role: true },
-            },
-          },
-        },
-      },
-    })
-
-    return {
-      threads: threads.map(t => ({
-        id:               t.id,
-        status:           t.status,
-        updatedAt:        t.updatedAt.toISOString(),
-        organizationId:   t.organizationId,
-        organizationName: t.organization.name,
-        lastMessage:      t.messages[0] ? messageRow(t.messages[0]) : null,
-      })),
-    }
-  })
-
-  app.get('/api/vendor/support/threads/:orgId', { preHandler: requirePlatformOwner }, async (request, reply) => {
-    const org = await app.prisma.organization.findUnique({
-      where: { id: request.params.orgId },
-      select: { id: true, name: true },
-    })
-    if (!org) return reply.code(404).send({ error: 'Organization not found' })
-
-    const { thread, messages } = await loadSupportThread(app.prisma, org.id)
-    return {
-      organization: org,
-      thread: { id: thread.id, status: thread.status },
-      messages: messages.map(messageRow),
-    }
-  })
-
-  app.post('/api/vendor/support/threads/:orgId/messages', { preHandler: requirePlatformOwner }, async (request, reply) => {
-    const body = request.body?.body?.trim()
-    if (!body) {
-      return reply.code(400).send({ error: 'Message body is required.' })
-    }
-
-    const org = await app.prisma.organization.findUnique({
-      where: { id: request.params.orgId },
-    })
-    if (!org) return reply.code(404).send({ error: 'Organization not found' })
-
-    const thread = await ensureSupportThread(app.prisma, org.id)
-    const row = await app.prisma.supportMessage.create({
-      data: {
-        threadId: thread.id,
-        authorId: request.auth.userId,
-        body,
-      },
-      include: {
-        author: {
-          select: { id: true, name: true, username: true, email: true, role: true },
-        },
-      },
-    })
-
-    await app.prisma.supportThread.update({
-      where: { id: thread.id },
-      data: { updatedAt: new Date(), vendorLastReadAt: new Date() },
-    })
-
-    return { message: messageRow(row) }
   })
 }

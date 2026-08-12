@@ -8,7 +8,7 @@ import {
 } from '@/api/platform/billing'
 import { InlineLoader, useToast } from '@/components/ui'
 
-export function DomainVerificationPanel({ onClose }) {
+export function DomainVerificationPanel({ onClose, embedded = false }) {
   const { toast } = useToast()
   const [loading, setLoading] = useState(useApi)
   const [planFeatures, setPlanFeatures] = useState(null)
@@ -67,20 +67,24 @@ export function DomainVerificationPanel({ onClose }) {
 
   if (!planFeatures?.customDomain) {
     return (
-      <div className="p-6">
-        <h2 className="text-lg font-bold text-ink-800 mb-2">Custom domain</h2>
+      <div className={embedded ? '' : 'p-6'}>
+        {!embedded && <h2 className="text-lg font-bold text-ink-800 mb-2">Custom domain</h2>}
         <p className="text-sm text-ink-500">Verified custom domains are available on Enterprise plans.</p>
-        <button type="button" onClick={onClose} className="btn-ghost mt-4">Close</button>
+        {!embedded && onClose && (
+          <button type="button" onClick={onClose} className="btn-ghost mt-4">Close</button>
+        )}
       </div>
     )
   }
 
   return (
-    <div className="p-6 max-w-xl">
-      <div className="flex items-center gap-2 mb-1">
-        <Globe size={18} className="text-brand-600" />
-        <h2 className="text-lg font-bold text-ink-800">Custom domain verification</h2>
-      </div>
+    <div className={embedded ? '' : 'p-6 max-w-xl'}>
+      {!embedded && (
+        <div className="flex items-center gap-2 mb-1">
+          <Globe size={18} className="text-brand-600" />
+          <h2 className="text-lg font-bold text-ink-800">Custom domain verification</h2>
+        </div>
+      )}
       <p className="text-sm text-ink-500 mb-4">
         Your survey domain must be verified before public URLs use <strong>{surveyDomain || 'your domain'}</strong>.
       </p>
@@ -106,7 +110,9 @@ export function DomainVerificationPanel({ onClose }) {
         <button type="button" onClick={check} disabled={!verification?.txtValue || busy} className="btn-ghost border border-ink-200">
           Check DNS
         </button>
-        <button type="button" onClick={onClose} className="btn-ghost">Close</button>
+        {!embedded && onClose && (
+          <button type="button" onClick={onClose} className="btn-ghost">Close</button>
+        )}
       </div>
     </div>
   )

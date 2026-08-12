@@ -25,7 +25,6 @@ model Organization {
   surveyTypes  SurveyType[]
   subscription Subscription?
   invoices     Invoice[]
-  supportThread SupportThread?
 
   @@map("organizations")
 }
@@ -43,7 +42,6 @@ model User {
 
   organization     Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   surveys          Survey[]         @relation("SurveyCreator")
-  supportMessages  SupportMessage[]
 
   @@unique([organizationId, email])
   @@map("users")
@@ -177,34 +175,4 @@ model Invoice {
   @@index([organizationId])
   @@index([organizationId, createdAt(sort: Desc)])
   @@map("invoices")
-}
-
-model SupportThread {
-  id               String    @id @default(uuid())
-  organizationId   String    @unique @map("organization_id")
-  status           String    @default("open") @map("support_thread_status")
-  orgLastReadAt    DateTime? @map("support_org_last_read_at")
-  vendorLastReadAt DateTime? @map("support_vendor_last_read_at")
-  createdAt        DateTime  @default(now()) @map("support_thread_created_at")
-  updatedAt        DateTime  @updatedAt @map("support_thread_updated_at")
-
-  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  messages     SupportMessage[]
-
-  @@map("support_threads")
-}
-
-model SupportMessage {
-  id        String   @id @default(uuid())
-  threadId  String   @map("support_thread_id")
-  authorId  String   @map("support_message_author_id")
-  body      String   @map("support_message_body")
-  createdAt DateTime @default(now()) @map("support_message_created_at")
-
-  thread SupportThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
-  author User          @relation(fields: [authorId], references: [id], onDelete: Cascade)
-
-  @@index([threadId])
-  @@index([threadId, createdAt])
-  @@map("support_messages")
 }

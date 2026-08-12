@@ -1,98 +1,15 @@
-import { useState, useEffect, useCallback } from 'react'
-import { CreditCard, MessageSquare, Send, Palette, Globe } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { CreditCard } from 'lucide-react'
 import { useApi } from '@/config/api'
 import { AUTH_BILLING, AUTH_ERRORS } from '@/constants/authCopy'
-import {
-  fetchBillingOverview,
-  fetchBillingSupport,
-  postBillingSupportMessage,
-  markBillingSeen,
-} from '@/api/platform/billing'
+import { fetchBillingOverview, markBillingSeen } from '@/api/platform/billing'
 import { InlineLoader, Modal, StatusPill, useToast } from '@/components/ui'
 import { formatMoney, formatDate } from '@/utils/format/format'
-import { BrandKitPanel } from './BrandKitPanel.jsx'
-import { DomainVerificationPanel } from './DomainVerificationPanel.jsx'
-
-function SupportSection({ onSent }) {
-  const { toast } = useToast()
-  const [loading, setLoading] = useState(true)
-  const [messages, setMessages] = useState([])
-  const [draft, setDraft] = useState('')
-  const [sending, setSending] = useState(false)
-
-  const load = useCallback(async () => {
-    setLoading(true)
-    try {
-      const data = await fetchBillingSupport()
-      setMessages(data.messages || [])
-    } catch (err) {
-      toast({ message: err.message || AUTH_ERRORS.forbidden, type: 'error' })
-    } finally {
-      setLoading(false)
-    }
-  }, [toast])
-
-  useEffect(() => { load() }, [load])
-
-  const send = async (e) => {
-    e.preventDefault()
-    const body = draft.trim()
-    if (!body || sending) return
-    setSending(true)
-    try {
-      const data = await postBillingSupportMessage(body)
-      setMessages(prev => [...prev, data.message])
-      setDraft('')
-      onSent?.()
-    } catch (err) {
-      toast({ message: err.message || AUTH_ERRORS.forbidden, type: 'error' })
-    } finally {
-      setSending(false)
-    }
-  }
-
-  if (loading) return <InlineLoader label="Loading support…" />
-
-  return (
-    <div>
-      <h3 className="text-sm font-semibold text-ink-800 mb-1">{AUTH_BILLING.supportHeading}</h3>
-      <p className="text-xs text-ink-400 mb-4">{AUTH_BILLING.supportSubtitle}</p>
-
-      <div className="border border-ink-100 rounded-xl max-h-56 overflow-y-auto p-3 space-y-3 mb-3 bg-ink-50/40">
-        {messages.length === 0 ? (
-          <p className="text-sm text-ink-400 text-center py-6">No messages yet. Start a conversation below.</p>
-        ) : messages.map(msg => (
-          <div key={msg.id} className="text-sm">
-            <p className="text-xs text-ink-400 mb-0.5">
-              {msg.author.name} · {formatDate(msg.createdAt)}
-            </p>
-            <p className="text-ink-700 whitespace-pre-wrap">{msg.body}</p>
-          </div>
-        ))}
-      </div>
-
-      <form onSubmit={send} className="flex gap-2">
-        <textarea
-          value={draft}
-          onChange={e => setDraft(e.target.value)}
-          placeholder={AUTH_BILLING.supportPlaceholder}
-          rows={2}
-          className="flex-1 input-field text-sm resize-none"
-        />
-        <button type="submit" disabled={!draft.trim() || sending} className="btn-primary px-3 self-end">
-          <Send size={15} />
-        </button>
-      </form>
-    </div>
-  )
-}
 
 export function BillingPanel({ onClose, onOpen }) {
   const { toast } = useToast()
   const [loading, setLoading] = useState(useApi)
   const [overview, setOverview] = useState(null)
-  const [showBrandKit, setShowBrandKit] = useState(false)
-  const [showDomain, setShowDomain] = useState(false)
 
   useEffect(() => {
     if (!useApi) {
@@ -122,7 +39,6 @@ export function BillingPanel({ onClose, onOpen }) {
   const invoices = overview?.invoices ?? []
 
   return (
-    <>
     <Modal
       icon={CreditCard}
       title={AUTH_BILLING.heading}
@@ -158,15 +74,6 @@ export function BillingPanel({ onClose, onOpen }) {
             </div>
           )}
 
-          <div className="flex flex-wrap gap-2">
-            <button type="button" onClick={() => setShowBrandKit(true)} className="btn-ghost border border-ink-200 text-sm">
-              <Palette size={15} /> Brand Kit
-            </button>
-            <button type="button" onClick={() => setShowDomain(true)} className="btn-ghost border border-ink-200 text-sm">
-              <Globe size={15} /> Custom domain
-            </button>
-          </div>
-
           <div>
             <h3 className="text-sm font-semibold text-ink-800 mb-3">{AUTH_BILLING.invoices}</h3>
             {invoices.length === 0 ? (
@@ -198,42 +105,9 @@ export function BillingPanel({ onClose, onOpen }) {
               </div>
             )}
           </div>
-
-          <div className="border-t border-ink-100 pt-6">
-            <div className="flex items-center gap-2 mb-4">
-              <MessageSquare size={16} className="text-brand-600" />
-              <span className="text-sm font-semibold text-ink-800">Support</span>
-            </div>
-            <SupportSection onSent={onOpen} />
-          </div>
         </>
       )}
     </Modal>
-    {showBrandKit && (
-      <Modal
-        icon={Palette}
-        title="Brand Kit"
-        onClose={() => setShowBrandKit(false)}
-        bodyClassName="p-0"
-        footer={null}
-        zIndex="z-[60]"
-      >
-        <BrandKitPanel onClose={() => setShowBrandKit(false)} />
-      </Modal>
-    )}
-    {showDomain && (
-      <Modal
-        icon={Globe}
-        title="Custom domain"
-        onClose={() => setShowDomain(false)}
-        bodyClassName="p-0"
-        footer={null}
-        zIndex="z-[60]"
-      >
-        <DomainVerificationPanel onClose={() => setShowDomain(false)} />
-      </Modal>
-    )}
-    </>
   )
 }
 

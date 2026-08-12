@@ -10,6 +10,7 @@ import {
   DEFAULT_BRAND_THEME,
   validateBrandTheme,
 } from '@shared/brandTheme.js'
+import { BrandThemePreview } from '@/components/shared/branding/BrandThemePreview.jsx'
 
 const COLOR_FIELDS = [
   { key: 'primaryColor', label: 'Primary' },
@@ -19,7 +20,7 @@ const COLOR_FIELDS = [
   { key: 'buttonTextColor', label: 'Button text' },
 ]
 
-export function BrandKitPanel({ onClose }) {
+export function BrandKitPanel({ onClose, embedded = false }) {
   const { toast } = useToast()
   const [loading, setLoading] = useState(useApi)
   const [saving, setSaving] = useState(false)
@@ -87,25 +88,36 @@ export function BrandKitPanel({ onClose }) {
 
   if (!planFeatures?.brandKit) {
     return (
-      <div className="p-6">
-        <h2 className="text-lg font-bold text-ink-800 mb-2">Brand Kit</h2>
+      <div className={embedded ? '' : 'p-6'}>
+        {!embedded && <h2 className="text-lg font-bold text-ink-800 mb-2">Brand Kit</h2>}
         <p className="text-sm text-ink-500 mb-4">
           Custom logos, colors, and fonts are available on Professional and Enterprise plans.
         </p>
-        <button type="button" onClick={onClose} className="btn-ghost">Close</button>
+        {!embedded && onClose && (
+          <button type="button" onClick={onClose} className="btn-ghost">Close</button>
+        )}
       </div>
     )
   }
 
   return (
-    <div className="p-6 max-w-2xl">
-      <div className="flex items-center gap-2 mb-1">
-        <Palette size={18} className="text-brand-600" />
-        <h2 className="text-lg font-bold text-ink-800">Brand Kit</h2>
-      </div>
-      <p className="text-sm text-ink-500 mb-6">
-        Set organization defaults for logos, colors, and typography. New surveys inherit these settings.
-      </p>
+    <div className={embedded ? '' : 'p-6'}>
+      {!embedded && (
+        <>
+          <div className="flex items-center gap-2 mb-1">
+            <Palette size={18} className="text-brand-600" />
+            <h2 className="text-lg font-bold text-ink-800">Brand Kit</h2>
+          </div>
+          <p className="text-sm text-ink-500 mb-6">
+            Set organization defaults for logos, colors, and typography. New surveys inherit these settings.
+          </p>
+        </>
+      )}
+      {embedded && (
+        <p className="text-sm text-ink-500 mb-6">
+          Set organization defaults for logos, colors, and typography. New surveys inherit these settings.
+        </p>
+      )}
 
       {errors.length > 0 && (
         <div
@@ -116,7 +128,8 @@ export function BrandKitPanel({ onClose }) {
         </div>
       )}
 
-      <div className="space-y-4">
+      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(280px,340px)] gap-6 xl:gap-8">
+        <div className="space-y-4 min-w-0">
         <div>
           <label className="text-xs font-semibold text-ink-500 uppercase tracking-wider">Logo URL</label>
           <input
@@ -207,18 +220,10 @@ export function BrandKitPanel({ onClose }) {
             />
           </div>
         )}
+        </div>
 
-        <div className="survey-theme rounded-xl border border-ink-200 p-4" style={{
-          '--sf-primary': theme.primaryColor,
-          '--sf-secondary': theme.secondaryColor,
-          '--sf-bg': theme.backgroundColor,
-          '--sf-text': theme.textColor,
-          '--sf-button-text': theme.buttonTextColor,
-          '--sf-radius': theme.borderRadius === 'sm' ? '6px' : theme.borderRadius === 'lg' ? '14px' : '10px',
-        }}>
-          <p className="text-xs text-ink-400 mb-3">Preview</p>
-          <button type="button" className="btn-primary">Primary button</button>
-          <input type="text" placeholder="Sample field" className="input-base mt-3" readOnly />
+        <div className="lg:sticky lg:top-0 lg:self-start">
+          <BrandThemePreview theme={theme} logoUrl={theme.logoUrl} />
         </div>
       </div>
 
@@ -226,7 +231,9 @@ export function BrandKitPanel({ onClose }) {
         <button type="button" onClick={onSave} disabled={saving} className="btn-primary">
           {saving ? 'Saving…' : 'Save Brand Kit'}
         </button>
-        <button type="button" onClick={onClose} className="btn-ghost">Close</button>
+        {!embedded && onClose && (
+          <button type="button" onClick={onClose} className="btn-ghost">Close</button>
+        )}
       </div>
     </div>
   )

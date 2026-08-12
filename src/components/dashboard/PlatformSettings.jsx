@@ -16,6 +16,15 @@ import {
 } from '@/api/platform/platform'
 import { roleLabel } from '@/utils/platform/permissions'
 import { AUTH_TEAM } from '@/constants/authCopy'
+import { BrandKitPanel } from './BrandKitPanel.jsx'
+import { DomainVerificationPanel } from './DomainVerificationPanel.jsx'
+
+const SETTINGS_TABS = [
+  ['lists', 'Classification labels'],
+  ['brandKit', 'Branding'],
+  ['domain', 'Domain'],
+  ['users', 'Users'],
+]
 
 // ─── Editable list (clients / topics / types) ───────────────────────────────
 function EditableList({ label, description, items, onAdd, onUpdate, onDelete, placeholder }) {
@@ -380,24 +389,24 @@ export function PlatformSettings({ onClose }) {
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl w-full max-w-4xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
+      <div className={`bg-white rounded-2xl w-full shadow-2xl overflow-hidden max-h-[90vh] flex flex-col ${tab === 'brandKit' ? 'max-w-5xl' : 'max-w-4xl'}`}>
         <div className="flex items-center gap-3 px-5 py-4 border-b border-ink-100 shrink-0">
           <div className="w-8 h-8 rounded-lg bg-ink-800 flex items-center justify-center">
             <Settings size={16} className="text-white" />
           </div>
           <div className="flex-1">
             <h2 className="text-base font-bold text-ink-800">Platform Settings</h2>
-            <p className="text-xs text-ink-400">Define classification labels for filtering and analysis</p>
+            <p className="text-xs text-ink-400">Classification labels, branding, domain and users</p>
           </div>
           <button onClick={onClose} className="p-2 text-ink-400 hover:text-ink-700 hover:bg-ink-100 rounded-lg transition-all">
             <X size={18} />
           </button>
         </div>
 
-        <div className="flex border-b border-ink-100 px-5 shrink-0">
-          {[['lists', 'Classification labels'], ['users', 'Users']].map(([id, label]) => (
+        <div className="flex border-b border-ink-100 px-5 shrink-0 overflow-x-auto">
+          {SETTINGS_TABS.map(([id, label]) => (
             <button key={id} onClick={() => setTab(id)}
-              className={`text-sm font-medium px-1 py-3 mr-6 border-b-2 transition-colors ${
+              className={`text-sm font-medium px-1 py-3 mr-6 border-b-2 transition-colors whitespace-nowrap ${
                 tab === id ? 'border-brand-500 text-brand-700' : 'border-transparent text-ink-500 hover:text-ink-700'
               }`}>
               {label}
@@ -406,7 +415,7 @@ export function PlatformSettings({ onClose }) {
         </div>
 
         <div className="flex-1 overflow-y-auto p-5">
-          {loading ? (
+          {loading && (tab === 'lists' || tab === 'users') ? (
             <p className="text-sm text-ink-400 text-center py-8">Loading settings…</p>
           ) : tab === 'lists' ? (
             <div className="space-y-5">
@@ -444,8 +453,12 @@ export function PlatformSettings({ onClose }) {
                 />
               </div>
             </div>
-          ) : (
+          ) : tab === 'users' ? (
             <UserManager users={users} setUsers={setUsers} />
+          ) : tab === 'brandKit' ? (
+            <BrandKitPanel embedded />
+          ) : (
+            <DomainVerificationPanel embedded />
           )}
         </div>
 

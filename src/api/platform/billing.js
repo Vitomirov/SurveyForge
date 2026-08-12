@@ -12,17 +12,6 @@ export async function markBillingSeen() {
   return apiFetch('/api/billing/notifications/seen', { method: 'POST' })
 }
 
-export async function fetchBillingSupport() {
-  return apiFetch('/api/billing/support')
-}
-
-export async function postBillingSupportMessage(body) {
-  return apiFetch('/api/billing/support/messages', {
-    method: 'POST',
-    body: { body },
-  })
-}
-
 export async function fetchBrandKit() {
   return apiFetch('/api/billing/brand')
 }

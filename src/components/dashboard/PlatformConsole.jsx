@@ -1,7 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import {
-  Building2, ChevronLeft, MessageSquare, Send, Plus,
-} from 'lucide-react'
+import { Building2, ChevronLeft, Plus } from 'lucide-react'
 import { useApi } from '@/config/api'
 import { AUTH_BILLING, AUTH_ERRORS } from '@/constants/authCopy'
 import {
@@ -9,9 +7,6 @@ import {
   fetchVendorOrganization,
   updateVendorSubscription,
   createVendorInvoice,
-  fetchVendorSupportThread,
-  postVendorSupportMessage,
-  markVendorThreadSeen,
 } from '@/api/platform/vendor'
 import { InlineLoader, Modal, StatusPill, useToast } from '@/components/ui'
 import { formatMoney, formatDate } from '@/utils/format/format'
@@ -25,40 +20,31 @@ const PLANS = [
 
 const STATUSES = ['trialing', 'active', 'past_due', 'canceled']
 
-function OrgDetail({ orgId, onBack, onNotificationsChange }) {
+function OrgDetail({ orgId, onBack }) {
   const { toast } = useToast()
   const [loading, setLoading] = useState(true)
   const [detail, setDetail] = useState(null)
-  const [support, setSupport] = useState(null)
   const [planId, setPlanId] = useState('starter')
   const [status, setStatus] = useState('active')
   const [surveyDomain, setSurveyDomain] = useState('')
   const [saving, setSaving] = useState(false)
   const [invoiceAmount, setInvoiceAmount] = useState('')
   const [invoiceDesc, setInvoiceDesc] = useState('')
-  const [draft, setDraft] = useState('')
-  const [sending, setSending] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const [orgData, supportData] = await Promise.all([
-        fetchVendorOrganization(orgId),
-        fetchVendorSupportThread(orgId),
-      ])
+      const orgData = await fetchVendorOrganization(orgId)
       setDetail(orgData)
-      setSupport(supportData)
       setPlanId(orgData.subscription.planId)
       setStatus(orgData.subscription.status)
       setSurveyDomain(orgData.organization.surveyDomain || '')
-      await markVendorThreadSeen(orgId).catch(() => {})
-      onNotificationsChange?.()
     } catch (err) {
       toast({ message: err.message || AUTH_ERRORS.forbidden, type: 'error' })
     } finally {
       setLoading(false)
     }
-  }, [orgId, toast, onNotificationsChange])
+  }, [orgId, toast])
 
   useEffect(() => { load() }, [load])
 
@@ -80,7 +66,6 @@ function OrgDetail({ orgId, onBack, onNotificationsChange }) {
       }))
       setSurveyDomain(data.surveyDomain || '')
       toast({ message: 'Subscription updated.', type: 'success' })
-      onNotificationsChange?.()
     } catch (err) {
       toast({ message: err.message || AUTH_ERRORS.forbidden, type: 'error' })
     } finally {
@@ -105,29 +90,8 @@ function OrgDetail({ orgId, onBack, onNotificationsChange }) {
       setInvoiceAmount('')
       setInvoiceDesc('')
       toast({ message: 'Invoice created.', type: 'success' })
-      onNotificationsChange?.()
     } catch (err) {
       toast({ message: err.message || AUTH_ERRORS.forbidden, type: 'error' })
-    }
-  }
-
-  const sendMessage = async (e) => {
-    e.preventDefault()
-    const body = draft.trim()
-    if (!body || sending) return
-    setSending(true)
-    try {
-      const data = await postVendorSupportMessage(orgId, body)
-      setSupport(prev => ({
-        ...prev,
-        messages: [...(prev?.messages || []), data.message],
-      }))
-      setDraft('')
-      onNotificationsChange?.()
-    } catch (err) {
-      toast({ message: err.message || AUTH_ERRORS.forbidden, type: 'error' })
-    } finally {
-      setSending(false)
     }
   }
 
@@ -194,7 +158,7 @@ function OrgDetail({ orgId, onBack, onNotificationsChange }) {
         </button>
       </div>
 
-      <div className="border border-ink-100 rounded-xl p-4 mb-6">
+      <div className="border border-ink-100 rounded-xl p-4">
         <h4 className="text-sm font-semibold text-ink-800 mb-3">Create invoice</h4>
         <form onSubmit={addInvoice} className="flex flex-wrap gap-2 items-end">
           <label className="text-sm">
@@ -235,40 +199,11 @@ function OrgDetail({ orgId, onBack, onNotificationsChange }) {
           </div>
         )}
       </div>
-
-      <div className="border border-ink-100 rounded-xl p-4">
-        <div className="flex items-center gap-2 mb-3">
-          <MessageSquare size={15} className="text-brand-600" />
-          <h4 className="text-sm font-semibold text-ink-800">Support thread</h4>
-        </div>
-        <div className="max-h-40 overflow-y-auto space-y-2 mb-3 bg-ink-50/40 rounded-lg p-3">
-          {(support?.messages || []).length === 0 ? (
-            <p className="text-xs text-ink-400 text-center py-4">No messages yet.</p>
-          ) : support.messages.map(msg => (
-            <div key={msg.id} className="text-sm">
-              <p className="text-xs text-ink-400">{msg.author.name} · {formatDate(msg.createdAt)}</p>
-              <p className="text-ink-700 whitespace-pre-wrap">{msg.body}</p>
-            </div>
-          ))}
-        </div>
-        <form onSubmit={sendMessage} className="flex gap-2">
-          <textarea
-            value={draft}
-            onChange={e => setDraft(e.target.value)}
-            rows={2}
-            placeholder="Reply to this organization…"
-            className="flex-1 input-field text-sm resize-none"
-          />
-          <button type="submit" disabled={!draft.trim() || sending} className="btn-primary px-3 self-end">
-            <Send size={15} />
-          </button>
-        </form>
-      </div>
     </div>
   )
 }
 
-export function PlatformConsole({ onClose, onNotificationsChange }) {
+export function PlatformConsole({ onClose }) {
   const { toast } = useToast()
   const [loading, setLoading] = useState(useApi)
   const [orgs, setOrgs] = useState([])
@@ -304,8 +239,7 @@ export function PlatformConsole({ onClose, onNotificationsChange }) {
       {selectedId ? (
         <OrgDetail
           orgId={selectedId}
-          onBack={() => { setSelectedId(null); loadOrgs(); onNotificationsChange?.() }}
-          onNotificationsChange={onNotificationsChange}
+          onBack={() => { setSelectedId(null); loadOrgs() }}
         />
       ) : loading ? (
         <InlineLoader label="Loading organizations…" />
@@ -315,7 +249,7 @@ export function PlatformConsole({ onClose, onNotificationsChange }) {
         <>
           <p className="text-xs text-ink-400 mb-3">{AUTH_BILLING.selectOrg}</p>
           <div className="border border-ink-100 rounded-xl overflow-x-auto">
-            <table className="w-full text-sm min-w-[640px]">
+            <table className="w-full text-sm min-w-[560px]">
               <thead>
                 <tr className="bg-ink-50/80 text-xs text-ink-500 uppercase">
                   <th className="text-left px-3 py-2.5 font-semibold">Organization</th>
@@ -323,7 +257,6 @@ export function PlatformConsole({ onClose, onNotificationsChange }) {
                   <th className="text-left px-3 py-2.5 font-semibold">Status</th>
                   <th className="text-right px-3 py-2.5 font-semibold">Users</th>
                   <th className="text-right px-3 py-2.5 font-semibold">Surveys</th>
-                  <th className="text-right px-3 py-2.5 font-semibold">Support</th>
                 </tr>
               </thead>
               <tbody>
@@ -342,15 +275,6 @@ export function PlatformConsole({ onClose, onNotificationsChange }) {
                     </td>
                     <td className="px-3 py-3 text-right text-ink-600">{org.userCount}</td>
                     <td className="px-3 py-3 text-right text-ink-600">{org.surveyCount}</td>
-                    <td className="px-3 py-3 text-right">
-                      {org.unreadMessages > 0 ? (
-                        <span className="inline-flex min-w-[20px] h-5 px-1.5 rounded-full bg-rose-500 text-white text-xs font-bold items-center justify-center">
-                          {org.unreadMessages > 9 ? '9+' : org.unreadMessages}
-                        </span>
-                      ) : (
-                        <span className="text-ink-300">—</span>
-                      )}
-                    </td>
                   </tr>
                 ))}
               </tbody>

@@ -50,12 +50,8 @@ export const AUTH_BILLING = {
   periodEnd:           'Renews / trial ends',
   invoices:            'Invoices',
   noInvoices:          'No invoices yet.',
-  supportHeading:      'Support',
-  supportSubtitle:     'Message the Rescope Surveys team',
-  supportPlaceholder:  'Describe your question or issue…',
-  send:                'Send message',
   platformHeading:     'Platform console',
-  platformSubtitle:    'Manage subscriptions and support across organizations',
+  platformSubtitle:    'Manage subscriptions and invoices across organizations',
   organizations:       'Organizations',
   selectOrg:           'Select an organization to manage billing',
 }

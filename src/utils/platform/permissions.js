@@ -32,7 +32,7 @@ export function canManageUsers(session) {
   return isAdmin(session)
 }
 
-/** Org admin read-only billing + support for their organization. */
+/** Org admin read-only billing for their organization. */
 export function canViewBilling(session) {
   return isAdmin(session)
 }

@@ -214,7 +214,7 @@ After JWT verification, the handler loads the user from Postgres and attaches `r
 |------|-------|
 | `admin` | Full org access — all surveys, users, platform settings, billing |
 | `editor` | Own surveys only (`createdById` filter via `surveyScope()`) |
-| `platform_owner` | Cross-org vendor console — subscriptions, invoices, support threads |
+| `platform_owner` | Cross-org vendor console — subscriptions and invoices |
 
 ### Survey persistence
 
@@ -246,7 +246,7 @@ Public writes go through `POST /api/public/surveys/:id/responses` (no auth, live
 | `/api/surveys/:id/responses` | JWT | Response list, stats, upsert, delete |
 | `/api/surveys/:id/dnc` | JWT | DNC list management |
 | `/api/platform/*` | JWT (+ admin for writes) | Clients, topics, users |
-| `/api/billing/*` | JWT (admin) | Subscription, invoices, support |
+| `/api/billing/*` | JWT (admin) | Subscription and invoices |
 | `/api/vendor/*` | JWT (platform_owner) | Cross-org vendor console |
 | `/api/admin/*` | JWT (admin) | Employee stats |
 | `/api/public/*` | None | Live survey fetch, DNC list, response submit |
@@ -268,7 +268,7 @@ PostgreSQL via Prisma (`server/prisma/schema.prisma`). Multi-organization SaaS m
 | `Response` | JSONB payload per respondent session |
 | `Client`, `Topic` | Platform metadata lists per org |
 | `DncEntry` | Per-survey do-not-contact emails |
-| `Subscription`, `Invoice`, `SupportThread` | Billing and vendor support |
+| `Subscription`, `Invoice` | Billing |
 
 Indexes on `organizationId`, `surveyId`, and common query patterns (dashboard list, response stats).
 

@@ -34,6 +34,29 @@ export const DEFAULT_BRAND_THEME = {
 
 const FONT_BY_KEY = Object.fromEntries(APPROVED_FONTS.map(f => [f.key, f]))
 
+/** Google Fonts family query params for approved brand fonts. */
+const GOOGLE_FONT_FAMILY = {
+  'dm-sans': 'DM+Sans:wght@400;500;600;700',
+  inter: 'Inter:wght@400;500;600;700',
+  roboto: 'Roboto:wght@400;500;700',
+  'open-sans': 'Open+Sans:wght@400;600;700',
+  lato: 'Lato:wght@400;700',
+}
+
+const loadedBrandFonts = new Set()
+
+/** Load a brand font from Google Fonts (no-op if already loaded). Safe for SSR-less client use. */
+export function ensureBrandFontLoaded(fontKey) {
+  if (typeof document === 'undefined') return
+  const family = GOOGLE_FONT_FAMILY[fontKey]
+  if (!family || loadedBrandFonts.has(fontKey)) return
+  loadedBrandFonts.add(fontKey)
+  const link = document.createElement('link')
+  link.rel = 'stylesheet'
+  link.href = `https://fonts.googleapis.com/css2?family=${family}&display=swap`
+  document.head.appendChild(link)
+}
+
 export function normalizeHexColor(value, fallback) {
   if (typeof value !== 'string') return fallback
   const trimmed = value.trim()

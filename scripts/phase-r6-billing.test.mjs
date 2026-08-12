@@ -1,5 +1,5 @@
 /**
- * Phase R6 — billing, vendor console, support threads.
+ * Phase R6 — billing and vendor console.
  * Run with: node --test scripts/phase-r6-billing.test.mjs
  */
 import { test, before } from 'node:test'
@@ -47,17 +47,6 @@ test('editor cannot access org billing endpoints', async () => {
   assert.equal(res.status, 403)
 })
 
-test('org admin can post support message', async () => {
-  const res = await api('/api/billing/support/messages', {
-    method: 'POST',
-    token: fixtures.adminToken,
-    body: { body: `Need help ${unique}` },
-  })
-  assert.equal(res.status, 200)
-  assert.ok(res.data.message?.id)
-  assert.match(res.data.message.body, new RegExp(unique))
-})
-
 test('platform owner lists all organizations', async () => {
   const res = await api('/api/vendor/organizations', { token: vendorToken })
   assert.equal(res.status, 200)
@@ -92,22 +81,6 @@ test('platform owner updates subscription and creates invoice', async () => {
   const overview = await api('/api/billing/overview', { token: fixtures.adminToken })
   assert.equal(overview.status, 200)
   assert.ok(overview.data.invoices.some(i => i.description?.includes(unique)))
-})
-
-test('platform owner reads support thread and replies', async () => {
-  const thread = await api(`/api/vendor/support/threads/${customerOrgId}`, {
-    token: vendorToken,
-  })
-  assert.equal(thread.status, 200)
-  assert.ok(thread.data.messages.some(m => m.body.includes(unique)))
-
-  const reply = await api(`/api/vendor/support/threads/${customerOrgId}/messages`, {
-    method: 'POST',
-    token: vendorToken,
-    body: { body: `Vendor reply ${unique}` },
-  })
-  assert.equal(reply.status, 200)
-  assert.match(reply.data.message.body, /Vendor reply/)
 })
 
 test('org admin cannot access vendor routes', async () => {

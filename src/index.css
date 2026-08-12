@@ -184,9 +184,19 @@
   background-color: var(--sf-primary, #2563eb);
   color: var(--sf-button-text, #fff);
   border-radius: var(--sf-radius, 10px);
+  border: 2px solid transparent;
 }
 .survey-theme .btn-primary:hover {
   filter: brightness(0.92);
+}
+.survey-theme[data-sf-button-variant="outline"] .btn-primary {
+  background-color: transparent;
+  color: var(--sf-primary, #2563eb);
+  border-color: var(--sf-primary, #2563eb);
+}
+.survey-theme[data-sf-button-variant="outline"] .btn-primary:hover {
+  filter: none;
+  background-color: color-mix(in srgb, var(--sf-primary, #2563eb) 8%, transparent);
 }
 .survey-theme .input-base {
   border-radius: var(--sf-radius, 10px);

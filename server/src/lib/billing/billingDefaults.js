@@ -26,19 +26,7 @@ export async function ensureOrgBilling(prisma, organizationId) {
   })
 }
 
-/** One support thread per org (idempotent). */
-export async function ensureSupportThread(prisma, organizationId) {
-  const existing = await prisma.supportThread.findUnique({
-    where: { organizationId },
-  })
-  if (existing) return existing
-
-  return prisma.supportThread.create({
-    data: { organizationId },
-  })
-}
-
+/** Provision billing for a new organization (idempotent). */
 export async function provisionOrgBilling(prisma, organizationId) {
-  await ensureOrgBilling(prisma, organizationId)
-  await ensureSupportThread(prisma, organizationId)
+  return ensureOrgBilling(prisma, organizationId)
 }
