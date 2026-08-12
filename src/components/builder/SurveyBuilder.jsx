@@ -155,8 +155,10 @@ export function SurveyBuilder({ initialState, initialRevision = null, onBackToDa
     )
   }
 
+  const showQuickAddDock = state.items.length > 0
+
   return (
-    <div className="min-h-screen bg-surface flex flex-col">
+    <div className="min-h-screen bg-surface flex flex-col lg:h-screen lg:overflow-hidden">
       {/* ── Top Nav ──────────────────────────────────────────────────── */}
       <header className="bg-white border-b border-ink-200 shadow-sm shadow-ink-900/[0.03] sticky top-0 z-30 safe-top">
         <div className="max-w-screen-xl mx-auto px-4 sm:px-6 min-h-14 py-2 sm:py-0 flex items-center gap-2 sm:gap-4">
@@ -315,10 +317,11 @@ export function SurveyBuilder({ initialState, initialRevision = null, onBackToDa
       </header>
 
       {/* ── Layout ───────────────────────────────────────────────────── */}
-      <div className="flex-1 max-w-screen-xl mx-auto w-full px-4 sm:px-6 py-4 sm:py-6 flex flex-col lg:flex-row gap-4 lg:gap-6">
+      <div className="flex-1 min-h-0 max-w-screen-xl mx-auto w-full px-4 sm:px-6 py-4 sm:py-6 lg:py-0 flex flex-col lg:flex-row gap-4 lg:gap-6 lg:overflow-hidden">
 
         {/* ── Main list ──────────────────────────────────────────────── */}
-        <main className="flex-1 min-w-0">
+        <main className="flex-1 min-w-0 lg:flex lg:flex-col lg:min-h-0">
+          <div className="lg:flex-1 lg:overflow-y-auto lg:min-h-0 lg:py-6 lg:pr-0.5">
           {/* Survey header card */}
           <div className="card p-3 sm:p-4 mb-4 sm:mb-5 shadow-md shadow-ink-900/[0.05]">
             <input
@@ -534,52 +537,54 @@ export function SurveyBuilder({ initialState, initialRevision = null, onBackToDa
             </DndContext>
           )}
 
-          {/* Bottom add buttons */}
+          {/* Mobile: bottom padding so content clears the fixed dock */}
           {state.items.length > 0 && (
-            <div className="mt-4 flex items-center justify-center gap-2 flex-wrap">
-              <button
-                onClick={() => dispatch({ type: 'ADD_QUESTION', qtype: 'single_select' })}
-                className="flex items-center gap-2 text-sm text-ink-500 hover:text-brand-700 hover:bg-white font-medium px-4 py-2 border border-dashed border-ink-300 hover:border-brand-400 rounded-xl transition-all hover:shadow-sm active:scale-[0.98]"
-              >
-                <Plus size={15} /> Add question
-              </button>
-              <button
-                onClick={() => dispatch({ type: 'ADD_PAGE_BREAK' })}
-                className="flex items-center gap-2 text-sm text-ink-500 hover:text-ink-800 hover:bg-white font-medium px-4 py-2 border border-dashed border-ink-300 hover:border-ink-400 rounded-xl transition-all hover:shadow-sm active:scale-[0.98]"
-              >
-                <Scissors size={15} /> Page break
-              </button>
-              <button
-                onClick={() => dispatch({ type: 'ADD_TEXT_BLOCK' })}
-                className="flex items-center gap-2 text-sm text-ink-500 hover:text-emerald-700 hover:bg-white font-medium px-4 py-2 border border-dashed border-ink-300 hover:border-emerald-400 rounded-xl transition-all hover:shadow-sm active:scale-[0.98]"
-              >
-                <FileText size={15} /> Text / Media
-              </button>
+            <div className="h-20 lg:hidden" aria-hidden="true" />
+          )}
+          </div>
+
+          {/* Desktop: dock pinned to bottom of main column */}
+          {showQuickAddDock && (
+            <div className="hidden lg:block shrink-0 pt-3 pb-4 bg-surface border-t border-ink-200/80">
+              <BuilderQuickAddDock dispatch={dispatch} onOpenMore={() => setShowMobilePanel(true)} />
             </div>
           )}
         </main>
 
-        {/* ── Right sidebar — sticky on desktop ──────────────────────── */}
-        <aside className="hidden lg:block w-64 shrink-0 space-y-4 sticky top-16 self-start max-h-[calc(100vh-4.5rem)] overflow-y-auto pb-4">
-          <AddPanel
-            onAddQuestion={type => dispatch({ type: 'ADD_QUESTION', qtype: type })}
-            onAddPageBreak={() => dispatch({ type: 'ADD_PAGE_BREAK' })}
-            onAddGroup={() => dispatch({ type: 'ADD_GROUP' })}
-            onAddTerminationBlock={() => dispatch({ type: 'ADD_TERMINATION_BLOCK' })}
-            onAddTextBlock={() => dispatch({ type: 'ADD_TEXT_BLOCK' })}
-          />
-          {state.items.length > 0 && <StatsPanel items={state.items} />}
+        {/* ── Right sidebar — independent scroll, full stats visible ── */}
+        <aside className="hidden lg:flex lg:flex-col w-64 shrink-0 min-h-0 border-l border-ink-100 pl-6 py-6">
+          <div className="flex-1 overflow-y-auto min-h-0 space-y-4 pr-0.5">
+            <AddPanel
+              onAddQuestion={type => dispatch({ type: 'ADD_QUESTION', qtype: type })}
+              onAddPageBreak={() => dispatch({ type: 'ADD_PAGE_BREAK' })}
+              onAddGroup={() => dispatch({ type: 'ADD_GROUP' })}
+              onAddTerminationBlock={() => dispatch({ type: 'ADD_TERMINATION_BLOCK' })}
+              onAddTextBlock={() => dispatch({ type: 'ADD_TEXT_BLOCK' })}
+            />
+            {state.items.length > 0 && <StatsPanel items={state.items} />}
+          </div>
         </aside>
       </div>
 
-      {/* Mobile FAB — open add panel */}
-      <button
-        onClick={() => setShowMobilePanel(true)}
-        className="lg:hidden fixed bottom-6 right-4 z-20 w-14 h-14 bg-brand-600 hover:bg-brand-700 active:bg-brand-700 text-white rounded-full shadow-lg shadow-brand-900/25 hover:shadow-xl flex items-center justify-center transition-all active:scale-95 focus-ring safe-bottom"
-        title="Add question or structure"
-      >
-        <Plus size={24} />
-      </button>
+      {/* Mobile: compact fixed dock — no sidebar overlap */}
+      {showQuickAddDock && (
+        <div className="lg:hidden fixed inset-x-0 bottom-0 z-20 px-4 pb-4 safe-bottom pointer-events-none">
+          <div className="pointer-events-auto max-w-lg mx-auto">
+            <BuilderQuickAddDock dispatch={dispatch} onOpenMore={() => setShowMobilePanel(true)} />
+          </div>
+        </div>
+      )}
+
+      {/* Mobile FAB — empty survey only (dock handles quick-add once items exist) */}
+      {state.items.length === 0 && (
+        <button
+          onClick={() => setShowMobilePanel(true)}
+          className="lg:hidden fixed bottom-6 right-4 z-20 w-14 h-14 bg-brand-600 hover:bg-brand-700 active:bg-brand-700 text-white rounded-full shadow-lg shadow-brand-900/25 hover:shadow-xl flex items-center justify-center transition-all active:scale-95 focus-ring safe-bottom"
+          title="Add question or structure"
+        >
+          <Plus size={24} />
+        </button>
+      )}
 
       {/* Mobile add panel drawer */}
       {showMobilePanel && (
@@ -642,6 +647,47 @@ export function SurveyBuilder({ initialState, initialRevision = null, onBackToDa
           />
         </Suspense>
       )}
+    </div>
+  )
+}
+
+function BuilderQuickAddDock({ dispatch, onOpenMore }) {
+  return (
+    <div
+      role="toolbar"
+      aria-label="Add survey content"
+      className="card p-1 flex items-stretch divide-x divide-ink-100 shadow-md shadow-ink-900/[0.06]"
+    >
+      <button
+        onClick={() => dispatch({ type: 'ADD_QUESTION', qtype: 'single_select' })}
+        className="flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg text-sm font-medium text-ink-700 hover:bg-brand-50 hover:text-brand-700 transition-colors focus-ring min-h-[44px] lg:min-h-0"
+      >
+        <Plus size={15} className="text-brand-600 shrink-0" />
+        <span className="truncate">Question</span>
+      </button>
+      <button
+        onClick={() => dispatch({ type: 'ADD_PAGE_BREAK' })}
+        className="flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg text-sm font-medium text-ink-700 hover:bg-ink-50 transition-colors focus-ring min-h-[44px] lg:min-h-0"
+      >
+        <Scissors size={15} className="text-ink-400 shrink-0" />
+        <span className="truncate hidden sm:inline">Page break</span>
+        <span className="truncate sm:hidden">Page</span>
+      </button>
+      <button
+        onClick={() => dispatch({ type: 'ADD_TEXT_BLOCK' })}
+        className="flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg text-sm font-medium text-ink-700 hover:bg-emerald-50 hover:text-emerald-700 transition-colors focus-ring min-h-[44px] lg:min-h-0"
+      >
+        <FileText size={15} className="text-emerald-500 shrink-0" />
+        <span className="truncate hidden sm:inline">Text / Media</span>
+        <span className="truncate sm:hidden">Text</span>
+      </button>
+      <button
+        onClick={onOpenMore}
+        className="lg:hidden flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-lg text-sm font-medium text-ink-500 hover:bg-ink-50 hover:text-ink-800 transition-colors focus-ring min-h-[44px] shrink-0"
+        title="More question types and structure"
+      >
+        <Layers size={15} />
+      </button>
     </div>
   )
 }
