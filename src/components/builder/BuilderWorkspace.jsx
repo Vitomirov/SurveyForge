@@ -2,6 +2,7 @@ import { BuilderQuickAddDock } from '@/components/builder/panels'
 import { SurveyHeaderCard } from '@/components/builder/SurveyHeaderCard'
 import { SurveyItemList } from '@/components/builder/SurveyItemList'
 import { BuilderSidebar } from '@/components/builder/BuilderSidebar'
+import { AppWorkspaceColumns } from '@/components/shared/layout/AppWorkspaceColumns.jsx'
 
 export function BuilderWorkspace({
   state,
@@ -21,8 +22,8 @@ export function BuilderWorkspace({
   onOpenMore,
 }) {
   return (
-    <div className="flex-1 min-h-0 flex flex-col lg:flex-row gap-4 lg:gap-6 lg:overflow-hidden">
-      <main className="flex-1 min-w-0 lg:flex lg:flex-col lg:min-h-0">
+    <AppWorkspaceColumns className="flex-1 min-h-0 lg:overflow-hidden" sidebar={<BuilderSidebar items={state.items} addActions={addActions} />}>
+      <div className="flex-1 min-w-0 lg:flex lg:flex-col lg:min-h-0">
         <div className="lg:flex-1 lg:overflow-y-auto lg:min-h-0 lg:py-6 lg:pr-0.5">
           <SurveyHeaderCard survey={state.survey} dispatch={dispatch} />
           <SurveyItemList
@@ -47,9 +48,7 @@ export function BuilderWorkspace({
             <BuilderQuickAddDock dispatch={dispatch} onOpenMore={onOpenMore} />
           </div>
         )}
-      </main>
-
-      <BuilderSidebar items={state.items} addActions={addActions} />
-    </div>
+      </div>
+    </AppWorkspaceColumns>
   )
 }
