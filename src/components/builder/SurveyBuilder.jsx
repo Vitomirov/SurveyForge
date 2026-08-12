@@ -5,6 +5,7 @@ import { BuilderHeader } from '@/components/builder/BuilderHeader'
 import { BuilderWorkspace } from '@/components/builder/BuilderWorkspace'
 import { BuilderMobileChrome } from '@/components/builder/BuilderMobileChrome'
 import { BuilderModals } from '@/components/builder/BuilderModals'
+import { AppAlignedBody } from '@/components/shared/layout/AppBuilderShell.jsx'
 
 const SurveyPreview = lazy(() => import('@/components/taker/SurveyPreview.jsx'))
 
@@ -41,23 +42,32 @@ export function SurveyBuilder({ initialState, initialRevision = null, onBackToDa
         onSave={builder.handleSave}
       />
 
-      <BuilderWorkspace
-        state={builder.state}
-        dispatch={builder.dispatch}
-        sensors={builder.sensors}
-        sortableItemIds={builder.sortableItemIds}
-        itemMeta={builder.itemMeta}
-        availableQuestionsByIndex={builder.availableQuestionsByIndex}
-        groupQuestionCounts={builder.groupQuestionCounts}
-        allPagesLockEnabled={builder.allPagesLockEnabled}
-        draggedItem={builder.draggedItem}
-        hasItems={builder.hasItems}
-        addActions={builder.addActions}
-        onActivateItem={builder.handleActivateItem}
-        onDragStart={builder.handleDragStart}
-        onDragEnd={builder.handleDragEnd}
-        onOpenMore={() => builder.setShowMobilePanel(true)}
-      />
+      <AppAlignedBody
+        className="flex-1 flex flex-col min-h-0 py-4 sm:py-6 lg:py-0 lg:overflow-hidden"
+        gridClassName="flex-1 min-h-0 lg:overflow-hidden"
+        paneClassName="flex-1 min-h-0 flex flex-col lg:overflow-hidden"
+        showBack
+        withDivider={false}
+        onBack={onBackToDashboard}
+      >
+        <BuilderWorkspace
+          state={builder.state}
+          dispatch={builder.dispatch}
+          sensors={builder.sensors}
+          sortableItemIds={builder.sortableItemIds}
+          itemMeta={builder.itemMeta}
+          availableQuestionsByIndex={builder.availableQuestionsByIndex}
+          groupQuestionCounts={builder.groupQuestionCounts}
+          allPagesLockEnabled={builder.allPagesLockEnabled}
+          draggedItem={builder.draggedItem}
+          hasItems={builder.hasItems}
+          addActions={builder.addActions}
+          onActivateItem={builder.handleActivateItem}
+          onDragStart={builder.handleDragStart}
+          onDragEnd={builder.handleDragEnd}
+          onOpenMore={() => builder.setShowMobilePanel(true)}
+        />
+      </AppAlignedBody>
 
       <BuilderMobileChrome
         hasItems={builder.hasItems}

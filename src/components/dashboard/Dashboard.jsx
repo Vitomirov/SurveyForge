@@ -25,6 +25,7 @@ import {
 import { countResponsesForSurveys } from '@/utils/data/responseStore'
 import { resolveClientName, resolveTopicName, resolveSurveyTypeName } from '@/utils/platform/platformResolve'
 import { InlineLoader, useToast } from '@/components/ui'
+import { AppContentShell } from '@/components/shared/layout/AppContentShell.jsx'
 import { prefetchBuilder, prefetchPreview } from '@/utils/routing/routePrefetch'
 import {
   canManagePlatform, canSeeAllSurveys, filterSurveysForSession,
@@ -408,7 +409,7 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
         />
       </Suspense>
 
-      <div className="flex-1 max-w-[1600px] mx-auto w-full px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
+      <AppContentShell className="flex-1 py-4 sm:py-6">
         <StatsBar surveys={surveys} />
 
         {/* Filters bar */}
@@ -710,7 +711,7 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
             </div>
           </>
         )}
-      </div>
+      </AppContentShell>
 
       {/* Delete confirmation */}
       {deleteId && (

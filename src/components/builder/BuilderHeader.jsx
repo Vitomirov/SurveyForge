@@ -1,6 +1,6 @@
 import { useApi } from '@/config/api'
-import { AppLogo } from '@/components/shared/branding/AppLogo.jsx'
-import { AppHeaderDivider, AppHeaderShell } from '@/components/shared/layout/AppHeaderShell.jsx'
+import { AppShell, APP_SHELL_GRID, APP_BUILDER_PANE } from '@/components/shared/layout/AppBuilderShell.jsx'
+import { AppLeadingZone } from '@/components/shared/layout/AppLeadingZone.jsx'
 import { DEFAULT_DATE_FORMAT } from '@/constants/surveyDefaults'
 import { prefetchPreview } from '@/utils/routing/routePrefetch'
 import {
@@ -22,48 +22,54 @@ export function BuilderHeader({
   onSave,
 }) {
   return (
-    <AppHeaderShell>
-      <div className="flex items-center min-w-0 shrink-0">
-        <AppLogo onClick={onBackToDashboard} size="md" />
-      </div>
+    <header className="bg-white/95 backdrop-blur-md border-b border-ink-200/80 sticky top-0 z-30 safe-top">
+      <AppShell>
+        <div className={`${APP_SHELL_GRID} items-center min-h-[4.25rem] py-3`}>
+          <AppLeadingZone
+            showBack
+            onBack={onBackToDashboard}
+            onLogoClick={onBackToDashboard}
+          />
 
-      <AppHeaderDivider />
+          <div className={`${APP_BUILDER_PANE} flex items-center gap-2 sm:gap-3 min-w-0`}>
+            <div className="hidden md:flex items-center gap-3 flex-1 min-w-0">
+              <input
+                type="text"
+                value={survey.title}
+                onChange={e => dispatch({ type: 'SET_SURVEY_FIELD', field: 'title', value: e.target.value })}
+                className="text-sm font-semibold text-ink-800 bg-transparent border-none outline-none focus:bg-ink-50 px-2 py-1.5 rounded-lg transition-colors flex-1 min-w-0 max-w-md"
+                placeholder="Survey title..."
+              />
+              <SaveStatus saveStatus={saveStatus} isDirty={isDirty} />
+            </div>
 
-      <div className="hidden md:flex items-center gap-3 flex-1 min-w-0">
-        <input
-          type="text"
-          value={survey.title}
-          onChange={e => dispatch({ type: 'SET_SURVEY_FIELD', field: 'title', value: e.target.value })}
-          className="text-sm font-semibold text-ink-800 bg-transparent border-none outline-none focus:bg-ink-50 px-2 py-1.5 rounded-lg transition-colors flex-1 min-w-0 max-w-md"
-          placeholder="Survey title..."
-        />
-        <SaveStatus saveStatus={saveStatus} isDirty={isDirty} />
-      </div>
+            <div className="ml-auto flex items-center gap-2 sm:gap-3 shrink-0 min-w-0">
+              <SaveStatus saveStatus={saveStatus} isDirty={isDirty} className="md:hidden" />
 
-      <div className="ml-auto flex items-center gap-2 sm:gap-3 shrink-0 min-w-0">
-        <SaveStatus saveStatus={saveStatus} isDirty={isDirty} className="md:hidden" />
+              <DateFormatSelect survey={survey} dispatch={dispatch} />
 
-        <DateFormatSelect survey={survey} dispatch={dispatch} />
+              <DesktopToolbar
+                onExportCSVTemplate={onExportCSVTemplate}
+                onOpenExport={onOpenExport}
+                onOpenTest={onOpenTest}
+                onOpenPreview={onOpenPreview}
+                onSave={onSave}
+              />
 
-        <DesktopToolbar
-          onExportCSVTemplate={onExportCSVTemplate}
-          onOpenExport={onOpenExport}
-          onOpenTest={onOpenTest}
-          onOpenPreview={onOpenPreview}
-          onSave={onSave}
-        />
-
-        <MobileToolbar
-          showMobileMenu={showMobileMenu}
-          setShowMobileMenu={setShowMobileMenu}
-          onExportCSVTemplate={onExportCSVTemplate}
-          onOpenExport={onOpenExport}
-          onOpenTest={onOpenTest}
-          onOpenPreview={onOpenPreview}
-          onSave={onSave}
-        />
-      </div>
-    </AppHeaderShell>
+              <MobileToolbar
+                showMobileMenu={showMobileMenu}
+                setShowMobileMenu={setShowMobileMenu}
+                onExportCSVTemplate={onExportCSVTemplate}
+                onOpenExport={onOpenExport}
+                onOpenTest={onOpenTest}
+                onOpenPreview={onOpenPreview}
+                onSave={onSave}
+              />
+            </div>
+          </div>
+        </div>
+      </AppShell>
+    </header>
   )
 }
 
