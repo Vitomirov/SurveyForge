@@ -1,10 +1,11 @@
 import { useApi } from '@/config/api'
 import { AppShell, APP_SHELL_GRID, APP_BUILDER_PANE } from '@/components/shared/layout/AppBuilderShell.jsx'
 import { AppLeadingZone } from '@/components/shared/layout/AppLeadingZone.jsx'
-import { DEFAULT_DATE_FORMAT } from '@/constants/surveyDefaults'
+import { DEFAULT_SURVEY_TITLE } from '@/constants/surveyDefaults'
+import { SURVEY_STATUSES } from '@/utils/data/platformStore'
 import { prefetchPreview } from '@/utils/routing/routePrefetch'
 import {
-  Eye, BarChart3, Download, PlayCircle, Menu,
+  Eye, BarChart3, Download, PlayCircle, Menu, Save,
 } from 'lucide-react'
 
 export function BuilderHeader({
@@ -32,23 +33,15 @@ export function BuilderHeader({
           />
 
           <div className={`${APP_BUILDER_PANE} flex items-center gap-2 sm:gap-3 min-w-0`}>
-            <div className="hidden md:flex items-center gap-3 flex-1 min-w-0">
-              <input
-                type="text"
-                value={survey.title}
-                onChange={e => dispatch({ type: 'SET_SURVEY_FIELD', field: 'title', value: e.target.value })}
-                className="text-sm font-semibold text-ink-800 bg-transparent border-none outline-none focus:bg-ink-50 px-2 py-1.5 rounded-lg transition-colors flex-1 min-w-0 max-w-md"
-                placeholder="Survey title..."
-              />
-              <SaveStatus saveStatus={saveStatus} isDirty={isDirty} />
-            </div>
+            <BuilderDocumentBar
+              survey={survey}
+              dispatch={dispatch}
+              saveStatus={saveStatus}
+              isDirty={isDirty}
+            />
 
-            <div className="ml-auto flex items-center gap-2 sm:gap-3 shrink-0 min-w-0">
-              <SaveStatus saveStatus={saveStatus} isDirty={isDirty} className="md:hidden" />
-
-              <DateFormatSelect survey={survey} dispatch={dispatch} />
-
-              <DesktopToolbar
+            <div className="ml-auto flex items-center gap-2 sm:gap-3 shrink-0">
+              <DesktopActions
                 onExportCSVTemplate={onExportCSVTemplate}
                 onOpenExport={onOpenExport}
                 onOpenTest={onOpenTest}
@@ -57,6 +50,9 @@ export function BuilderHeader({
               />
 
               <MobileToolbar
+                survey={survey}
+                saveStatus={saveStatus}
+                isDirty={isDirty}
                 showMobileMenu={showMobileMenu}
                 setShowMobileMenu={setShowMobileMenu}
                 onExportCSVTemplate={onExportCSVTemplate}
@@ -73,57 +69,136 @@ export function BuilderHeader({
   )
 }
 
-function SaveStatus({ saveStatus, isDirty, className = '' }) {
-  if (useApi && saveStatus === 'saving') {
-    return <span className={`text-xs text-ink-400 font-medium shrink-0 ${className}`}>Saving…</span>
-  }
-  if (useApi && saveStatus === 'saved') {
-    return <span className={`text-xs text-emerald-600 font-medium shrink-0 hidden sm:inline ${className}`}>Saved</span>
-  }
-  if (useApi && saveStatus === 'error') {
-    return <span className={`text-xs text-rose-500 font-medium shrink-0 ${className}`}>Failed</span>
-  }
-  if (!useApi && isDirty) {
-    return <span className={`text-xs text-amber-500 font-medium shrink-0 hidden sm:inline ${className}`}>● Unsaved</span>
-  }
-  return null
-}
+/** Center zone — what you are editing (status, title, save state, code). */
+function BuilderDocumentBar({ survey, dispatch, saveStatus, isDirty }) {
+  const statusMeta = SURVEY_STATUSES.find(s => s.id === (survey.status || 'draft'))
+    || SURVEY_STATUSES[0]
 
-function DateFormatSelect({ survey, dispatch }) {
   return (
-    <div className="hidden lg:flex items-center gap-1.5 px-3 py-2 rounded-lg bg-ink-50/80 border border-ink-100">
-      <span className="text-xs text-ink-400">Date</span>
-      <select
-        value={survey.defaultDateFormat || DEFAULT_DATE_FORMAT}
-        onChange={e => dispatch({ type: 'SET_SURVEY_FIELD', field: 'defaultDateFormat', value: e.target.value })}
-        className="text-xs bg-transparent border-none outline-none text-ink-700 font-medium font-mono"
+    <div className="flex-1 min-w-0">
+      <div
+        className="flex items-center gap-2 sm:gap-3 min-w-0 w-full max-w-2xl rounded-xl border border-ink-200/90 bg-ink-50/70 px-2.5 sm:px-3 py-1.5 focus-within:border-brand-300 focus-within:bg-white focus-within:ring-2 focus-within:ring-brand-100 transition-all"
+        title="Survey you are editing"
       >
-        <option value="MM/DD/YYYY">MM/DD/YYYY</option>
-        <option value={DEFAULT_DATE_FORMAT}>{DEFAULT_DATE_FORMAT}</option>
-        <option value="YYYY-MM-DD">YYYY-MM-DD</option>
-      </select>
+        <span
+          className={`hidden sm:inline-flex text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded border shrink-0 ${statusMeta.color}`}
+        >
+          {statusMeta.label}
+        </span>
+
+        <label className="sr-only" htmlFor="builder-header-title">Survey title</label>
+        <input
+          id="builder-header-title"
+          type="text"
+          value={survey.title}
+          onChange={e => dispatch({ type: 'SET_SURVEY_FIELD', field: 'title', value: e.target.value })}
+          className="flex-1 min-w-0 text-sm font-semibold text-ink-800 bg-transparent border-none outline-none placeholder:text-ink-400 placeholder:font-normal"
+          placeholder={DEFAULT_SURVEY_TITLE}
+        />
+
+        <SaveStatus saveStatus={saveStatus} isDirty={isDirty} />
+
+        {survey.surveyCode && (
+          <span
+            className="hidden md:inline text-[10px] font-mono font-semibold text-ink-500 bg-ink-100 px-1.5 py-0.5 rounded shrink-0"
+            title="Survey code"
+          >
+            {survey.surveyCode}
+          </span>
+        )}
+      </div>
     </div>
   )
 }
 
-function DesktopToolbar({ onExportCSVTemplate, onOpenExport, onOpenTest, onOpenPreview, onSave }) {
+function SaveStatus({ saveStatus, isDirty, className = '' }) {
+  if (useApi && saveStatus === 'saving') {
+    return (
+      <span className={`text-[11px] text-ink-400 font-medium shrink-0 px-1.5 py-0.5 rounded-md bg-white/80 ${className}`}>
+        Saving…
+      </span>
+    )
+  }
+  if (useApi && saveStatus === 'saved') {
+    return (
+      <span className={`text-[11px] text-emerald-700 font-medium shrink-0 px-1.5 py-0.5 rounded-md bg-emerald-50 ${className}`}>
+        Saved
+      </span>
+    )
+  }
+  if (useApi && saveStatus === 'error') {
+    return (
+      <span className={`text-[11px] text-rose-600 font-medium shrink-0 px-1.5 py-0.5 rounded-md bg-rose-50 ${className}`}>
+        Failed
+      </span>
+    )
+  }
+  if (!useApi && isDirty) {
+    return (
+      <span className={`text-[11px] text-amber-700 font-medium shrink-0 px-1.5 py-0.5 rounded-md bg-amber-50 ${className}`}>
+        Unsaved
+      </span>
+    )
+  }
+  return null
+}
+
+function DesktopActions({
+  onExportCSVTemplate,
+  onOpenExport,
+  onOpenTest,
+  onOpenPreview,
+  onSave,
+}) {
   return (
-    <div className="hidden sm:flex items-center gap-1 p-1 rounded-xl bg-ink-50/80 border border-ink-100">
-      <HeaderToolButton icon={Download} label="CSV Template" onClick={onExportCSVTemplate} title="Download CSV column template" />
-      <HeaderToolButton icon={BarChart3} label="Exports" onClick={onOpenExport} title="Open Export Manager" variant="secondary" />
-      <HeaderToolButton icon={PlayCircle} label="Test" onClick={onOpenTest} />
-      <HeaderToolButton
-        icon={Eye}
-        label="Preview"
-        onClick={onOpenPreview}
-        onMouseEnter={prefetchPreview}
-        onFocus={prefetchPreview}
-      />
-      <button
-        onClick={onSave}
-        className="inline-flex items-center gap-2 text-sm font-semibold text-white bg-brand-600 hover:bg-brand-700 px-3 py-2 rounded-lg transition-colors shrink-0"
+    <div className="hidden sm:flex items-center gap-2">
+      <div
+        className="flex items-center gap-0.5 p-1 rounded-xl bg-ink-50/80 border border-ink-100"
+        role="group"
+        aria-label="Review survey"
       >
-        <Download size={14} />
+        <HeaderToolButton
+          icon={Eye}
+          label="Preview"
+          onClick={onOpenPreview}
+          onMouseEnter={prefetchPreview}
+          onFocus={prefetchPreview}
+          title="Open respondent preview"
+        />
+        <HeaderToolButton
+          icon={PlayCircle}
+          label="Test"
+          onClick={onOpenTest}
+          title="Run test session"
+        />
+      </div>
+
+      <div
+        className="hidden md:flex items-center gap-0.5 p-1 rounded-xl bg-ink-50/80 border border-ink-100"
+        role="group"
+        aria-label="Export options"
+      >
+        <HeaderToolButton
+          icon={Download}
+          label="CSV"
+          onClick={onExportCSVTemplate}
+          title="Download CSV column template"
+        />
+        <HeaderToolButton
+          icon={BarChart3}
+          label="Exports"
+          onClick={onOpenExport}
+          title="Open export manager"
+          variant="secondary"
+        />
+      </div>
+
+      <button
+        type="button"
+        onClick={onSave}
+        className="inline-flex items-center gap-2 text-sm font-semibold text-white bg-brand-600 hover:bg-brand-700 px-3 py-2 rounded-lg transition-colors shrink-0 shadow-sm shadow-brand-600/15"
+      >
+        <Save size={15} />
         <span className="hidden lg:inline">Save JSON</span>
       </button>
     </div>
@@ -131,10 +206,10 @@ function DesktopToolbar({ onExportCSVTemplate, onOpenExport, onOpenTest, onOpenP
 }
 
 function HeaderToolButton({ icon: Icon, label, onClick, title, variant, onMouseEnter, onFocus }) {
-  const base = 'inline-flex items-center gap-2 text-sm font-medium px-3 py-2 rounded-lg transition-colors shrink-0'
+  const base = 'inline-flex items-center gap-1.5 text-sm font-medium px-2.5 py-2 rounded-lg transition-colors shrink-0'
   const styles = variant === 'secondary'
     ? `${base} text-ink-700 bg-white border border-ink-200 hover:bg-ink-50`
-    : `${base} text-ink-600 hover:text-ink-900 hover:bg-ink-50`
+    : `${base} text-ink-600 hover:text-ink-900 hover:bg-white/80`
 
   return (
     <button
@@ -145,13 +220,16 @@ function HeaderToolButton({ icon: Icon, label, onClick, title, variant, onMouseE
       title={title || label}
       className={styles}
     >
-      <Icon size={16} className="text-ink-400" />
+      <Icon size={16} className="text-ink-400 shrink-0" />
       <span className="hidden xl:inline">{label}</span>
     </button>
   )
 }
 
 function MobileToolbar({
+  survey,
+  saveStatus,
+  isDirty,
   showMobileMenu,
   setShowMobileMenu,
   onExportCSVTemplate,
@@ -163,7 +241,7 @@ function MobileToolbar({
   const closeMenu = () => setShowMobileMenu(false)
 
   return (
-    <div className="flex sm:hidden items-center gap-1">
+    <div className="flex sm:hidden items-center gap-1 shrink-0">
       <button
         type="button"
         onClick={onOpenPreview}
@@ -176,11 +254,11 @@ function MobileToolbar({
       </button>
       <button
         type="button"
-        onClick={onOpenExport}
-        className="inline-flex items-center justify-center p-2.5 text-ink-600 hover:text-ink-900 hover:bg-ink-50 rounded-lg transition-colors"
-        title="Exports"
+        onClick={onSave}
+        className="inline-flex items-center justify-center p-2.5 text-brand-600 hover:text-brand-700 hover:bg-brand-50 rounded-lg transition-colors"
+        title="Save JSON"
       >
-        <BarChart3 size={16} />
+        <Save size={16} />
       </button>
       <div className="relative">
         <button
@@ -194,10 +272,14 @@ function MobileToolbar({
         {showMobileMenu && (
           <>
             <div className="fixed inset-0 z-40" onClick={closeMenu} />
-            <div className="absolute right-0 top-[calc(100%+8px)] z-50 bg-white border border-ink-200 rounded-2xl shadow-xl shadow-ink-900/10 p-2 w-48">
+            <div className="absolute right-0 top-[calc(100%+8px)] z-50 bg-white border border-ink-200 rounded-2xl shadow-xl shadow-ink-900/10 p-2 w-52">
+              <p className="px-3 py-1.5 text-xs font-semibold text-ink-400 truncate border-b border-ink-100 mb-1">
+                {survey.title || DEFAULT_SURVEY_TITLE}
+              </p>
+              <SaveStatus saveStatus={saveStatus} isDirty={isDirty} className="mx-3 mb-2" />
               <MobileMenuItem icon={PlayCircle} label="Test runner" onClick={() => { onOpenTest(); closeMenu() }} />
+              <MobileMenuItem icon={BarChart3} label="Exports" onClick={() => { onOpenExport(); closeMenu() }} />
               <MobileMenuItem icon={Download} label="CSV template" onClick={() => { onExportCSVTemplate(); closeMenu() }} />
-              <MobileMenuItem icon={Download} label="Save JSON" onClick={() => { onSave(); closeMenu() }} />
             </div>
           </>
         )}

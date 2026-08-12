@@ -1,4 +1,4 @@
-import { useState, memo } from 'react'
+import { useState, memo, useRef, useEffect } from 'react'
 import React from 'react'
 import {
   ChevronDown, ChevronRight, Copy, Trash2, GripVertical,
@@ -100,6 +100,7 @@ export const QuestionCard = memo(function QuestionCard({
 }) {
   const [showTypeMenu, setShowTypeMenu] = useState(false)
   const typeMenuRef = React.useRef(null)
+  const textRef = useRef(null)
   const meta   = getTypeMeta(question.questionType)
   const colors = TYPE_COLORS[question.questionType] || TYPE_COLORS.single_select
   const TypeIcon = TYPE_ICONS[question.questionType] || TYPE_ICONS.single_select
@@ -117,6 +118,10 @@ export const QuestionCard = memo(function QuestionCard({
     document.addEventListener('mousedown', close)
     return () => document.removeEventListener('mousedown', close)
   }, [showTypeMenu])
+
+  useEffect(() => {
+    if (isActive) textRef.current?.focus({ preventScroll: true })
+  }, [isActive])
 
   const handleTypeChange = (newType) => {
     setShowTypeMenu(false)
@@ -264,7 +269,8 @@ export const QuestionCard = memo(function QuestionCard({
                 )}
               </div>
               <textarea
-                autoFocus rows={2}
+                ref={textRef}
+                rows={2}
                 data-qid={question.id}
                 value={question.text}
                 onChange={e => dispatch({ type: 'UPDATE_ITEM', id: question.id, patch: { text: e.target.value } })}

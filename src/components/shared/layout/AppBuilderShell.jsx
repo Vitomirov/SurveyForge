@@ -3,9 +3,9 @@ import { AppLeadingZone } from '@/components/shared/layout/AppLeadingZone.jsx'
 
 export const APP_SHELL_PADDING = 'px-4 sm:px-6 lg:px-8'
 
-/** Leading brand column + main pane (divider is the pane's left border on md+). */
+/** Leading brand column + main pane. Row uses minmax(0,1fr) so flex parents can scroll. */
 export const APP_SHELL_GRID =
-  'grid grid-cols-[auto_1fr] gap-x-3 md:gap-x-4 lg:gap-x-6'
+  'grid grid-cols-[auto_1fr] grid-rows-[minmax(0,1fr)] gap-x-3 md:gap-x-4 lg:gap-x-6 min-h-0'
 
 export const APP_MAIN_PANE =
   'min-w-0 md:border-l md:border-ink-200 md:pl-4 lg:pl-6'
@@ -52,7 +52,7 @@ export function AppAlignedBody({
           className="invisible pointer-events-none"
           aria-hidden="true"
         />
-        <div className={`${paneBase} ${paneClassName}`}>
+        <div className={`${paneBase} min-h-0 lg:overflow-hidden ${paneClassName}`}>
           {children}
         </div>
       </div>

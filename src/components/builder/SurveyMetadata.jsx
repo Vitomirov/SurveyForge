@@ -10,6 +10,7 @@ import { getSession, updateSession } from '@/utils/data/authStore'
 import { canManagePlatform } from '@/utils/platform/permissions'
 import { isSurveyCodeTaken } from '@/utils/data/surveyLibrary'
 import { ShareableSurveyUrl } from './managers/ShareableSurveyUrl'
+import { DEFAULT_DATE_FORMAT } from '@/constants/surveyDefaults'
 
 const PlatformSettings = lazy(() => import('@/components/dashboard/PlatformSettings.jsx'))
 
@@ -124,6 +125,19 @@ export function SurveyMetadata({ survey, dispatch }) {
             {SURVEY_STATUSES.map(s => (
               <option key={s.id} value={s.id}>{s.label}</option>
             ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="text-xs text-ink-500 mb-1 block">Default date format</label>
+          <select
+            value={survey.defaultDateFormat || DEFAULT_DATE_FORMAT}
+            onChange={e => set('defaultDateFormat', e.target.value)}
+            className="input-base text-sm w-full font-mono"
+          >
+            <option value="MM/DD/YYYY">MM/DD/YYYY</option>
+            <option value={DEFAULT_DATE_FORMAT}>{DEFAULT_DATE_FORMAT}</option>
+            <option value="YYYY-MM-DD">YYYY-MM-DD</option>
           </select>
         </div>
 

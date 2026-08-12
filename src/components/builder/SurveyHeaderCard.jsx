@@ -1,3 +1,5 @@
+import { useState, useEffect, useRef } from 'react'
+import { Settings2 } from 'lucide-react'
 import { RichTextEditor, NavigationLockEditor } from '@/components/shared'
 import {
   CoverPageSettings, BrandingSettings,
@@ -5,7 +7,17 @@ import {
 } from '@/components/builder'
 import { DEFAULT_SCREEN_MESSAGES } from '@/constants/surveyDefaults'
 
-export function SurveyHeaderCard({ survey, dispatch }) {
+export function SurveyHeaderCard({ survey, dispatch, hasItems = false }) {
+  const hadItemsRef = useRef(hasItems)
+  const [settingsOpen, setSettingsOpen] = useState(!hasItems)
+
+  useEffect(() => {
+    if (!hadItemsRef.current && hasItems) setSettingsOpen(false)
+    hadItemsRef.current = hasItems
+  }, [hasItems])
+
+  const showDescription = !hasItems || settingsOpen
+
   return (
     <div className="card p-3 sm:p-4 mb-4 sm:mb-5 shadow-md shadow-ink-900/[0.05]">
       <input
@@ -15,36 +27,58 @@ export function SurveyHeaderCard({ survey, dispatch }) {
         placeholder="Survey Title"
         className="w-full text-lg sm:text-xl font-bold text-ink-900 bg-transparent border-none outline-none focus:bg-ink-50 px-2 py-1 rounded-lg -ml-2 mb-1 transition-colors"
       />
-      <div className="mb-1">
-        <RichTextEditor
-          value={survey.description}
-          onChange={html => dispatch({ type: 'SET_SURVEY_FIELD', field: 'description', value: html })}
-          placeholder="Survey description (optional)... use the toolbar to format it"
-        />
-      </div>
 
-      <BrandingSettings survey={survey} dispatch={dispatch} />
-      <SurveyMetadata survey={survey} dispatch={dispatch} />
-      <CoverPageSettings survey={survey} dispatch={dispatch} />
+      {showDescription && (
+        <div className="mb-1">
+          <RichTextEditor
+            value={survey.description}
+            onChange={html => dispatch({ type: 'SET_SURVEY_FIELD', field: 'description', value: html })}
+            placeholder="Survey description (optional)... use the toolbar to format it"
+          />
+        </div>
+      )}
 
-      <div className="mt-3 border-t border-ink-100 pt-3">
-        <NavigationLockEditor
-          lock={survey.settings?.navigationLockAllPages}
-          onChange={navigationLock => dispatch({
-            type: 'SET_SURVEY_SETTING',
-            key: 'navigationLockAllPages',
-            value: navigationLock,
-          })}
-          pageLabel="All pages"
-          allPages
-          compact
-        />
-      </div>
+      {settingsOpen ? (
+        <div className="mt-3 border-t border-ink-100 pt-3">
+          <button
+            type="button"
+            onClick={() => setSettingsOpen(false)}
+            className="text-xs font-semibold text-ink-500 uppercase tracking-wider hover:text-ink-800 flex items-center gap-1.5 transition-colors mb-3"
+          >
+            <Settings2 size={12} /> Survey settings
+          </button>
+          <BrandingSettings survey={survey} dispatch={dispatch} />
+          <SurveyMetadata survey={survey} dispatch={dispatch} />
+          <CoverPageSettings survey={survey} dispatch={dispatch} />
 
-      <ScreenOutMessages survey={survey} dispatch={dispatch} />
+          <div className="mt-3 border-t border-ink-100 pt-3">
+            <NavigationLockEditor
+              lock={survey.settings?.navigationLockAllPages}
+              onChange={navigationLock => dispatch({
+                type: 'SET_SURVEY_SETTING',
+                key: 'navigationLockAllPages',
+                value: navigationLock,
+              })}
+              pageLabel="All pages"
+              allPages
+              compact
+            />
+          </div>
 
-      <FingerprintSettings survey={survey} dispatch={dispatch} />
-      <DNCManager surveyId={survey.id} />
+          <ScreenOutMessages survey={survey} dispatch={dispatch} />
+
+          <FingerprintSettings survey={survey} dispatch={dispatch} />
+          <DNCManager surveyId={survey.id} />
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setSettingsOpen(true)}
+          className="mt-3 pt-3 border-t border-ink-100 text-xs font-semibold text-ink-500 uppercase tracking-wider hover:text-ink-800 flex items-center gap-1.5 transition-colors"
+        >
+          <Settings2 size={12} /> Survey settings
+        </button>
+      )}
     </div>
   )
 }

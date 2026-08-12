@@ -1,31 +1,16 @@
 import { useState, useRef, useEffect } from 'react'
 import {
-  Plus, Settings, LogOut, Users, CreditCard, Building2, ChevronDown, User,
+  Plus, Settings, Users, CreditCard, Building2, ChevronDown, User,
 } from 'lucide-react'
 import { AppShell, APP_SHELL_GRID, APP_BUILDER_PANE } from '@/components/shared/layout/AppBuilderShell.jsx'
 import { AppLeadingZone } from '@/components/shared/layout/AppLeadingZone.jsx'
-import { AUTH_COPY } from '@/constants/authCopy'
+import { HeaderLogoutButton } from '@/components/shared/layout/HeaderLogoutButton.jsx'
 import { roleLabel, canManagePlatform, canViewBilling, canManageBilling } from '@/utils/platform/permissions'
 import { prefetchBuilder } from '@/utils/routing/routePrefetch'
 import { UserAvatar } from './UserAvatar.jsx'
 
-function HeaderNavButton({ icon: Icon, label, onClick, title }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      title={title || label}
-      className="inline-flex items-center gap-2 text-sm font-medium text-ink-600 hover:text-ink-900 hover:bg-ink-50 px-3 py-2 rounded-lg transition-colors"
-    >
-      <Icon size={16} className="text-ink-400" />
-      <span className="hidden xl:inline">{label}</span>
-    </button>
-  )
-}
-
 function UserMenu({
   session,
-  onLogout,
   onOpenAccount,
   onOpenSettings,
   onOpenTeam,
@@ -62,20 +47,21 @@ function UserMenu({
   )
 
   return (
-    <div ref={rootRef} className="relative">
+    <div ref={rootRef} className="relative shrink-0">
       <button
         type="button"
         onClick={() => setOpen(v => !v)}
-        className={`flex items-center gap-2.5 pl-1.5 pr-2.5 py-1.5 rounded-xl border transition-all ${
+        className={`flex items-center gap-2 sm:gap-2.5 pl-1.5 pr-2 sm:pr-2.5 py-1.5 rounded-xl border transition-all ${
           open
             ? 'border-brand-200 bg-brand-50/50 shadow-sm'
             : 'border-ink-200 bg-white hover:border-ink-300 hover:bg-ink-50/80'
         }`}
         aria-expanded={open}
         aria-haspopup="menu"
+        aria-label="Account menu"
       >
         <UserAvatar user={session} size="sm" className="ring-2 ring-white" />
-        <div className="hidden md:block text-left min-w-0 max-w-[140px] lg:max-w-[180px]">
+        <div className="hidden lg:block text-left min-w-0 max-w-[160px]">
           <p className="text-sm font-semibold text-ink-800 truncate leading-tight">
             {session.name || session.username}
           </p>
@@ -119,20 +105,6 @@ function UserMenu({
             {showBilling && menuItem('Billing', CreditCard, onOpenBilling)}
             {showPlatform && menuItem('Platform console', Building2, onOpenPlatform)}
           </div>
-
-          {onLogout && (
-            <>
-              <div className="border-t border-ink-100 my-1.5" />
-              <button
-                type="button"
-                onClick={() => { setOpen(false); onLogout() }}
-                className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-rose-600 hover:bg-rose-50 rounded-lg transition-colors text-left"
-              >
-                <LogOut size={15} />
-                {AUTH_COPY.signOut}
-              </button>
-            </>
-          )}
         </div>
       )}
     </div>
@@ -150,77 +122,35 @@ export function DashboardHeader({
   onOpenBilling,
   onOpenPlatform,
 }) {
-  const showAdminNav = canManagePlatform(session)
-  const showBilling = canViewBilling(session)
-  const showPlatform = canManageBilling(session)
-
   return (
     <header className="bg-white/95 backdrop-blur-md border-b border-ink-200/80 sticky top-0 z-30 safe-top">
       <AppShell>
         <div className={`${APP_SHELL_GRID} items-center min-h-[4.25rem] py-3`}>
           <AppLeadingZone onLogoClick={onGoHome} />
 
-          <div className={`${APP_BUILDER_PANE} flex items-center gap-2 sm:gap-3 min-w-0`}>
-            <div className="ml-auto flex items-center gap-2 sm:gap-3 min-w-0">
-              <nav className="hidden md:flex items-center gap-0.5 p-1 rounded-xl bg-ink-50/80 border border-ink-100">
-                {showAdminNav && (
-                  <>
-                    <HeaderNavButton
-                      icon={Users}
-                      label="Team"
-                      onClick={onOpenTeam}
-                      title="Team performance"
-                    />
-                    <HeaderNavButton
-                      icon={Settings}
-                      label="Settings"
-                      onClick={onOpenSettings}
-                      title="Platform settings"
-                    />
-                  </>
-                )}
-                {showBilling && (
-                  <HeaderNavButton
-                    icon={CreditCard}
-                    label="Billing"
-                    onClick={onOpenBilling}
-                    title="Subscription and invoices"
-                  />
-                )}
-                {showPlatform && (
-                  <HeaderNavButton
-                    icon={Building2}
-                    label="Platform"
-                    onClick={onOpenPlatform}
-                    title="Platform console"
-                  />
-                )}
-              </nav>
+          <div className={`${APP_BUILDER_PANE} flex items-center justify-end gap-2 sm:gap-3 min-w-0`}>
+            <button
+              type="button"
+              onClick={onNewSurvey}
+              onMouseEnter={prefetchBuilder}
+              onFocus={prefetchBuilder}
+              className="btn-primary px-3 sm:px-4 py-2.5 text-sm font-semibold shadow-sm shadow-brand-600/15 shrink-0"
+            >
+              <Plus size={16} />
+              <span className="hidden sm:inline">New survey</span>
+              <span className="sm:hidden">New</span>
+            </button>
 
-              <button
-                type="button"
-                onClick={onNewSurvey}
-                onMouseEnter={prefetchBuilder}
-                onFocus={prefetchBuilder}
-                className="btn-primary px-4 py-2.5 text-sm font-semibold shadow-sm shadow-brand-600/15 shrink-0"
-              >
-                <Plus size={16} />
-                <span className="hidden sm:inline">New survey</span>
-                <span className="sm:hidden">New</span>
-              </button>
+            <HeaderLogoutButton onLogout={onLogout} />
 
-              <div className="hidden sm:block h-8 w-px bg-ink-200 shrink-0" />
-
-              <UserMenu
-                session={session}
-                onLogout={onLogout}
-                onOpenAccount={onOpenAccount}
-                onOpenSettings={onOpenSettings}
-                onOpenTeam={onOpenTeam}
-                onOpenBilling={onOpenBilling}
-                onOpenPlatform={onOpenPlatform}
-              />
-            </div>
+            <UserMenu
+              session={session}
+              onOpenAccount={onOpenAccount}
+              onOpenSettings={onOpenSettings}
+              onOpenTeam={onOpenTeam}
+              onOpenBilling={onOpenBilling}
+              onOpenPlatform={onOpenPlatform}
+            />
           </div>
         </div>
       </AppShell>

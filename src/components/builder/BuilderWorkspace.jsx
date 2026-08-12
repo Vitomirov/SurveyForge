@@ -1,3 +1,4 @@
+import { useRef } from 'react'
 import { BuilderQuickAddDock } from '@/components/builder/panels'
 import { SurveyHeaderCard } from '@/components/builder/SurveyHeaderCard'
 import { SurveyItemList } from '@/components/builder/SurveyItemList'
@@ -21,11 +22,13 @@ export function BuilderWorkspace({
   onDragEnd,
   onOpenMore,
 }) {
+  const scrollRef = useRef(null)
+
   return (
     <AppWorkspaceColumns className="flex-1 min-h-0 lg:overflow-hidden" sidebar={<BuilderSidebar items={state.items} addActions={addActions} />}>
-      <div className="flex-1 min-w-0 lg:flex lg:flex-col lg:min-h-0">
-        <div className="lg:flex-1 lg:overflow-y-auto lg:min-h-0 lg:py-6 lg:pr-0.5">
-          <SurveyHeaderCard survey={state.survey} dispatch={dispatch} />
+      <div className="flex-1 min-h-0 flex flex-col lg:overflow-hidden">
+        <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto py-4 sm:py-6 lg:py-6 lg:pr-0.5">
+          <SurveyHeaderCard survey={state.survey} dispatch={dispatch} hasItems={hasItems} />
           <SurveyItemList
             state={state}
             dispatch={dispatch}
@@ -39,6 +42,7 @@ export function BuilderWorkspace({
             onActivateItem={onActivateItem}
             onDragStart={onDragStart}
             onDragEnd={onDragEnd}
+            scrollContainerRef={scrollRef}
           />
           {hasItems && <div className="h-20 lg:hidden" aria-hidden="true" />}
         </div>

@@ -1,6 +1,8 @@
+import { useEffect, useRef } from 'react'
 import {
   DndContext, closestCenter, DragOverlay,
 } from '@dnd-kit/core'
+import { scrollChildToTop } from '@/utils/dom/scrollChildToTop'
 import {
   SortableContext, verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
@@ -23,7 +25,25 @@ export function SurveyItemList({
   onActivateItem,
   onDragStart,
   onDragEnd,
+  scrollContainerRef,
 }) {
+  const prevItemCount = useRef(state.items.length)
+
+  useEffect(() => {
+    if (state.items.length <= prevItemCount.current || !state.activeItemId) {
+      prevItemCount.current = state.items.length
+      return
+    }
+    prevItemCount.current = state.items.length
+    const id = state.activeItemId
+    const container = scrollContainerRef?.current
+    const run = () => {
+      const el = document.getElementById(`survey-item-${id}`)
+      if (container && el) scrollChildToTop(container, el)
+    }
+    requestAnimationFrame(() => requestAnimationFrame(run))
+  }, [state.items.length, state.activeItemId, scrollContainerRef])
+
   if (state.items.length === 0) {
     return <EmptyState onAdd={type => dispatch({ type: 'ADD_QUESTION', qtype: type })} />
   }
@@ -46,18 +66,19 @@ export function SurveyItemList({
             />
           )}
           {state.items.map((item, idx) => (
-            <SurveyItemRow
-              key={item.id}
-              item={item}
-              idx={idx}
-              meta={itemMeta[idx]}
-              state={state}
-              dispatch={dispatch}
-              availableQuestions={availableQuestionsByIndex[idx]}
-              groupQuestionCounts={groupQuestionCounts}
-              allPagesLockEnabled={allPagesLockEnabled}
-              onActivateItem={onActivateItem}
-            />
+            <div key={item.id} id={`survey-item-${item.id}`}>
+              <SurveyItemRow
+                item={item}
+                idx={idx}
+                meta={itemMeta[idx]}
+                state={state}
+                dispatch={dispatch}
+                availableQuestions={availableQuestionsByIndex[idx]}
+                groupQuestionCounts={groupQuestionCounts}
+                allPagesLockEnabled={allPagesLockEnabled}
+                onActivateItem={onActivateItem}
+              />
+            </div>
           ))}
         </div>
       </SortableContext>
