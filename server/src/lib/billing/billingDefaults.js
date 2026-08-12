@@ -1,6 +1,5 @@
+import { DEFAULT_PLAN_ID } from '../../../../shared/planFeatures.js'
 import { defaultTrialPeriod, planById } from './billingPlans.js'
-
-const DEFAULT_PLAN_ID = 'starter'
 
 /** Ensure every org has a subscription row (idempotent). */
 export async function ensureOrgBilling(prisma, organizationId) {

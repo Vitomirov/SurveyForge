@@ -1,5 +1,13 @@
+import { maxSurveys } from '../../../../shared/planFeatures.js'
+
 /** Subscription plan catalog — amounts in cents (USD). */
 export const PLANS = {
+  free_trial: {
+    id: 'free_trial',
+    name: 'Free Trial',
+    seats: 1,
+    priceCents: 0,
+  },
   starter: {
     id: 'starter',
     name: 'Starter',
@@ -49,6 +57,7 @@ export function serializeSubscription(row) {
     planName:           plan?.name ?? row.planId,
     status:             row.status,
     seats:              row.seats,
+    maxSurveys:         maxSurveys(row.planId),
     priceCents:         row.priceCents,
     currency:           row.currency,
     currentPeriodStart: row.currentPeriodStart.toISOString(),

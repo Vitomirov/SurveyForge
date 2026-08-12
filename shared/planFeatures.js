@@ -3,7 +3,17 @@
 
 import { isEnterprisePlan } from './surveyUrl.js'
 
-export const PLAN_IDS = ['starter', 'professional', 'enterprise']
+export const DEFAULT_PLAN_ID = 'free_trial'
+
+export const PLAN_IDS = ['free_trial', 'starter', 'professional', 'enterprise']
+
+export function resolvePlanId(planId) {
+  return planId || DEFAULT_PLAN_ID
+}
+
+export function isFreeTrialPlan(planId) {
+  return planId === 'free_trial'
+}
 
 export function isProfessionalPlan(planId) {
   return planId === 'professional' || isEnterprisePlan(planId)
@@ -46,15 +56,24 @@ export function embedOriginLimit(planId) {
   return 0
 }
 
+/** Max surveys per org; null = unlimited. */
+export function maxSurveys(planId) {
+  if (isFreeTrialPlan(planId)) return 5
+  return null
+}
+
 export function planFeatureSummary(planId) {
+  const resolved = resolvePlanId(planId)
   return {
-    planId,
-    brandKit: canUseBrandKit(planId),
-    surveyThemeOverrides: canUseSurveyThemeOverrides(planId),
-    hidePlatformBranding: canHidePlatformBranding(planId),
-    embed: canEmbedOnOwnSites(planId),
-    customDomain: canUseCustomDomain(planId),
-    brandLock: canEnforceBrandLock(planId),
-    embedOriginLimit: embedOriginLimit(planId),
+    planId: resolved,
+    brandKit: canUseBrandKit(resolved),
+    surveyThemeOverrides: canUseSurveyThemeOverrides(resolved),
+    hidePlatformBranding: canHidePlatformBranding(resolved),
+    embed: canEmbedOnOwnSites(resolved),
+    customDomain: canUseCustomDomain(resolved),
+    brandLock: canEnforceBrandLock(resolved),
+    embedOriginLimit: embedOriginLimit(resolved),
+    maxSurveys: maxSurveys(resolved),
+    isFreeTrial: isFreeTrialPlan(resolved),
   }
 }

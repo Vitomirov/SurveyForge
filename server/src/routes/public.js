@@ -2,6 +2,7 @@ import { upsertResponse } from './responses.js'
 import { clientDomainFromRequest, findPublicSurvey } from '../lib/survey/surveyPublicPath.js'
 import { buildPublicBrandingPayload } from '../lib/branding/publicBranding.js'
 import { readEmbedAllowedOrigins } from '../lib/platform/orgSettings.js'
+import { resolvePlanId } from '../../../shared/planFeatures.js'
 import { buildFrameAncestorsDirective } from '../../../shared/embedProtocol.js'
 import { createRateLimiter, clientIp } from '../lib/survey/rateLimit.js'
 
@@ -20,7 +21,7 @@ async function loadOrgBrandingContext(prisma, organizationId) {
   ])
   return {
     settings: org?.settings,
-    planId: subscription?.planId || 'starter',
+    planId: resolvePlanId(subscription?.planId),
   }
 }
 

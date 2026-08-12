@@ -29,7 +29,7 @@ export async function registerBillingRoutes(app) {
 
   app.get('/api/billing/overview', { preHandler: adminOnly }, async (request) => {
     const orgId = request.organizationId
-    const [subscription, org, invoices] = await Promise.all([
+    const [subscription, org, invoices, surveyCount, userCount] = await Promise.all([
       ensureOrgBilling(app.prisma, orgId),
       app.prisma.organization.findUnique({
         where: { id: orgId },
@@ -40,6 +40,8 @@ export async function registerBillingRoutes(app) {
         orderBy: { createdAt: 'desc' },
         take: 12,
       }),
+      app.prisma.survey.count({ where: { organizationId: orgId } }),
+      app.prisma.user.count({ where: { organizationId: orgId } }),
     ])
 
     return {
@@ -48,6 +50,10 @@ export async function registerBillingRoutes(app) {
       brandKit: readBrandKit(org?.settings),
       embedAllowedOrigins: readEmbedAllowedOrigins(org?.settings),
       planFeatures: planFeatureSummary(subscription.planId),
+      usage: {
+        surveys: surveyCount,
+        users: userCount,
+      },
       invoices:     invoices.map(serializeInvoice),
     }
   })

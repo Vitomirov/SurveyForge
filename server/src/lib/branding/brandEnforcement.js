@@ -2,6 +2,7 @@ import {
   canUseBrandKit,
   canUseSurveyThemeOverrides,
   embedOriginLimit,
+  resolvePlanId,
 } from '../../../../shared/planFeatures.js'
 import {
   validateBrandTheme,
@@ -20,7 +21,7 @@ export async function loadOrgPlanContext(prisma, organizationId) {
       select: { planId: true },
     }),
   ])
-  const planId = subscription?.planId || 'starter'
+  const planId = resolvePlanId(subscription?.planId)
   return { org, planId }
 }
 

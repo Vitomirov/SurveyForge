@@ -13,6 +13,7 @@ import { formatMoney, formatDate } from '@/utils/format/format'
 import { normalizeSurveyDomain } from '@shared/surveyUrl.js'
 
 const PLANS = [
+  { id: 'free_trial', name: 'Free Trial' },
   { id: 'starter', name: 'Starter' },
   { id: 'professional', name: 'Professional' },
   { id: 'enterprise', name: 'Enterprise' },

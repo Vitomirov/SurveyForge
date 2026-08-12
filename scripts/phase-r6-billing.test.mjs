@@ -39,7 +39,90 @@ test('org admin GET /api/billing/overview returns subscription', async () => {
   const res = await api('/api/billing/overview', { token: fixtures.adminToken })
   assert.equal(res.status, 200)
   assert.ok(res.data.subscription?.planId)
+  assert.ok(res.data.usage)
   assert.ok(Array.isArray(res.data.invoices))
+})
+
+test('new org signup provisions free trial subscription', async () => {
+  const signup = await api('/api/auth/signup', {
+    method: 'POST',
+    body: {
+      organizationName: `Trial Org ${unique}`,
+      name: 'Trial Admin',
+      username: `trial_${unique}`,
+      password: 'testpass123',
+    },
+  })
+  assert.equal(signup.status, 201)
+
+  const overview = await api('/api/billing/overview', { token: signup.data.token })
+  assert.equal(overview.status, 200)
+  assert.equal(overview.data.subscription.planId, 'free_trial')
+  assert.equal(overview.data.subscription.status, 'trialing')
+})
+
+test('free trial enforces survey limit', async () => {
+  const signup = await api('/api/auth/signup', {
+    method: 'POST',
+    body: {
+      organizationName: `Limit Org ${unique}`,
+      name: 'Limit Admin',
+      username: `limit_${unique}`,
+      password: 'testpass123',
+    },
+  })
+  assert.equal(signup.status, 201)
+  const token = signup.data.token
+
+  for (let i = 0; i < 5; i++) {
+    const id = `survey_limit_${unique}_${i}`
+    const res = await api(`/api/surveys/${id}`, {
+      method: 'PATCH',
+      token,
+      body: {
+        survey: { id, title: `Survey ${i}` },
+        items: [],
+      },
+    })
+    assert.equal(res.status, 201, `survey ${i} should be created`)
+  }
+
+  const blocked = await api(`/api/surveys/survey_limit_${unique}_extra`, {
+    method: 'PATCH',
+    token,
+    body: {
+      survey: { id: `survey_limit_${unique}_extra`, title: 'Too many' },
+      items: [],
+    },
+  })
+  assert.equal(blocked.status, 403)
+  assert.equal(blocked.data.code, 'SURVEY_LIMIT')
+})
+
+test('free trial enforces seat limit', async () => {
+  const signup = await api('/api/auth/signup', {
+    method: 'POST',
+    body: {
+      organizationName: `Seat Org ${unique}`,
+      name: 'Seat Admin',
+      username: `seat_${unique}`,
+      password: 'testpass123',
+    },
+  })
+  assert.equal(signup.status, 201)
+
+  const blocked = await api('/api/platform/users', {
+    method: 'POST',
+    token: signup.data.token,
+    body: {
+      username: `seat2_${unique}`,
+      name: 'Second User',
+      password: 'testpass123',
+      role: 'editor',
+    },
+  })
+  assert.equal(blocked.status, 403)
+  assert.equal(blocked.data.code, 'SEAT_LIMIT')
 })
 
 test('editor cannot access org billing endpoints', async () => {

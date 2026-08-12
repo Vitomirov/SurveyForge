@@ -36,7 +36,12 @@ export function BillingPanel({ onClose, onOpen }) {
   }, [toast, onOpen])
 
   const sub = overview?.subscription
+  const usage = overview?.usage
+  const planFeatures = overview?.planFeatures
   const invoices = overview?.invoices ?? []
+  const isFreeTrial = planFeatures?.isFreeTrial || sub?.planId === 'free_trial'
+  const surveyLimit = sub?.maxSurveys ?? planFeatures?.maxSurveys
+  const showSurveyUsage = surveyLimit != null && usage
 
   return (
     <Modal
@@ -50,12 +55,22 @@ export function BillingPanel({ onClose, onOpen }) {
         <InlineLoader label="Loading billing…" />
       ) : (
         <>
+          {isFreeTrial && (
+            <p className="text-sm text-brand-700 bg-brand-50 border border-brand-100 rounded-xl px-4 py-3">
+              {AUTH_BILLING.trialBanner}
+            </p>
+          )}
+
           {sub && (
             <div className="grid sm:grid-cols-2 gap-4">
               <div className="border border-ink-100 rounded-xl p-4">
                 <p className="text-xs text-ink-400 uppercase tracking-wide mb-1">{AUTH_BILLING.plan}</p>
                 <p className="text-lg font-bold text-ink-800">{sub.planName}</p>
-                <p className="text-sm text-ink-500 mt-1">{formatMoney(sub.priceCents, sub.currency)} / month</p>
+                <p className="text-sm text-ink-500 mt-1">
+                  {sub.priceCents === 0
+                    ? AUTH_BILLING.freePrice
+                    : `${formatMoney(sub.priceCents, sub.currency)} / month`}
+                </p>
               </div>
               <div className="border border-ink-100 rounded-xl p-4 space-y-2">
                 <div className="flex justify-between items-center">
@@ -64,8 +79,16 @@ export function BillingPanel({ onClose, onOpen }) {
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-ink-400">{AUTH_BILLING.seats}</span>
-                  <span className="font-medium text-ink-700">{sub.seats}</span>
+                  <span className="font-medium text-ink-700">
+                    {usage ? `${usage.users} / ${sub.seats}` : sub.seats}
+                  </span>
                 </div>
+                {showSurveyUsage && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-ink-400">{AUTH_BILLING.surveys}</span>
+                    <span className="font-medium text-ink-700">{usage.surveys} / {surveyLimit}</span>
+                  </div>
+                )}
                 <div className="flex justify-between text-sm">
                   <span className="text-ink-400">{AUTH_BILLING.periodEnd}</span>
                   <span className="font-medium text-ink-700">{formatDate(sub.currentPeriodEnd)}</span>

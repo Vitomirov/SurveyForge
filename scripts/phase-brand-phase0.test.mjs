@@ -9,6 +9,7 @@ import {
   canEmbedOnOwnSites,
   canUseCustomDomain,
   embedOriginLimit,
+  maxSurveys,
   planFeatureSummary,
 } from '../shared/planFeatures.js'
 import {
@@ -33,22 +34,32 @@ import {
 } from '../shared/domainVerification.js'
 
 test('plan feature matrix gates by tier', () => {
+  assert.equal(canUseBrandKit('free_trial'), false)
   assert.equal(canUseBrandKit('starter'), false)
   assert.equal(canUseBrandKit('professional'), true)
   assert.equal(canUseBrandKit('enterprise'), true)
+  assert.equal(canEmbedOnOwnSites('free_trial'), false)
   assert.equal(canEmbedOnOwnSites('starter'), false)
   assert.equal(canEmbedOnOwnSites('professional'), true)
   assert.equal(canUseCustomDomain('professional'), false)
   assert.equal(canUseCustomDomain('enterprise'), true)
   assert.equal(embedOriginLimit('professional'), 10)
   assert.equal(embedOriginLimit('enterprise'), null)
+  assert.equal(maxSurveys('free_trial'), 5)
+  assert.equal(maxSurveys('starter'), null)
 })
 
 test('planFeatureSummary returns stable shape', () => {
+  const trial = planFeatureSummary('free_trial')
+  assert.equal(trial.brandKit, false)
+  assert.equal(trial.maxSurveys, 5)
+  assert.equal(trial.isFreeTrial, true)
+
   const pro = planFeatureSummary('professional')
   assert.equal(pro.brandKit, true)
   assert.equal(pro.customDomain, false)
   assert.equal(pro.embedOriginLimit, 10)
+  assert.equal(pro.maxSurveys, null)
 })
 
 test('validateBrandTheme rejects inaccessible colors', () => {

@@ -4,6 +4,7 @@ import { surveyScope } from '../lib/auth/authz.js'
 import { findAccessibleSurvey } from '../lib/auth/surveyAccess.js'
 import { assignPublicPath } from '../lib/survey/surveyPublicPath.js'
 import { enforceSurveyBranding, loadOrgPlanContext } from '../lib/branding/brandEnforcement.js'
+import { assertCanCreateSurvey } from '../lib/billing/planEnforcement.js'
 
 async function loadPlatformLists(prisma, organizationId) {
   const [clients, topics, surveyTypes] = await Promise.all([
@@ -125,6 +126,11 @@ export async function registerSurveyRoutes(app) {
 
     if (!survey || !Array.isArray(items)) {
       return reply.code(400).send({ error: 'New surveys require survey object and items array' })
+    }
+
+    const surveyLimit = await assertCanCreateSurvey(app.prisma, request.organizationId)
+    if (!surveyLimit.ok) {
+      return reply.code(403).send({ error: surveyLimit.error, code: surveyLimit.code })
     }
 
     const { clients, topics, surveyTypes } = await loadPlatformLists(app.prisma, request.organizationId)

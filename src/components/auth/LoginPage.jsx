@@ -81,7 +81,7 @@ export function LoginPage({ onLogin }) {
           </h2>
           <p className="text-sm text-ink-400 mb-5">
             {isSignup
-              ? 'Set up a new workspace and your admin account.'
+              ? AUTH_COPY.createOrgSubtitle
               : 'Enter your credentials to access the dashboard.'}
           </p>
 

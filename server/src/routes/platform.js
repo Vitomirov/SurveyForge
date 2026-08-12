@@ -1,6 +1,7 @@
 import { hashPassword } from '../lib/auth/password.js'
 import { requireRole } from '../lib/auth/authz.js'
 import { ROLES, isAdminRole, ROLE_VALUES } from '../lib/auth/roles.js'
+import { assertCanAddUser } from '../lib/billing/planEnforcement.js'
 
 const newId = (prefix) => `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`
 const adminOnly = requireRole(ROLES.ADMIN)
@@ -194,6 +195,11 @@ export async function registerPlatformRoutes(app) {
       where: { organizationId: request.organizationId, email },
     })
     if (dup) return reply.code(409).send({ error: 'Username already exists.' })
+
+    const seatCheck = await assertCanAddUser(app.prisma, request.organizationId)
+    if (!seatCheck.ok) {
+      return reply.code(403).send({ error: seatCheck.error, code: seatCheck.code })
+    }
 
     const row = await app.prisma.user.create({
       data: {

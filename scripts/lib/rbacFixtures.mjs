@@ -25,7 +25,7 @@ export function makeApi(base) {
 }
 
 /** Provision a fresh org with one admin and one editor; returns both tokens. */
-export async function provisionOrg(api, unique) {
+export async function provisionOrg(api, unique, { planId = 'starter' } = {}) {
   const adminUsername = `rbac_adm_${unique}`
   const editorUsername = `rbac_ed_${unique}`
 
@@ -41,6 +41,36 @@ export async function provisionOrg(api, unique) {
   assert.equal(signup.status, 201)
   const adminToken = signup.data.token
   const adminSession = signup.data.session
+
+  if (planId !== 'free_trial') {
+    const vendorLogin = await api('/api/auth/login', {
+      method: 'POST',
+      body: { username: 'vendor', password: 'vendor123' },
+    })
+    assert.equal(vendorLogin.status, 200, 'vendor login should succeed (run seed)')
+
+    const upgrade = await api(
+      `/api/vendor/organizations/${adminSession.organizationId}/subscription`,
+      {
+        method: 'PATCH',
+        token: vendorLogin.data.token,
+        body: { planId, status: 'active' },
+      },
+    )
+    assert.equal(upgrade.status, 200, `upgrade to ${planId}`)
+  }
+
+  if (planId === 'free_trial') {
+    return {
+      adminToken,
+      adminSession,
+      editorToken: null,
+      editorSession: null,
+      editorUserId: null,
+      adminUsername,
+      editorUsername: null,
+    }
+  }
 
   const created = await api('/api/platform/users', {
     method: 'POST',
