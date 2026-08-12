@@ -36,6 +36,7 @@ model User {
   username       String?  @map("user_username")
   passwordHash   String   @map("user_password_hash")
   name           String?  @map("user_name")
+  avatarUrl      String?  @map("user_avatar_url")
   role           String   @default("editor") @map("user_role")
   createdAt      DateTime @default(now()) @map("user_created_at")
   updatedAt      DateTime @updatedAt @map("user_updated_at")

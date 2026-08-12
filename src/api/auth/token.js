@@ -1,8 +1,16 @@
 const TOKEN_KEY = 'sf_token'
+/** JWTs with avatars embedded exceeded header limits (~431). Lean tokens are ~500 bytes. */
+const MAX_TOKEN_LENGTH = 8192
 
 export function getAuthToken() {
   try {
-    return sessionStorage.getItem(TOKEN_KEY)
+    const token = sessionStorage.getItem(TOKEN_KEY)
+    if (token && token.length > MAX_TOKEN_LENGTH) {
+      sessionStorage.removeItem(TOKEN_KEY)
+      sessionStorage.removeItem('sf_session')
+      return null
+    }
+    return token
   } catch {
     return null
   }

@@ -74,6 +74,7 @@ export async function login(username, password) {
   if (!user) return { ok: false, error: AUTH_ERRORS.invalidCredentials }
   const session = {
     userId: user.id, username: user.username, name: user.name,
+    avatarUrl: user.avatarUrl || null,
     role: user.role, loginAt: new Date().toISOString(),
   }
   try { localStorage.setItem(SESSION_KEY, JSON.stringify(session)) } catch {}
@@ -107,6 +108,7 @@ export async function signup({ organizationName, name, username, password }) {
   saveUsers([...users, user])
   const session = {
     userId: user.id, username: user.username, name: user.name,
+    avatarUrl: user.avatarUrl || null,
     role: user.role, organizationName: organizationName?.trim(),
     loginAt: new Date().toISOString(),
   }
@@ -146,4 +148,61 @@ export function deleteUser(id) {
   const updated = loadUsers().filter(u => u.id !== id)
   saveUsers(updated)
   return updated
+}
+
+export function updateSession(session) {
+  if (useApi) {
+    writeSessionStorage(session)
+    return session
+  }
+  try { localStorage.setItem(SESSION_KEY, JSON.stringify(session)) } catch {}
+  return session
+}
+
+/** Refresh profile + lean JWT from the server (API mode). */
+export async function refreshSessionFromApi() {
+  if (!useApi || !getAuthToken()) return null
+  try {
+    const { fetchMe } = await import('@/api/auth/profile')
+    const data = await fetchMe()
+    if (data.token) setAuthToken(data.token)
+    if (data.session) writeSessionStorage(data.session)
+    return data.session
+  } catch {
+    return null
+  }
+}
+
+/** Self-service profile update (local mode). */
+export function updateProfileLocal(userId, patch) {
+  const users = loadUsers()
+  const user = users.find(u => u.id === userId)
+  if (!user) return { ok: false, error: 'User not found.' }
+
+  if (patch.username && users.some(u => u.id !== userId && u.username.toLowerCase() === patch.username.toLowerCase())) {
+    return { ok: false, error: AUTH_ERRORS.usernameTakenSignup }
+  }
+  if (patch.newPassword) {
+    if (!patch.currentPassword || patch.currentPassword !== user.password) {
+      return { ok: false, error: 'Current password is incorrect.' }
+    }
+    patch.password = patch.newPassword
+    delete patch.newPassword
+    delete patch.currentPassword
+  }
+
+  const { newPassword: _np, currentPassword: _cp, ...safePatch } = patch
+  const updatedUsers = users.map(u => u.id === userId ? { ...u, ...safePatch } : u)
+  saveUsers(updatedUsers)
+  const updated = updatedUsers.find(u => u.id === userId)
+  const session = {
+    userId: updated.id,
+    username: updated.username,
+    name: updated.name,
+    avatarUrl: updated.avatarUrl || null,
+    role: updated.role,
+    loginAt: new Date().toISOString(),
+  }
+  updateSession(session)
+  return { ok: true, user: updated, session }
 }

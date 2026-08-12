@@ -6,7 +6,7 @@ import {
 } from '@/utils/data/platformStore'
 import { fetchClients, fetchTopics, fetchSurveyTypes } from '@/api/platform/platform'
 import { useApi } from '@/config/api'
-import { getSession } from '@/utils/data/authStore'
+import { getSession, updateSession } from '@/utils/data/authStore'
 import { canManagePlatform } from '@/utils/platform/permissions'
 import { isSurveyCodeTaken } from '@/utils/data/surveyLibrary'
 import { ShareableSurveyUrl } from './managers/ShareableSurveyUrl'
@@ -176,7 +176,11 @@ export function SurveyMetadata({ survey, dispatch }) {
 
       {showLabels && (
         <Suspense fallback={null}>
-          <PlatformSettings onClose={() => { setShowLabels(false); refreshLists() }} />
+          <PlatformSettings
+            session={getSession()}
+            onSessionUpdate={updateSession}
+            onClose={() => { setShowLabels(false); refreshLists() }}
+          />
         </Suspense>
       )}
     </div>

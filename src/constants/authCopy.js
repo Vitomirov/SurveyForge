@@ -42,6 +42,35 @@ export const AUTH_TEAM = {
   passwordResetOnce:   'New password set — copy it now. It will not be shown again.',
 }
 
+export const AUTH_PROFILE = {
+  myAccount:           'My account',
+  myProfile:           'My profile',
+  myProfileHint:       'Update how you appear across the platform. Password changes require your current password.',
+  displayName:         'Display name',
+  username:            'Username',
+  email:               'Email',
+  emailHint:           'Used for login and notifications. Derived from your username.',
+  profilePhoto:        'Profile photo',
+  uploadPhoto:         'Upload photo',
+  removePhoto:         'Remove',
+  photoHint:           'JPEG, PNG, or WebP · max 512 KB',
+  changePassword:      'Change password',
+  currentPassword:     'Current password',
+  newPassword:         'New password',
+  confirmPassword:     'Confirm new password',
+  saveProfile:         'Save profile',
+  profileSaved:        'Profile updated',
+  teamMembers:         'Team members',
+  teamHint:            'Invite colleagues and manage roles. Seat usage is tied to your subscription.',
+  seatsUsed:           'seats used',
+  searchMembers:       'Search by name or username…',
+  resetPassword:       'Reset password',
+  generatePassword:    'Generate secure password',
+  adminResetHint:      'Leave blank to keep the current password, or set a new one for this user.',
+  noMembers:           'No team members yet.',
+  you:                 'You',
+}
+
 export const AUTH_BILLING = {
   heading:             'Billing',
   subtitle:            'Subscription and invoices for your organization',

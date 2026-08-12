@@ -3,6 +3,7 @@ import { upsertSurvey } from '@/utils/data/surveyLibrary'
 import { patchSurvey } from '@/api/survey/surveys'
 import { ApiError } from '@/api/client'
 import { useApi } from '@/config/api'
+import { clearNewSurveyDraft } from '@/utils/data/surveyDrafts'
 
 const DEFAULT_DELAY_MS = 400
 
@@ -103,6 +104,7 @@ export function useAutosave({
           ? { ...payload.survey, publicPath: result.publicPath }
           : payload.survey
         lastSavedRef.current = snapshotPayload(savedSurvey, payload.items)
+        clearNewSurveyDraft(payload.survey.id)
         setSaveStatus('saved')
         onSavedRef.current?.(result, payload)
       })

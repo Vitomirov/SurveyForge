@@ -48,6 +48,7 @@ export async function registerAuth(app, { jwtSecret, jwtExpiresIn }) {
         username: true,
         email: true,
         name: true,
+        avatarUrl: true,
       },
     })
 

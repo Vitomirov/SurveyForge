@@ -3,12 +3,13 @@ import { ErrorBoundary } from '@/components/shared/infra/ErrorBoundary'
 import { PageLoader, useToast } from '@/components/ui'
 import { INITIAL_STATE } from '@/store/initialState'
 import { newSurveyId } from '@/store/id'
-import { getSession, logout } from '@/utils/data/authStore'
+import { getSession, logout, refreshSessionFromApi } from '@/utils/data/authStore'
 import { onAuthInvalidated } from '@/api/auth/authEvents'
 import { AUTH_ERRORS } from '@/constants/authCopy'
 import { useApi } from '@/config/api'
 import { prefetchForRoute } from '@/utils/routing/routePrefetch'
 import { useRoute, nav } from '@/utils/routing/appRoute'
+import { isNewSurveyDraft, markNewSurveyDraft } from '@/utils/data/surveyDrafts'
 import { SURVEY_NOT_FOUND_MESSAGE, SURVEY_NOT_FOUND_TITLE } from '@/constants/errors'
 
 import { useSurveyBranding } from '@/hooks/useSurveyBranding'
@@ -44,6 +45,10 @@ function useSurveyEntry(view, id, { byPath = false, clientDomain = null, isEmbed
 
   useEffect(() => {
     if (!id) { setState({ status: 'ready', entry: null }); return }
+    if (useApi && view === 'builder' && isNewSurveyDraft(id)) {
+      setState({ status: 'missing', entry: null })
+      return
+    }
     let alive = true
     setState({ status: 'loading', entry: null })
     fetchEntry(view, id, { byPath, clientDomain, isEmbed })
@@ -109,6 +114,11 @@ export default function App() {
   const { view, id, byPath, clientDomain, isEmbed } = useRoute()
   const isPublic              = view === 'take'
   const { status, entry }     = useSurveyEntry(view, isPublic || session ? id : null, { byPath, clientDomain, isEmbed })
+
+  useEffect(() => {
+    if (!useApi || isPublic) return
+    refreshSessionFromApi().then(next => { if (next) setSession(next) })
+  }, [isPublic])
 
   useEffect(() => {
     return onAuthInvalidated((code) => {
@@ -182,8 +192,13 @@ export default function App() {
     <Page title="Dashboard error" label="Loading dashboard…" onReset={back}>
       <Dashboard
         session={session}
+        onSessionUpdate={setSession}
         onLogout={() => { logout(); setSession(null); nav('dashboard') }}
-        onNewSurvey={() => nav('builder', newSurveyId())}
+        onNewSurvey={() => {
+          const surveyId = newSurveyId()
+          markNewSurveyDraft(surveyId)
+          nav('builder', surveyId)
+        }}
         onOpenSurvey={(surveyId) => nav('builder', surveyId)}
         onPreviewSurvey={(surveyId) => nav('preview', surveyId)}
       />

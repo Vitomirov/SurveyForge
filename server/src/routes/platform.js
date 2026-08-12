@@ -8,11 +8,13 @@ const adminOnly = requireRole(ROLES.ADMIN)
 
 function userResponse(user) {
   return {
-    id:       user.id,
-    username: user.username || user.email,
-    email:    user.email,
-    name:     user.name || user.username || user.email,
-    role:     user.role,
+    id:        user.id,
+    username:  user.username || user.email,
+    email:     user.email,
+    name:      user.name || user.username || user.email,
+    avatarUrl: user.avatarUrl || null,
+    role:      user.role,
+    createdAt: user.createdAt?.toISOString?.() ?? null,
   }
 }
 
@@ -218,7 +220,7 @@ export async function registerPlatformRoutes(app) {
   })
 
   app.patch('/api/platform/users/:id', { preHandler: adminOnly }, async (request, reply) => {
-    const { name, password, role } = request.body ?? {}
+    const { name, username, password, role, avatarUrl } = request.body ?? {}
     const existing = await app.prisma.user.findFirst({
       where: { id: request.params.id, organizationId: request.organizationId },
     })
@@ -241,6 +243,40 @@ export async function registerPlatformRoutes(app) {
     const data = {}
     if (name?.trim()) data.name = name.trim()
     if (role) data.role = role
+
+    if (username !== undefined) {
+      const uname = username?.trim()
+      if (!uname) return reply.code(400).send({ error: 'Username is required.' })
+      const email = uname.includes('@') ? uname.toLowerCase() : `${uname.toLowerCase()}@rescopesurveys.local`
+      const clash = await app.prisma.user.findFirst({
+        where: {
+          NOT: { id: existing.id },
+          OR: [
+            { username: { equals: uname, mode: 'insensitive' } },
+            { email: { equals: email, mode: 'insensitive' } },
+          ],
+        },
+      })
+      if (clash) return reply.code(409).send({ error: 'Username already exists.' })
+      data.username = uname
+      data.email = email
+    }
+
+    if (avatarUrl !== undefined) {
+      if (avatarUrl === null || avatarUrl === '') {
+        data.avatarUrl = null
+      } else if (typeof avatarUrl === 'string' && avatarUrl.startsWith('data:image/')) {
+        const base64 = avatarUrl.split(',')[1]
+        const bytes = base64 ? Math.ceil((base64.length * 3) / 4) : 0
+        if (bytes > 512 * 1024) {
+          return reply.code(400).send({ error: 'Profile image must be 512 KB or smaller.' })
+        }
+        data.avatarUrl = avatarUrl
+      } else {
+        return reply.code(400).send({ error: 'Invalid profile image.' })
+      }
+    }
+
     if (password) {
       data.passwordHash = await hashPassword(password)
     }

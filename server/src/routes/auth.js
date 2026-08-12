@@ -8,12 +8,14 @@ function buildSession(user, organizationName = null) {
     organizationName: organizationName,
     username:         user.username || user.email,
     name:             user.name || user.username || user.email,
+    avatarUrl:        user.avatarUrl || null,
     role:             user.role,
     loginAt:          new Date().toISOString(),
   }
 }
 
 function signToken(app, session) {
+  // Keep JWT lean — never embed avatarUrl (base64 images blow up Authorization headers).
   return app.jwt.sign({
     userId:           session.userId,
     organizationId:   session.organizationId,
@@ -22,6 +24,50 @@ function signToken(app, session) {
     name:             session.name,
     role:             session.role,
   })
+}
+
+const MAX_AVATAR_BYTES = 512 * 1024
+
+function normalizeUsername(raw) {
+  return raw?.trim() || ''
+}
+
+function emailForUsername(username) {
+  const uname = normalizeUsername(username)
+  return uname.includes('@') ? uname.toLowerCase() : `${uname.toLowerCase()}@rescopesurveys.local`
+}
+
+async function assertUsernameAvailable(prisma, username, excludeUserId = null) {
+  const uname = normalizeUsername(username)
+  if (!uname) return { ok: false, error: 'Username is required.' }
+
+  const email = emailForUsername(uname)
+  const clash = await prisma.user.findFirst({
+    where: {
+      ...(excludeUserId ? { NOT: { id: excludeUserId } } : {}),
+      OR: [
+        { username: { equals: uname, mode: 'insensitive' } },
+        { email: { equals: email, mode: 'insensitive' } },
+      ],
+    },
+  })
+  if (clash) return { ok: false, error: 'That username is already taken.' }
+  return { ok: true, username: uname, email }
+}
+
+function validateAvatarUrl(value) {
+  if (value === null || value === '') return { ok: true, avatarUrl: null }
+  if (typeof value !== 'string') return { ok: false, error: 'Invalid profile image.' }
+  if (!value.startsWith('data:image/')) {
+    return { ok: false, error: 'Profile image must be a JPEG, PNG, or WebP file.' }
+  }
+  const base64 = value.split(',')[1]
+  if (!base64) return { ok: false, error: 'Invalid profile image.' }
+  const bytes = Math.ceil((base64.length * 3) / 4)
+  if (bytes > MAX_AVATAR_BYTES) {
+    return { ok: false, error: 'Profile image must be 512 KB or smaller.' }
+  }
+  return { ok: true, avatarUrl: value }
 }
 
 export async function registerAuthRoutes(app) {
@@ -114,15 +160,82 @@ export async function registerAuthRoutes(app) {
       where: { id: organizationId },
       select: { name: true },
     })
+    const session = {
+      userId,
+      organizationId,
+      organizationName: org?.name ?? null,
+      username:         user.username || user.email,
+      name:             user.name || user.username || user.email,
+      avatarUrl:        user.avatarUrl || null,
+      email:            user.email,
+      role,
+    }
+    return { session, token: signToken(app, session) }
+  })
+
+  /** Self-service profile updates for the signed-in user. */
+  app.patch('/api/auth/me', async (request, reply) => {
+    const { userId, organizationId } = request.auth
+    const { name, username, avatarUrl, currentPassword, newPassword } = request.body ?? {}
+
+    const existing = await app.prisma.user.findUnique({
+      where: { id: userId },
+      include: { organization: true },
+    })
+    if (!existing || existing.organizationId !== organizationId) {
+      return reply.code(404).send({ error: 'User not found.' })
+    }
+
+    const data = {}
+
+    if (name !== undefined) {
+      if (!name?.trim()) return reply.code(400).send({ error: 'Display name is required.' })
+      data.name = name.trim()
+    }
+
+    if (username !== undefined) {
+      const check = await assertUsernameAvailable(app.prisma, username, userId)
+      if (!check.ok) return reply.code(409).send({ error: check.error })
+      data.username = check.username
+      data.email = check.email
+    }
+
+    if (avatarUrl !== undefined) {
+      const check = validateAvatarUrl(avatarUrl)
+      if (!check.ok) return reply.code(400).send({ error: check.error })
+      data.avatarUrl = check.avatarUrl
+    }
+
+    if (newPassword) {
+      if (newPassword.length < 8) {
+        return reply.code(400).send({ error: 'Password must be at least 8 characters.' })
+      }
+      if (!currentPassword) {
+        return reply.code(400).send({ error: 'Current password is required to set a new password.' })
+      }
+      if (!(await verifyPassword(currentPassword, existing.passwordHash))) {
+        return reply.code(401).send({ error: 'Current password is incorrect.' })
+      }
+      data.passwordHash = await hashPassword(newPassword)
+    }
+
+    if (!Object.keys(data).length) {
+      return reply.code(400).send({ error: 'No changes to save.' })
+    }
+
+    const row = await app.prisma.user.update({ where: { id: userId }, data })
+    const session = buildSession(row, existing.organization?.name)
     return {
-      session: {
-        userId,
-        organizationId,
-        organizationName: org?.name ?? null,
-        username:         user.username || user.email,
-        name:             user.name || user.username || user.email,
-        role,
+      user: {
+        id:        row.id,
+        username:  row.username || row.email,
+        email:     row.email,
+        name:      row.name || row.username || row.email,
+        avatarUrl: row.avatarUrl || null,
+        role:      row.role,
       },
+      session,
+      token: signToken(app, session),
     }
   })
 }

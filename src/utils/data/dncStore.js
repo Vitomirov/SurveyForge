@@ -6,6 +6,7 @@ import { useApi } from '@/config/api'
 import {
   fetchDNCList, fetchPublicDNCList, importDNC, clearDNCApi, removeDNCApi,
 } from '@/api/survey/dnc'
+import { ApiError } from '@/api/client'
 
 const key = (surveyId) => `sf_dnc_${surveyId}`
 const dncCache = new Map()
@@ -21,10 +22,19 @@ export function loadDNCList(surveyId) {
 
 export async function loadDNCListAsync(surveyId, { publicMode = false } = {}) {
   if (!useApi) return loadDNCList(surveyId)
-  const data = publicMode
-    ? await fetchPublicDNCList(surveyId)
-    : await fetchDNCList(surveyId)
-  dncCache.set(surveyId, data.emails || [])
+  try {
+    const data = publicMode
+      ? await fetchPublicDNCList(surveyId)
+      : await fetchDNCList(surveyId)
+    dncCache.set(surveyId, data.emails || [])
+  } catch (err) {
+    // New drafts are not persisted yet — treat as an empty exclusion list.
+    if (err instanceof ApiError && err.status === 404) {
+      dncCache.set(surveyId, [])
+    } else {
+      throw err
+    }
+  }
   return dncCache.get(surveyId)
 }
 

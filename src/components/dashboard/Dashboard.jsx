@@ -1,17 +1,16 @@
 import { useState, useMemo, useEffect, useCallback, useRef, lazy, Suspense } from 'react'
 import React from 'react'
 import {
-  Plus, Search, Settings, Filter, MoreVertical,
+  Plus, Search, Filter, MoreVertical,
   Copy, Trash2, ExternalLink, ChevronUp, ChevronDown,
   Layers, BarChart3, Clock, CheckCircle2, XCircle,
-  PlayCircle, PauseCircle, Edit3, Eye, LogOut, Users, CreditCard, Building2,
+  PlayCircle, PauseCircle, Edit3, Eye,
 } from 'lucide-react'
 import {
   loadLibrary, deleteSurvey, duplicateSurvey, buildClonedSurvey,
 } from '@/utils/data/surveyLibrary'
 import { useApi } from '@/config/api'
-import { APP_NAME } from '@/constants/branding'
-import { AUTH_COPY, AUTH_ERRORS } from '@/constants/authCopy'
+import { AUTH_ERRORS } from '@/constants/authCopy'
 import { DEFAULT_SURVEY_TITLE } from '@/constants/surveyDefaults'
 import {
   getSurvey, deleteSurveyApi, migrateLocalLibrary,
@@ -28,7 +27,7 @@ import { resolveClientName, resolveTopicName, resolveSurveyTypeName } from '@/ut
 import { InlineLoader, useToast } from '@/components/ui'
 import { prefetchBuilder, prefetchPreview } from '@/utils/routing/routePrefetch'
 import {
-  canManagePlatform, canSeeAllSurveys, filterSurveysForSession, roleLabel,
+  canManagePlatform, canSeeAllSurveys, filterSurveysForSession,
   canViewBilling, canManageBilling,
 } from '@/utils/platform/permissions'
 
@@ -36,6 +35,8 @@ const PlatformSettings = lazy(() => import('./PlatformSettings.jsx'))
 const TeamPanel        = lazy(() => import('./TeamPanel.jsx'))
 const BillingPanel     = lazy(() => import('./BillingPanel.jsx'))
 const PlatformConsole  = lazy(() => import('./PlatformConsole.jsx'))
+const DashboardHeader  = lazy(() => import('./DashboardHeader.jsx'))
+const AccountSettingsModal = lazy(() => import('./AccountSettingsModal.jsx'))
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
 function fmtDate(iso) {
@@ -157,7 +158,7 @@ function StatsBar({ surveys }) {
 }
 
 // ─── Main Dashboard ────────────────────────────────────────────────────────
-export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session, onLogout }) {
+export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session, onLogout, onSessionUpdate }) {
   const { toast } = useToast()
   const isAdmin = canSeeAllSurveys(session)
   const [tick, setTick]             = useState(0)
@@ -174,6 +175,7 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
   const [filterOwner,  setFilterOwner]  = useState('')
   const [sort, setSort]             = useState({ field: 'updatedAt', dir: 'desc' })
   const [showSettings, setShowSettings] = useState(false)
+  const [showAccount, setShowAccount]     = useState(false)
   const [showTeam, setShowTeam]         = useState(false)
   const [showBilling, setShowBilling]   = useState(false)
   const [showPlatform, setShowPlatform] = useState(false)
@@ -384,83 +386,22 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
 
   return (
     <div className="min-h-screen bg-surface flex flex-col">
-      {/* Header */}
-      <header className="bg-white border-b border-ink-200 shadow-sm shadow-ink-900/[0.03] sticky top-0 z-30 safe-top">
-        <div className="max-w-screen-xl mx-auto px-4 sm:px-6 min-h-14 py-2 sm:py-0 flex items-center gap-2 sm:gap-4 flex-wrap sm:flex-nowrap">
-          <div className="flex items-center gap-2 shrink-0">
-            <div className="w-7 h-7 bg-brand-600 rounded-lg flex items-center justify-center">
-              <Layers size={14} className="text-white" />
-            </div>
-            <span className="font-bold text-ink-800 tracking-tight">{APP_NAME}</span>
-          </div>
-          <div className="hidden sm:block w-px h-5 bg-ink-100" />
-          <span className="hidden sm:inline text-sm font-semibold text-ink-600">Survey Dashboard</span>
-          <div className="ml-auto flex items-center gap-1 sm:gap-2">
-            {session && (
-              <span className="text-xs text-ink-400 hidden lg:block">
-                Signed in as <strong className="text-ink-600">{session.name || session.username}</strong>
-                {session.organizationName && (
-                  <> · <strong className="text-ink-600">{session.organizationName}</strong></>
-                )}
-                {session.role && (
-                  <> · <span className="text-ink-500">{roleLabel(session.role)}</span></>
-                )}
-              </span>
-            )}
-            {canViewBilling(session) && (
-              <button
-                onClick={() => setShowBilling(true)}
-                className="btn-ghost px-2 sm:px-3"
-                title="Billing — subscription and invoices"
-              >
-                <CreditCard size={15} /> <span className="hidden sm:inline">Billing</span>
-              </button>
-            )}
-            {canManageBilling(session) && (
-              <button
-                onClick={() => setShowPlatform(true)}
-                className="btn-ghost px-2 sm:px-3 relative"
-                title="Platform console — manage all organizations"
-              >
-                <Building2 size={15} /> <span className="hidden sm:inline">Platform</span>
-              </button>
-            )}
-            {canManagePlatform(session) && (
-              <>
-                <button
-                  onClick={() => setShowTeam(true)}
-                  className="btn-ghost px-2 sm:px-3"
-                  title="Team performance — surveys and responses by employee"
-                >
-                  <Users size={15} /> <span className="hidden sm:inline">Team</span>
-                </button>
-                <button
-                  onClick={() => { setShowSettings(true); refresh() }}
-                  className="btn-ghost px-2 sm:px-3"
-                  title="Platform settings — labels, branding, domain, users"
-                >
-                  <Settings size={15} /> <span className="hidden sm:inline">Settings</span>
-                </button>
-              </>
-            )}
-            {onLogout && (
-              <button onClick={onLogout} className="btn-ghost text-ink-400 px-2 sm:px-3" title={AUTH_COPY.signOut}>
-                <LogOut size={15} />
-              </button>
-            )}
-            <button
-              onClick={onNewSurvey}
-              onMouseEnter={prefetchBuilder}
-              onFocus={prefetchBuilder}
-              className="btn-primary px-3 sm:px-4"
-            >
-              <Plus size={15} /> <span className="hidden sm:inline">New Survey</span>
-            </button>
-          </div>
-        </div>
-      </header>
+      <Suspense fallback={
+        <header className="bg-white border-b border-ink-200 min-h-[4.25rem]" />
+      }>
+        <DashboardHeader
+          session={session}
+          onNewSurvey={onNewSurvey}
+          onLogout={onLogout}
+          onOpenAccount={() => setShowAccount(true)}
+          onOpenSettings={() => { setShowSettings(true); refresh() }}
+          onOpenTeam={() => setShowTeam(true)}
+          onOpenBilling={() => setShowBilling(true)}
+          onOpenPlatform={() => setShowPlatform(true)}
+        />
+      </Suspense>
 
-      <div className="flex-1 max-w-screen-xl mx-auto w-full px-4 sm:px-6 py-4 sm:py-6">
+      <div className="flex-1 max-w-[1600px] mx-auto w-full px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
         <StatsBar surveys={surveys} />
 
         {/* Filters bar */}
@@ -787,6 +728,21 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
         </div>
       )}
 
+      {/* Account settings — all signed-in users */}
+      {showAccount && session && (
+        <Suspense fallback={
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center">
+            <InlineLoader label="Loading account…" />
+          </div>
+        }>
+          <AccountSettingsModal
+            session={session}
+            onSessionUpdate={onSessionUpdate}
+            onClose={() => setShowAccount(false)}
+          />
+        </Suspense>
+      )}
+
       {/* Platform settings modal */}
       {showSettings && canManagePlatform(session) && (
         <Suspense fallback={
@@ -794,7 +750,11 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
             <InlineLoader label="Loading settings…" />
           </div>
         }>
-          <PlatformSettings onClose={() => { setShowSettings(false); refresh() }} />
+          <PlatformSettings
+            session={session}
+            onSessionUpdate={onSessionUpdate}
+            onClose={() => { setShowSettings(false); refresh() }}
+          />
         </Suspense>
       )}
 

@@ -76,8 +76,12 @@ export function DNCManager({ surveyId }) {
   const fileRef               = useRef(null)
 
   const refresh = async () => {
-    if (useApi) setList(await loadDNCListAsync(surveyId))
-    else setList(loadDNCList(surveyId))
+    try {
+      if (useApi) setList(await loadDNCListAsync(surveyId))
+      else setList(loadDNCList(surveyId))
+    } catch {
+      setList([])
+    }
   }
 
   useEffect(() => {
