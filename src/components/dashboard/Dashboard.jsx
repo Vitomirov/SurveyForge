@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useCallback, useRef, lazy, Suspense } from 'react'
 import React from 'react'
 import {
-  Plus, Search, Filter, MoreVertical,
+  Plus, Search, Filter, MoreVertical, Settings,
   Copy, Trash2, ExternalLink, ChevronUp, ChevronDown,
   Layers, BarChart3, Clock, CheckCircle2, XCircle,
   PlayCircle, PauseCircle, Edit3, Eye,
@@ -30,12 +30,11 @@ import { AppWorkspaceColumns } from '@/components/shared/layout/AppWorkspaceColu
 import { prefetchBuilder, prefetchPreview } from '@/utils/routing/routePrefetch'
 import {
   canManagePlatform, canSeeAllSurveys, filterSurveysForSession,
-  canViewBilling, canManageBilling,
+  canManageBilling,
 } from '@/utils/platform/permissions'
 
 const PlatformSettings = lazy(() => import('./PlatformSettings.jsx'))
 const TeamPanel        = lazy(() => import('./TeamPanel.jsx'))
-const BillingPanel     = lazy(() => import('./BillingPanel.jsx'))
 const PlatformConsole  = lazy(() => import('./PlatformConsole.jsx'))
 const DashboardHeader  = lazy(() => import('./DashboardHeader.jsx'))
 const AccountSettingsModal = lazy(() => import('./AccountSettingsModal.jsx'))
@@ -179,7 +178,6 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
   const [showSettings, setShowSettings] = useState(false)
   const [showAccount, setShowAccount]     = useState(false)
   const [showTeam, setShowTeam]         = useState(false)
-  const [showBilling, setShowBilling]   = useState(false)
   const [showPlatform, setShowPlatform] = useState(false)
   const [deleteId, setDeleteId]     = useState(null)
   const migrateAttemptedRef = useRef(false)
@@ -292,11 +290,7 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
     let list = [...surveys]
     if (search) {
       const q = search.toLowerCase()
-      list = list.filter(s =>
-        (s.survey?.title || '').toLowerCase().includes(q) ||
-        (s.survey?.internalName || '').toLowerCase().includes(q) ||
-        (s.survey?.surveyCode || '').toLowerCase().includes(q)
-      )
+      list = list.filter(s => (s.survey?.title || '').toLowerCase().includes(q))
     }
     if (filterStatus) list = list.filter(s => (s.survey?.status || 'draft') === filterStatus)
     if (filterClient) list = list.filter(s => s.survey?.clientId === filterClient)
@@ -398,14 +392,11 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
             setShowAccount(false)
             setShowSettings(false)
             setShowTeam(false)
-            setShowBilling(false)
             setShowPlatform(false)
           }}
           onLogout={onLogout}
           onOpenAccount={() => setShowAccount(true)}
-          onOpenSettings={() => { setShowSettings(true); refresh() }}
           onOpenTeam={() => setShowTeam(true)}
-          onOpenBilling={() => setShowBilling(true)}
           onOpenPlatform={() => setShowPlatform(true)}
         />
       </Suspense>
@@ -413,6 +404,32 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
       <AppContentShell className="flex-1 py-4 sm:py-6">
         <AppWorkspaceColumns>
         <StatsBar surveys={surveys} />
+
+        {canManagePlatform(session) && (
+          showSettings ? (
+            <Suspense fallback={
+              <div className="card mb-4 p-8 flex items-center justify-center text-sm text-ink-400">
+                Loading settings…
+              </div>
+            }>
+              <PlatformSettings
+                embedded
+                session={session}
+                onSessionUpdate={onSessionUpdate}
+                onClose={() => { setShowSettings(false); refresh() }}
+              />
+            </Suspense>
+          ) : (
+            <button
+              type="button"
+              onClick={() => { setShowSettings(true); refresh() }}
+              className="card mb-4 w-full p-3 sm:p-4 flex items-center gap-2.5 text-sm font-medium text-ink-600 hover:text-ink-900 hover:bg-ink-50/80 transition-colors"
+            >
+              <Settings size={16} className="text-ink-400 shrink-0" />
+              Platform settings
+            </button>
+          )
+        )}
 
         {/* Filters bar */}
         <div className="card p-3 mb-4 flex items-center gap-2 sm:gap-3 flex-wrap">
@@ -423,7 +440,7 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
               type="text"
               value={search}
               onChange={e => setSearch(e.target.value)}
-              placeholder="Search by title, internal name or code…"
+              placeholder="Search by title…"
               className="bg-transparent border-none outline-none text-sm flex-1 text-ink-700 placeholder:text-ink-400"
             />
           </div>
@@ -754,21 +771,6 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
         </Suspense>
       )}
 
-      {/* Platform settings modal */}
-      {showSettings && canManagePlatform(session) && (
-        <Suspense fallback={
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center">
-            <InlineLoader label="Loading settings…" />
-          </div>
-        }>
-          <PlatformSettings
-            session={session}
-            onSessionUpdate={onSessionUpdate}
-            onClose={() => { setShowSettings(false); refresh() }}
-          />
-        </Suspense>
-      )}
-
       {showTeam && canManagePlatform(session) && (
         <Suspense fallback={
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center">
@@ -776,16 +778,6 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
           </div>
         }>
           <TeamPanel onClose={() => setShowTeam(false)} />
-        </Suspense>
-      )}
-
-      {showBilling && canViewBilling(session) && (
-        <Suspense fallback={
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center">
-            <InlineLoader label="Loading billing…" />
-          </div>
-        }>
-          <BillingPanel onClose={() => setShowBilling(false)} />
         </Suspense>
       )}
 

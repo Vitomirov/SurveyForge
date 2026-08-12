@@ -1,20 +1,18 @@
 import { useState, useRef, useEffect } from 'react'
 import {
-  Plus, Settings, Users, CreditCard, Building2, ChevronDown, User,
+  Plus, Users, Building2, ChevronDown, User,
 } from 'lucide-react'
 import { AppShell, APP_SHELL_GRID, APP_BUILDER_PANE } from '@/components/shared/layout/AppBuilderShell.jsx'
 import { AppLeadingZone } from '@/components/shared/layout/AppLeadingZone.jsx'
 import { HeaderLogoutButton } from '@/components/shared/layout/HeaderLogoutButton.jsx'
-import { roleLabel, canManagePlatform, canViewBilling, canManageBilling } from '@/utils/platform/permissions'
+import { roleLabel, canManagePlatform, canManageBilling } from '@/utils/platform/permissions'
 import { prefetchBuilder } from '@/utils/routing/routePrefetch'
 import { UserAvatar } from './UserAvatar.jsx'
 
 function UserMenu({
   session,
   onOpenAccount,
-  onOpenSettings,
   onOpenTeam,
-  onOpenBilling,
   onOpenPlatform,
 }) {
   const [open, setOpen] = useState(false)
@@ -32,7 +30,6 @@ function UserMenu({
   if (!session) return null
 
   const isAdmin = canManagePlatform(session)
-  const showBilling = canViewBilling(session)
   const showPlatform = canManageBilling(session)
 
   const menuItem = (label, Icon, onClick) => (
@@ -100,9 +97,7 @@ function UserMenu({
 
           <div className="border-t border-ink-100 my-1.5 pt-1.5 space-y-0.5">
             {menuItem('My account', User, onOpenAccount)}
-            {isAdmin && menuItem('Platform settings', Settings, onOpenSettings)}
             {isAdmin && menuItem('Team performance', Users, onOpenTeam)}
-            {showBilling && menuItem('Billing', CreditCard, onOpenBilling)}
             {showPlatform && menuItem('Platform console', Building2, onOpenPlatform)}
           </div>
         </div>
@@ -117,9 +112,7 @@ export function DashboardHeader({
   onGoHome,
   onLogout,
   onOpenAccount,
-  onOpenSettings,
   onOpenTeam,
-  onOpenBilling,
   onOpenPlatform,
 }) {
   return (
@@ -141,16 +134,15 @@ export function DashboardHeader({
               <span className="sm:hidden">New</span>
             </button>
 
-            <HeaderLogoutButton onLogout={onLogout} />
 
             <UserMenu
               session={session}
               onOpenAccount={onOpenAccount}
-              onOpenSettings={onOpenSettings}
               onOpenTeam={onOpenTeam}
-              onOpenBilling={onOpenBilling}
               onOpenPlatform={onOpenPlatform}
             />
+                        <HeaderLogoutButton onLogout={onLogout} />
+
           </div>
         </div>
       </AppShell>

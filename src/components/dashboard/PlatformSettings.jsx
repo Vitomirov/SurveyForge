@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { X, Plus, Trash2, Edit3, Check, Settings } from 'lucide-react'
 import {
   loadClients, loadTopics, loadSurveyTypes,
@@ -20,8 +20,10 @@ import { BrandKitPanel } from './BrandKitPanel.jsx'
 import { DomainVerificationPanel } from './DomainVerificationPanel.jsx'
 import { ProfileSettingsPanel } from './ProfileSettingsPanel.jsx'
 import { TeamUserManager } from './TeamUserManager.jsx'
+import { BillingPanel } from './BillingPanel.jsx'
+import { canViewBilling } from '@/utils/platform/permissions'
 
-const SETTINGS_TABS = [
+const BASE_SETTINGS_TABS = [
   ['lists', 'Classification labels'],
   ['brandKit', 'Branding'],
   ['domain', 'Domain'],
@@ -90,7 +92,7 @@ function EditableList({ label, description, items, onAdd, onUpdate, onDelete, pl
 }
 
 // ─── Main PlatformSettings ─────────────────────────────────────────────────
-export function PlatformSettings({ onClose, session, onSessionUpdate }) {
+export function PlatformSettings({ onClose, session, onSessionUpdate, embedded = false }) {
   const [clients, setClients] = useState(loadClients)
   const [topics,  setTopics]  = useState(loadTopics)
   const [surveyTypes, setSurveyTypes] = useState(loadSurveyTypes)
@@ -99,6 +101,12 @@ export function PlatformSettings({ onClose, session, onSessionUpdate }) {
   const [seatUsage, setSeatUsage] = useState(null)
   const [tab,     setTab]     = useState('lists')
   const [loading, setLoading] = useState(useApi)
+
+  const settingsTabs = useMemo(() => (
+    canViewBilling(session)
+      ? [...BASE_SETTINGS_TABS, ['billing', 'Billing']]
+      : BASE_SETTINGS_TABS
+  ), [session])
 
   const loadFromApi = useCallback(async () => {
     if (!useApi) return
@@ -215,98 +223,108 @@ export function PlatformSettings({ onClose, session, onSessionUpdate }) {
     setSurveyTypes(deleteSurveyType(id))
   }
 
-  return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className={`bg-white rounded-2xl w-full shadow-2xl overflow-hidden max-h-[90vh] flex flex-col ${tab === 'brandKit' ? 'max-w-5xl' : 'max-w-4xl'}`}>
-        <div className="flex items-center gap-3 px-5 py-4 border-b border-ink-100 shrink-0">
-          <div className="w-8 h-8 rounded-lg bg-ink-800 flex items-center justify-center">
-            <Settings size={16} className="text-white" />
-          </div>
-          <div className="flex-1">
-            <h2 className="text-base font-bold text-ink-800">Platform Settings</h2>
-            <p className="text-xs text-ink-400">Classification labels, branding, domain and users</p>
-          </div>
-          <button onClick={onClose} className="p-2 text-ink-400 hover:text-ink-700 hover:bg-ink-100 rounded-lg transition-all">
-            <X size={18} />
-          </button>
+  const panel = (
+    <div className={`bg-white w-full overflow-hidden flex flex-col ${embedded ? '' : `rounded-2xl shadow-2xl max-h-[90vh] ${tab === 'brandKit' ? 'max-w-5xl' : 'max-w-4xl'}`}`}>
+      <div className="flex items-center gap-3 px-5 py-4 border-b border-ink-100 shrink-0">
+        <div className="w-8 h-8 rounded-lg bg-ink-800 flex items-center justify-center">
+          <Settings size={16} className="text-white" />
         </div>
-
-        <div className="flex border-b border-ink-100 px-5 shrink-0 overflow-x-auto">
-          {SETTINGS_TABS.map(([id, label]) => (
-            <button key={id} onClick={() => setTab(id)}
-              className={`text-sm font-medium px-1 py-3 mr-6 border-b-2 transition-colors whitespace-nowrap ${
-                tab === id ? 'border-brand-500 text-brand-700' : 'border-transparent text-ink-500 hover:text-ink-700'
-              }`}>
-              {label}
-            </button>
-          ))}
+        <div className="flex-1">
+          <h2 className="text-base font-bold text-ink-800">Platform Settings</h2>
+          <p className="text-xs text-ink-400">Classification labels, branding, domain, users and billing</p>
         </div>
-
-        <div className="flex-1 overflow-y-auto p-5">
-          {loading && (tab === 'lists' || tab === 'users') ? (
-            <p className="text-sm text-ink-400 text-center py-8">Loading settings…</p>
-          ) : tab === 'lists' ? (
-            <div className="space-y-5">
-              <p className="text-sm text-ink-500 leading-relaxed">
-                Add the labels your team uses to organise surveys. They appear when tagging surveys
-                and as filters on the dashboard — only what you define here, nothing preset.
-              </p>
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                <EditableList
-                  label="Clients"
-                  description="Who the survey is for — e.g. Acme Corp, Internal."
-                  items={clients}
-                  onAdd={handleAddClient}
-                  onUpdate={handleUpdateClient}
-                  onDelete={handleDeleteClient}
-                  placeholder="Add client…"
-                />
-                <EditableList
-                  label="Topics"
-                  description="Subject area — e.g. Brand tracking, UX research."
-                  items={topics}
-                  onAdd={handleAddTopic}
-                  onUpdate={handleUpdateTopic}
-                  onDelete={handleDeleteTopic}
-                  placeholder="Add topic…"
-                />
-                <EditableList
-                  label="Audience types"
-                  description="Respondent profile — e.g. Consumer, B2B, HCP."
-                  items={surveyTypes}
-                  onAdd={handleAddSurveyType}
-                  onUpdate={handleUpdateSurveyType}
-                  onDelete={handleDeleteSurveyType}
-                  placeholder="Add audience type…"
-                />
-              </div>
-            </div>
-          ) : tab === 'users' ? (
-            <div className="space-y-5">
-              <ProfileSettingsPanel
-                session={session}
-                profile={profile}
-                onSessionUpdate={onSessionUpdate}
-                onProfileSaved={handleProfileSaved}
-              />
-              <TeamUserManager
-                users={users}
-                setUsers={setUsers}
-                session={session}
-                seatUsage={seatUsage}
-              />
-            </div>
-          ) : tab === 'brandKit' ? (
-            <BrandKitPanel embedded />
-          ) : (
-            <DomainVerificationPanel embedded />
-          )}
-        </div>
-
-        <div className="px-5 pb-5 flex justify-end shrink-0">
-          <button onClick={onClose} className="btn-primary px-6">Done</button>
-        </div>
+        <button onClick={onClose} className="p-2 text-ink-400 hover:text-ink-700 hover:bg-ink-100 rounded-lg transition-all">
+          <X size={18} />
+        </button>
       </div>
+
+      <div className="flex border-b border-ink-100 px-5 shrink-0 overflow-x-auto">
+        {settingsTabs.map(([id, label]) => (
+          <button key={id} onClick={() => setTab(id)}
+            className={`text-sm font-medium px-1 py-3 mr-6 border-b-2 transition-colors whitespace-nowrap ${
+              tab === id ? 'border-brand-500 text-brand-700' : 'border-transparent text-ink-500 hover:text-ink-700'
+            }`}>
+            {label}
+          </button>
+        ))}
+      </div>
+
+      <div className="flex-1 overflow-y-auto p-5">
+        {loading && (tab === 'lists' || tab === 'users') ? (
+          <p className="text-sm text-ink-400 text-center py-8">Loading settings…</p>
+        ) : tab === 'lists' ? (
+          <div className="space-y-5">
+            <p className="text-sm text-ink-500 leading-relaxed">
+              Add the labels your team uses to organise surveys. They appear when tagging surveys
+              and as filters on the dashboard — only what you define here, nothing preset.
+            </p>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              <EditableList
+                label="Clients"
+                description="Who the survey is for — e.g. Acme Corp, Internal."
+                items={clients}
+                onAdd={handleAddClient}
+                onUpdate={handleUpdateClient}
+                onDelete={handleDeleteClient}
+                placeholder="Add client…"
+              />
+              <EditableList
+                label="Topics"
+                description="Subject area — e.g. Brand tracking, UX research."
+                items={topics}
+                onAdd={handleAddTopic}
+                onUpdate={handleUpdateTopic}
+                onDelete={handleDeleteTopic}
+                placeholder="Add topic…"
+              />
+              <EditableList
+                label="Audience types"
+                description="Respondent profile — e.g. Consumer, B2B, HCP."
+                items={surveyTypes}
+                onAdd={handleAddSurveyType}
+                onUpdate={handleUpdateSurveyType}
+                onDelete={handleDeleteSurveyType}
+                placeholder="Add audience type…"
+              />
+            </div>
+          </div>
+        ) : tab === 'users' ? (
+          <div className="space-y-5">
+            <ProfileSettingsPanel
+              session={session}
+              profile={profile}
+              onSessionUpdate={onSessionUpdate}
+              onProfileSaved={handleProfileSaved}
+            />
+            <TeamUserManager
+              users={users}
+              setUsers={setUsers}
+              session={session}
+              seatUsage={seatUsage}
+            />
+          </div>
+        ) : tab === 'brandKit' ? (
+          <BrandKitPanel embedded />
+        ) : tab === 'billing' ? (
+          <BillingPanel embedded />
+        ) : (
+          <DomainVerificationPanel embedded />
+        )}
+      </div>
+
+      <div className="px-5 pb-5 flex justify-end shrink-0 border-t border-ink-100 pt-4">
+        <button onClick={onClose} className="btn-primary px-6">Done</button>
+      </div>
+    </div>
+  )
+
+  return embedded ? (
+    <div className="card mb-4 overflow-hidden flex flex-col">
+      {panel}
+    </div>
+  ) : (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      {panel}
     </div>
   )
 }

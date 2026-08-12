@@ -11,7 +11,7 @@ import { InlineLoader, Modal, StatusPill, useToast } from '@/components/ui'
 import { formatMoney, formatDate } from '@/utils/format/format'
 import { BillingPlanPicker, DowngradeConfirmDialog } from './BillingPlanPicker'
 
-export function BillingPanel({ onClose }) {
+export function BillingPanel({ onClose, embedded = false }) {
   const { toast } = useToast()
   const [loading, setLoading] = useState(useApi)
   const [changing, setChanging] = useState(false)
@@ -85,103 +85,109 @@ export function BillingPanel({ onClose }) {
   const surveyLimit = sub?.maxSurveys ?? planFeatures?.maxSurveys
   const showSurveyUsage = surveyLimit != null && usage
 
-  return (
+  const body = loading ? (
+    <InlineLoader label="Loading billing…" />
+  ) : (
     <>
-      <Modal
-        icon={CreditCard}
-        title={AUTH_BILLING.heading}
-        subtitle={AUTH_BILLING.subtitle}
-        onClose={onClose}
-        bodyClassName="space-y-8"
-        maxWidth="max-w-5xl"
-      >
-        {loading ? (
-          <InlineLoader label="Loading billing…" />
-        ) : (
-          <>
-            {isFreeTrial && (
-              <p className="text-sm text-brand-700 bg-brand-50 border border-brand-100 rounded-xl px-4 py-3">
-                {AUTH_BILLING.trialBanner}
-              </p>
-            )}
+      {isFreeTrial && (
+        <p className="text-sm text-brand-700 bg-brand-50 border border-brand-100 rounded-xl px-4 py-3">
+          {AUTH_BILLING.trialBanner}
+        </p>
+      )}
 
-            {sub && (
-              <div className="grid sm:grid-cols-2 gap-4">
-                <div className="border border-ink-100 rounded-xl p-4">
-                  <p className="text-xs text-ink-400 uppercase tracking-wide mb-1">{AUTH_BILLING.plan}</p>
-                  <p className="text-lg font-bold text-ink-800">{sub.planName}</p>
-                  <p className="text-sm text-ink-500 mt-1">
-                    {sub.priceCents === 0
-                      ? AUTH_BILLING.freePrice
-                      : `${formatMoney(sub.priceCents, sub.currency)} / month`}
-                  </p>
-                </div>
-                <div className="border border-ink-100 rounded-xl p-4 space-y-2">
-                  <div className="flex justify-between items-center">
-                    <span className="text-xs text-ink-400">{AUTH_BILLING.status}</span>
-                    <StatusPill status={sub.status} />
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-ink-400">{AUTH_BILLING.seats}</span>
-                    <span className="font-medium text-ink-700">
-                      {usage ? `${usage.users} / ${sub.seats}` : sub.seats}
-                    </span>
-                  </div>
-                  {showSurveyUsage && (
-                    <div className="flex justify-between text-sm">
-                      <span className="text-ink-400">{AUTH_BILLING.surveys}</span>
-                      <span className="font-medium text-ink-700">{usage.surveys} / {surveyLimit}</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between text-sm">
-                    <span className="text-ink-400">{AUTH_BILLING.periodEnd}</span>
-                    <span className="font-medium text-ink-700">{formatDate(sub.currentPeriodEnd)}</span>
-                  </div>
-                </div>
+      {sub && (
+        <div className="grid sm:grid-cols-2 gap-4">
+          <div className="border border-ink-100 rounded-xl p-4">
+            <p className="text-xs text-ink-400 uppercase tracking-wide mb-1">{AUTH_BILLING.plan}</p>
+            <p className="text-lg font-bold text-ink-800">{sub.planName}</p>
+            <p className="text-sm text-ink-500 mt-1">
+              {sub.priceCents === 0
+                ? AUTH_BILLING.freePrice
+                : `${formatMoney(sub.priceCents, sub.currency)} / month`}
+            </p>
+          </div>
+          <div className="border border-ink-100 rounded-xl p-4 space-y-2">
+            <div className="flex justify-between items-center">
+              <span className="text-xs text-ink-400">{AUTH_BILLING.status}</span>
+              <StatusPill status={sub.status} />
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-ink-400">{AUTH_BILLING.seats}</span>
+              <span className="font-medium text-ink-700">
+                {usage ? `${usage.users} / ${sub.seats}` : sub.seats}
+              </span>
+            </div>
+            {showSurveyUsage && (
+              <div className="flex justify-between text-sm">
+                <span className="text-ink-400">{AUTH_BILLING.surveys}</span>
+                <span className="font-medium text-ink-700">{usage.surveys} / {surveyLimit}</span>
               </div>
             )}
-
-            <BillingPlanPicker
-              plans={planOptions?.plans}
-              currency={sub?.currency}
-              changing={changing}
-              onSelectPlan={handleSelectPlan}
-            />
-
-            <div>
-              <h3 className="text-sm font-semibold text-ink-800 mb-3">{AUTH_BILLING.invoices}</h3>
-              {invoices.length === 0 ? (
-                <p className="text-sm text-ink-400 text-center py-6 border border-dashed border-ink-200 rounded-xl">
-                  {AUTH_BILLING.noInvoices}
-                </p>
-              ) : (
-                <div className="border border-ink-100 rounded-xl overflow-x-auto">
-                  <table className="w-full text-sm min-w-[480px]">
-                    <thead>
-                      <tr className="bg-ink-50/80 text-xs text-ink-500 uppercase">
-                        <th className="text-left px-3 py-2.5 font-semibold">Date</th>
-                        <th className="text-left px-3 py-2.5 font-semibold">Description</th>
-                        <th className="text-right px-3 py-2.5 font-semibold">Amount</th>
-                        <th className="text-right px-3 py-2.5 font-semibold">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {invoices.map(inv => (
-                        <tr key={inv.id} className="border-t border-ink-50">
-                          <td className="px-3 py-2.5 text-ink-600">{formatDate(inv.createdAt)}</td>
-                          <td className="px-3 py-2.5 text-ink-700">{inv.description || '—'}</td>
-                          <td className="px-3 py-2.5 text-right font-medium">{formatMoney(inv.amountCents, inv.currency)}</td>
-                          <td className="px-3 py-2.5 text-right"><StatusPill status={inv.status} /></td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+            <div className="flex justify-between text-sm">
+              <span className="text-ink-400">{AUTH_BILLING.periodEnd}</span>
+              <span className="font-medium text-ink-700">{formatDate(sub.currentPeriodEnd)}</span>
             </div>
-          </>
+          </div>
+        </div>
+      )}
+
+      <BillingPlanPicker
+        plans={planOptions?.plans}
+        currency={sub?.currency}
+        changing={changing}
+        onSelectPlan={handleSelectPlan}
+      />
+
+      <div>
+        <h3 className="text-sm font-semibold text-ink-800 mb-3">{AUTH_BILLING.invoices}</h3>
+        {invoices.length === 0 ? (
+          <p className="text-sm text-ink-400 text-center py-6 border border-dashed border-ink-200 rounded-xl">
+            {AUTH_BILLING.noInvoices}
+          </p>
+        ) : (
+          <div className="border border-ink-100 rounded-xl overflow-x-auto">
+            <table className="w-full text-sm min-w-[480px]">
+              <thead>
+                <tr className="bg-ink-50/80 text-xs text-ink-500 uppercase">
+                  <th className="text-left px-3 py-2.5 font-semibold">Date</th>
+                  <th className="text-left px-3 py-2.5 font-semibold">Description</th>
+                  <th className="text-right px-3 py-2.5 font-semibold">Amount</th>
+                  <th className="text-right px-3 py-2.5 font-semibold">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {invoices.map(inv => (
+                  <tr key={inv.id} className="border-t border-ink-50">
+                    <td className="px-3 py-2.5 text-ink-600">{formatDate(inv.createdAt)}</td>
+                    <td className="px-3 py-2.5 text-ink-700">{inv.description || '—'}</td>
+                    <td className="px-3 py-2.5 text-right font-medium">{formatMoney(inv.amountCents, inv.currency)}</td>
+                    <td className="px-3 py-2.5 text-right"><StatusPill status={inv.status} /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
-      </Modal>
+      </div>
+    </>
+  )
+
+  return (
+    <>
+      {embedded ? (
+        <div className="space-y-8">{body}</div>
+      ) : (
+        <Modal
+          icon={CreditCard}
+          title={AUTH_BILLING.heading}
+          subtitle={AUTH_BILLING.subtitle}
+          onClose={onClose}
+          bodyClassName="space-y-8"
+          maxWidth="max-w-5xl"
+        >
+          {body}
+        </Modal>
+      )}
 
       <DowngradeConfirmDialog
         option={pendingDowngrade}
