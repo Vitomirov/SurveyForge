@@ -1,5 +1,4 @@
-import { useState, useMemo, useEffect, useCallback, useRef, lazy, Suspense } from 'react'
-import React from 'react'
+import { useState, useMemo, useEffect, useCallback, useRef, useLayoutEffect, lazy, Suspense } from 'react'
 import {
   Plus, Search, MoreVertical, Settings,
   Copy, Trash2, ExternalLink, ChevronUp, ChevronDown,
@@ -69,16 +68,48 @@ function SortIcon({ field, sort }) {
 }
 
 // ─── Context menu ──────────────────────────────────────────────────────────
-function SurveyMenu({ surveyId, onOpen, onPreview, onDuplicate, onDelete }) {
-  const [open, setOpen]   = useState(false)
-  const [pos,  setPos]    = useState({ top: 0, right: 0 })
-  const btnRef            = React.useRef(null)
+function SurveyMenu({ onOpen, onPreview, onDuplicate, onDelete }) {
+  const [open, setOpen] = useState(false)
+  const [menuStyle, setMenuStyle] = useState(null)
+  const btnRef = useRef(null)
+  const menuRef = useRef(null)
+
+  const placeMenu = useCallback(() => {
+    const btn = btnRef.current
+    const menu = menuRef.current
+    if (!btn) return
+
+    const rect = btn.getBoundingClientRect()
+    const gap = 4
+    const right = window.innerWidth - rect.right
+    const menuHeight = menu?.offsetHeight ?? 188
+    const spaceBelow = window.innerHeight - rect.bottom - gap
+    const spaceAbove = rect.top - gap
+
+    if (spaceBelow >= menuHeight || spaceBelow >= spaceAbove) {
+      setMenuStyle({ top: rect.bottom + gap, right })
+    } else {
+      setMenuStyle({ bottom: window.innerHeight - rect.top + gap, right })
+    }
+  }, [])
+
+  useLayoutEffect(() => {
+    if (!open) return undefined
+    placeMenu()
+    const sync = () => placeMenu()
+    window.addEventListener('resize', sync)
+    window.addEventListener('scroll', sync, true)
+    return () => {
+      window.removeEventListener('resize', sync)
+      window.removeEventListener('scroll', sync, true)
+    }
+  }, [open, placeMenu])
 
   const handleOpen = (e) => {
     e.stopPropagation()
     if (!open && btnRef.current) {
       const rect = btnRef.current.getBoundingClientRect()
-      setPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right })
+      setMenuStyle({ top: rect.bottom + 4, right: window.innerWidth - rect.right })
     }
     setOpen(o => !o)
   }
@@ -92,12 +123,13 @@ function SurveyMenu({ surveyId, onOpen, onPreview, onDuplicate, onDelete }) {
       >
         <MoreVertical size={15} />
       </button>
-      {open && (
+      {open && menuStyle && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
           <div
-            className="fixed z-50 bg-white border border-ink-200 rounded-xl shadow-xl py-1 w-48"
-            style={{ top: pos.top, right: pos.right }}
+            ref={menuRef}
+            className="fixed z-50 bg-white border border-ink-200 rounded-xl shadow-xl py-1 w-48 max-h-[calc(100vh-1rem)] overflow-y-auto"
+            style={menuStyle}
           >
             <button onClick={() => { setOpen(false); onOpen() }}
               onMouseEnter={prefetchBuilder}
@@ -385,7 +417,7 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
   }
 
   return (
-    <div className="min-h-screen bg-surface flex flex-col">
+    <div className="h-screen bg-surface flex flex-col overflow-hidden">
       <Suspense fallback={
         <header className="bg-white/95 backdrop-blur-md border-b border-ink-200/80 min-h-[4.25rem]" />
       }>
@@ -405,7 +437,7 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
         />
       </Suspense>
 
-      <AppContentShell className="flex-1 py-4 sm:py-6">
+      <AppContentShell className="flex-1 min-h-0 overflow-y-auto py-4 sm:py-6">
         <AppWorkspaceColumns>
         <StatsBar surveys={surveys} />
 
@@ -592,7 +624,6 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
                           </div>
                           <div onClick={e => e.stopPropagation()}>
                             <SurveyMenu
-                              surveyId={sv.id}
                               onOpen={() => handleOpenSurvey(entry)}
                               onPreview={() => handlePreviewSurvey(entry)}
                               onDuplicate={() => handleDuplicate(sv.id)}
@@ -608,7 +639,7 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
             </div>
 
             {/* Desktop table */}
-            <div className="hidden md:block card overflow-hidden overflow-x-auto">
+            <div className="hidden md:block card overflow-x-auto">
             <table className="w-full text-sm min-w-[720px]">
               <thead>
                 <tr className="border-b border-ink-100 bg-ink-50/60">
@@ -723,7 +754,6 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
                       {/* Menu */}
                       <td className="px-2 py-3" onClick={e => e.stopPropagation()}>
                         <SurveyMenu
-                          surveyId={sv.id}
                           onOpen={() => handleOpenSurvey(entry)}
                           onPreview={() => handlePreviewSurvey(entry)}
                           onDuplicate={() => handleDuplicate(sv.id)}

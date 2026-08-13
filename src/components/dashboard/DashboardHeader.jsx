@@ -3,7 +3,9 @@ import {
   Plus, Users, Building2, ChevronDown, User,
 } from 'lucide-react'
 import { AppShell, APP_SHELL_GRID, APP_BUILDER_PANE } from '@/components/shared/layout/AppBuilderShell.jsx'
-import { AppLeadingZone } from '@/components/shared/layout/AppLeadingZone.jsx'
+import { AppBackSlot } from '@/components/shared/layout/AppLeadingZone.jsx'
+import { AppLogo } from '@/components/shared/branding/AppLogo.jsx'
+import { WORKSPACE_SIDEBAR_WIDTH } from '@/components/shared/layout/AppWorkspaceColumns.jsx'
 import { HeaderLogoutButton } from '@/components/shared/layout/HeaderLogoutButton.jsx'
 import { roleLabel, canManagePlatform, canManageBilling } from '@/utils/platform/permissions'
 import { prefetchBuilder } from '@/utils/routing/routePrefetch'
@@ -119,28 +121,44 @@ export function DashboardHeader({
     <header className="bg-white/95 backdrop-blur-md border-b border-ink-200/80 sticky top-0 z-30 safe-top">
       <AppShell>
         <div className={`${APP_SHELL_GRID} items-center min-h-[4.25rem] py-3`}>
-          <AppLeadingZone onLogoClick={onGoHome} />
+          <AppBackSlot />
 
-          <div className={`${APP_BUILDER_PANE} flex items-center justify-end gap-1.5 sm:gap-3 min-w-0`}>
-            <button
-              type="button"
-              onClick={onNewSurvey}
-              onMouseEnter={prefetchBuilder}
-              onFocus={prefetchBuilder}
-              className="btn-primary px-3 sm:px-4 py-2.5 text-sm font-semibold shadow-sm shadow-brand-600/15 shrink-0 min-h-[44px]"
-            >
-              <Plus size={16} />
-              <span className="hidden sm:inline">New survey</span>
-              <span className="sm:hidden">New</span>
-            </button>
+          <div className={`${APP_BUILDER_PANE} flex items-center min-w-0 lg:gap-6`}>
+            <AppLogo onClick={onGoHome} size="md" className="shrink-0 mr-2 sm:mr-3" />
 
-            <UserMenu
-              session={session}
-              onOpenAccount={onOpenAccount}
-              onOpenTeam={onOpenTeam}
-              onOpenPlatform={onOpenPlatform}
-            />
-            <HeaderLogoutButton onLogout={onLogout} />
+            <div className="flex-1 flex items-center justify-end gap-1.5 sm:gap-3 min-w-0">
+              <button
+                type="button"
+                onClick={onNewSurvey}
+                onMouseEnter={prefetchBuilder}
+                onFocus={prefetchBuilder}
+                className="btn-primary px-3 sm:px-4 py-2.5 text-sm font-semibold shadow-sm shadow-brand-600/15 shrink-0 min-h-[44px]"
+              >
+                <Plus size={16} />
+                <span className="hidden sm:inline">New survey</span>
+                <span className="sm:hidden">New</span>
+              </button>
+
+              <div className="flex items-center gap-1.5 sm:gap-3 lg:hidden">
+                <UserMenu
+                  session={session}
+                  onOpenAccount={onOpenAccount}
+                  onOpenTeam={onOpenTeam}
+                  onOpenPlatform={onOpenPlatform}
+                />
+                <HeaderLogoutButton onLogout={onLogout} />
+              </div>
+            </div>
+
+            <div className={`hidden lg:flex items-center gap-1.5 sm:gap-3 ${WORKSPACE_SIDEBAR_WIDTH}`}>
+              <UserMenu
+                session={session}
+                onOpenAccount={onOpenAccount}
+                onOpenTeam={onOpenTeam}
+                onOpenPlatform={onOpenPlatform}
+              />
+              <HeaderLogoutButton onLogout={onLogout} />
+            </div>
           </div>
         </div>
       </AppShell>

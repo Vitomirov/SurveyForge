@@ -1,6 +1,7 @@
 import { useApi } from '@/config/api'
 import { AppShell, APP_SHELL_GRID, APP_BUILDER_PANE } from '@/components/shared/layout/AppBuilderShell.jsx'
-import { AppLeadingZone } from '@/components/shared/layout/AppLeadingZone.jsx'
+import { AppBackSlot } from '@/components/shared/layout/AppLeadingZone.jsx'
+import { AppLogo } from '@/components/shared/branding/AppLogo.jsx'
 import { DEFAULT_SURVEY_TITLE } from '@/constants/surveyDefaults'
 import { SURVEY_STATUSES } from '@/utils/data/platformStore'
 import { prefetchPreview } from '@/utils/routing/routePrefetch'
@@ -26,13 +27,14 @@ export function BuilderHeader({
     <header className="bg-white/95 backdrop-blur-md border-b border-ink-200/80 sticky top-0 z-30 safe-top">
       <AppShell>
         <div className={`${APP_SHELL_GRID} items-center min-h-[4.25rem] py-3`}>
-          <AppLeadingZone
-            showBack
-            onBack={onBackToDashboard}
-            onLogoClick={onBackToDashboard}
-          />
+          <AppBackSlot showBack onBack={onBackToDashboard} />
 
           <div className={`${APP_BUILDER_PANE} flex flex-wrap items-center gap-y-2 gap-x-2 sm:gap-3 min-w-0`}>
+            <AppLogo
+              onClick={onBackToDashboard}
+              size="md"
+              className="shrink-0"
+            />
             <BuilderDocumentBar
               survey={survey}
               dispatch={dispatch}

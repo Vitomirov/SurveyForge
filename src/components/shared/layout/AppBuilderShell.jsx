@@ -1,13 +1,13 @@
 import { APP_SHELL_MAX_WIDTH } from '@/constants/layout'
-import { AppLeadingZone } from '@/components/shared/layout/AppLeadingZone.jsx'
+import { AppBackSlot } from '@/components/shared/layout/AppLeadingZone.jsx'
 
 export const APP_SHELL_PADDING = 'px-4 sm:px-6 lg:px-8'
 
-/** Leading brand column + main pane. Used by headers (logo is always visible). */
+/** Back column + main pane (logo and content share the main pane left edge). */
 export const APP_SHELL_GRID =
   'grid grid-cols-[auto_1fr] grid-rows-[minmax(0,1fr)] gap-x-2 sm:gap-x-3 md:gap-x-4 lg:gap-x-6 min-h-0'
 
-/** Body grid: full-width on small screens; aligns to header logo column from md up. */
+/** Body grid: full-width on small screens; main pane aligns with logo from md up. */
 export const APP_BODY_GRID =
   'grid grid-cols-1 md:grid-cols-[auto_1fr] grid-rows-[minmax(0,1fr)] md:gap-x-4 lg:gap-x-6 min-h-0'
 
@@ -41,7 +41,6 @@ export function AppAlignedBody({
   paneClassName = '',
   showBack = false,
   onBack,
-  onLogoClick,
   withDivider = true,
 }) {
   const paneBase = withDivider ? APP_MAIN_PANE : APP_BUILDER_PANE
@@ -50,15 +49,14 @@ export function AppAlignedBody({
     <AppShell className={className}>
       <div className={`${APP_BODY_GRID} ${gridClassName}`}>
         <div className="hidden md:contents">
-          <AppLeadingZone
+          <AppBackSlot
             showBack={showBack}
             onBack={onBack}
-            onLogoClick={onLogoClick ?? onBack}
             className="invisible pointer-events-none"
             aria-hidden="true"
           />
         </div>
-        <div className={`${paneBase} min-h-0 lg:overflow-hidden ${paneClassName}`}>
+        <div className={`${paneBase} min-h-0 ${paneClassName}`}>
           {children}
         </div>
       </div>
