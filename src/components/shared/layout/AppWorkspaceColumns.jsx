@@ -4,11 +4,15 @@ export const WORKSPACE_SIDEBAR_WIDTH = 'w-64 shrink-0 pl-6'
 export const WORKSPACE_SIDEBAR_RAIL =
   `hidden lg:block ${WORKSPACE_SIDEBAR_WIDTH}`
 
-export function AppWorkspaceColumns({ children, sidebar, className = '' }) {
+export function AppWorkspaceColumns({ children, sidebar, showRail = true, className = '' }) {
   return (
     <div className={`flex flex-col lg:flex-row gap-4 lg:gap-6 min-h-0 ${className}`}>
       <main className="flex-1 min-w-0 min-h-0 flex flex-col">{children}</main>
-      {sidebar ?? <div className={WORKSPACE_SIDEBAR_RAIL} aria-hidden="true" />}
+      {sidebar !== undefined
+        ? sidebar
+        : showRail
+          ? <div className={WORKSPACE_SIDEBAR_RAIL} aria-hidden="true" />
+          : null}
     </div>
   )
 }

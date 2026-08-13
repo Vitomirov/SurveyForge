@@ -5,7 +5,6 @@ import {
 import { AppShell, APP_SHELL_GRID, APP_BUILDER_PANE } from '@/components/shared/layout/AppBuilderShell.jsx'
 import { AppBackSlot } from '@/components/shared/layout/AppLeadingZone.jsx'
 import { AppLogo } from '@/components/shared/branding/AppLogo.jsx'
-import { WORKSPACE_SIDEBAR_WIDTH } from '@/components/shared/layout/AppWorkspaceColumns.jsx'
 import { HeaderLogoutButton } from '@/components/shared/layout/HeaderLogoutButton.jsx'
 import { roleLabel, canManagePlatform, canManageBilling } from '@/utils/platform/permissions'
 import { prefetchBuilder } from '@/utils/routing/routePrefetch'
@@ -123,8 +122,8 @@ export function DashboardHeader({
         <div className={`${APP_SHELL_GRID} items-center min-h-[4.25rem] py-3`}>
           <AppBackSlot />
 
-          <div className={`${APP_BUILDER_PANE} flex items-center min-w-0 lg:gap-6`}>
-            <AppLogo onClick={onGoHome} size="md" className="shrink-0 mr-2 sm:mr-3" />
+          <div className={`${APP_BUILDER_PANE} flex items-center gap-2 sm:gap-3 min-w-0`}>
+            <AppLogo onClick={onGoHome} size="md" className="shrink-0" />
 
             <div className="flex-1 flex items-center justify-end gap-1.5 sm:gap-3 min-w-0">
               <button
@@ -139,18 +138,6 @@ export function DashboardHeader({
                 <span className="sm:hidden">New</span>
               </button>
 
-              <div className="flex items-center gap-1.5 sm:gap-3 lg:hidden">
-                <UserMenu
-                  session={session}
-                  onOpenAccount={onOpenAccount}
-                  onOpenTeam={onOpenTeam}
-                  onOpenPlatform={onOpenPlatform}
-                />
-                <HeaderLogoutButton onLogout={onLogout} />
-              </div>
-            </div>
-
-            <div className={`hidden lg:flex items-center gap-1.5 sm:gap-3 ${WORKSPACE_SIDEBAR_WIDTH}`}>
               <UserMenu
                 session={session}
                 onOpenAccount={onOpenAccount}

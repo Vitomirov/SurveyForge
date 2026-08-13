@@ -438,7 +438,7 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
       </Suspense>
 
       <AppContentShell className="flex-1 min-h-0 overflow-y-auto py-4 sm:py-6">
-        <AppWorkspaceColumns>
+        <AppWorkspaceColumns showRail={false}>
         <StatsBar surveys={surveys} />
 
         {canManagePlatform(session) && (
