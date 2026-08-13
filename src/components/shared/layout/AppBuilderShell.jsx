@@ -3,9 +3,13 @@ import { AppLeadingZone } from '@/components/shared/layout/AppLeadingZone.jsx'
 
 export const APP_SHELL_PADDING = 'px-4 sm:px-6 lg:px-8'
 
-/** Leading brand column + main pane. Row uses minmax(0,1fr) so flex parents can scroll. */
+/** Leading brand column + main pane. Used by headers (logo is always visible). */
 export const APP_SHELL_GRID =
-  'grid grid-cols-[auto_1fr] grid-rows-[minmax(0,1fr)] gap-x-3 md:gap-x-4 lg:gap-x-6 min-h-0'
+  'grid grid-cols-[auto_1fr] grid-rows-[minmax(0,1fr)] gap-x-2 sm:gap-x-3 md:gap-x-4 lg:gap-x-6 min-h-0'
+
+/** Body grid: full-width on small screens; aligns to header logo column from md up. */
+export const APP_BODY_GRID =
+  'grid grid-cols-1 md:grid-cols-[auto_1fr] grid-rows-[minmax(0,1fr)] md:gap-x-4 lg:gap-x-6 min-h-0'
 
 export const APP_MAIN_PANE =
   'min-w-0 md:border-l md:border-ink-200 md:pl-4 lg:pl-6'
@@ -44,14 +48,16 @@ export function AppAlignedBody({
 
   return (
     <AppShell className={className}>
-      <div className={`${APP_SHELL_GRID} ${gridClassName}`}>
-        <AppLeadingZone
-          showBack={showBack}
-          onBack={onBack}
-          onLogoClick={onLogoClick ?? onBack}
-          className="invisible pointer-events-none"
-          aria-hidden="true"
-        />
+      <div className={`${APP_BODY_GRID} ${gridClassName}`}>
+        <div className="hidden md:contents">
+          <AppLeadingZone
+            showBack={showBack}
+            onBack={onBack}
+            onLogoClick={onLogoClick ?? onBack}
+            className="invisible pointer-events-none"
+            aria-hidden="true"
+          />
+        </div>
         <div className={`${paneBase} min-h-0 lg:overflow-hidden ${paneClassName}`}>
           {children}
         </div>

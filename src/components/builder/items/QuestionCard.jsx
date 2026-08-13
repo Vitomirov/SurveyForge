@@ -39,11 +39,16 @@ function TokenPicker({ availableQuestions, onInsert }) {
         ⟨Q⟩ Pipe answer
       </button>
       {open && (
-        <div className="absolute right-0 sm:right-0 left-0 sm:left-auto top-8 z-30 bg-white border border-ink-200 rounded-xl shadow-xl py-1.5 w-full sm:w-72 max-h-56 overflow-y-auto">
-          <p className="text-xs font-semibold text-ink-400 uppercase tracking-wider px-3 pb-1.5 pt-0.5">
-            Insert answer from…
-          </p>
-          {availableQuestions.map((q, idx) => (
+        <>
+          <div
+            className="fixed inset-0 z-40 bg-black/30 sm:hidden"
+            onClick={() => setOpen(false)}
+          />
+          <div className="fixed inset-x-0 bottom-0 z-50 sm:absolute sm:inset-auto sm:right-0 sm:left-auto sm:top-8 sm:w-72 bg-white border border-ink-200 rounded-t-2xl sm:rounded-xl shadow-2xl sm:shadow-xl py-1.5 max-h-[min(70vh,14rem)] sm:max-h-56 overflow-y-auto safe-bottom">
+            <p className="text-xs font-semibold text-ink-400 uppercase tracking-wider px-3 pb-1.5 pt-2 sm:pt-0.5">
+              Insert answer from…
+            </p>
+            {availableQuestions.map((q, idx) => (
             <div key={q.id}>
               {isMatrixType(q.questionType) ? (
                 <>
@@ -88,7 +93,8 @@ function TokenPicker({ availableQuestions, onInsert }) {
               )}
             </div>
           ))}
-        </div>
+          </div>
+        </>
       )}
     </div>
   )
@@ -154,7 +160,7 @@ export const QuestionCard = memo(function QuestionCard({
         <div className="flex items-start gap-2 sm:gap-3 p-3 sm:p-4 cursor-pointer" onClick={() => onActivateItem(question.id)}>
 
           {/* Drag handle */}
-          <div {...attributes} {...listeners} className="drag-handle mt-0.5 text-ink-400 hover:text-ink-600 hover:bg-ink-100 rounded p-0.5 -ml-0.5 transition-colors" onClick={e => e.stopPropagation()}>
+          <div {...attributes} {...listeners} className="drag-handle mt-0.5 text-ink-400 hover:text-ink-600 hover:bg-ink-100 rounded p-0.5 -ml-0.5 transition-colors shrink-0" onClick={e => e.stopPropagation()}>
             <GripVertical size={16} />
           </div>
 
@@ -165,57 +171,81 @@ export const QuestionCard = memo(function QuestionCard({
 
           {/* Content */}
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-1.5 flex-wrap mb-0.5">
-              {/* Type badge */}
-              <div
-                ref={typeMenuRef}
-                className="relative"
-                onClick={e => { e.stopPropagation(); setShowTypeMenu(v => !v) }}
-              >
-                <button
-                  type="button"
-                  className={`flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-md ${colors.bg} ${colors.text} hover:opacity-80`}
+            <div className="flex items-start justify-between gap-2 mb-1">
+              <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+                {/* Type badge */}
+                <div
+                  ref={typeMenuRef}
+                  className="relative shrink-0"
+                  onClick={e => { e.stopPropagation(); setShowTypeMenu(v => !v) }}
                 >
-                  <TypeIcon size={11} />
-                  {meta.shortLabel}
-                  <ChevronDown size={9} />
-                </button>
+                  <button
+                    type="button"
+                    className={`flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-md min-h-[28px] ${colors.bg} ${colors.text} hover:opacity-80`}
+                  >
+                    <TypeIcon size={11} />
+                    {meta.shortLabel}
+                    <ChevronDown size={9} />
+                  </button>
 
-                {showTypeMenu && (
-                  <div className="absolute top-full left-0 mt-1 bg-white border border-ink-200 rounded-xl shadow-lg z-20 p-1 w-52">
-                    {QUESTION_TYPES.map(qt => {
-                      const Icon = TYPE_ICONS[qt.type]
-                      const c    = TYPE_COLORS[qt.type]
-                      return (
-                        <button
-                          key={qt.type}
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); handleTypeChange(qt.type) }}
-                          className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm hover:bg-ink-50 transition-colors ${question.questionType === qt.type ? 'font-semibold' : ''}`}
-                        >
-                          <span className={`p-1 rounded ${c.bg} ${c.text}`}><Icon size={12} /></span>
-                          {qt.label}
-                          {question.questionType === qt.type && <span className="ml-auto text-brand-500 text-xs">✓</span>}
-                        </button>
-                      )
-                    })}
-                  </div>
-                )}
+                  {showTypeMenu && (
+                    <>
+                      <div
+                        className="fixed inset-0 z-40 bg-black/30 sm:hidden"
+                        onClick={(e) => { e.stopPropagation(); setShowTypeMenu(false) }}
+                      />
+                      <div
+                        className="fixed inset-x-0 bottom-0 z-50 sm:absolute sm:inset-auto sm:left-0 sm:top-full sm:mt-1 sm:w-56 bg-white border border-ink-200 rounded-t-2xl sm:rounded-xl shadow-2xl sm:shadow-lg p-2 max-h-[min(70vh,20rem)] overflow-y-auto safe-bottom"
+                        onClick={e => e.stopPropagation()}
+                      >
+                        <p className="sm:hidden text-xs font-semibold text-ink-400 uppercase tracking-wider px-2 py-2 border-b border-ink-100 mb-1">
+                          Question type
+                        </p>
+                        {QUESTION_TYPES.map(qt => {
+                          const Icon = TYPE_ICONS[qt.type]
+                          const c    = TYPE_COLORS[qt.type]
+                          return (
+                            <button
+                              key={qt.type}
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); handleTypeChange(qt.type) }}
+                              className={`w-full flex items-center gap-2 px-3 py-2.5 sm:py-2 rounded-lg text-sm hover:bg-ink-50 transition-colors min-h-[44px] sm:min-h-0 ${question.questionType === qt.type ? 'font-semibold' : ''}`}
+                            >
+                              <span className={`p-1 rounded ${c.bg} ${c.text}`}><Icon size={12} /></span>
+                              <span className="text-left">{qt.label}</span>
+                              {question.questionType === qt.type && <span className="ml-auto text-brand-500 text-xs">✓</span>}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                {/* Required */}
+                {question.required
+                  ? <span className="text-xs text-rose-500 font-medium">Required</span>
+                  : <span className="text-xs text-ink-400">Optional</span>
+                }
+
+                {/* Badges */}
+                {anchorCount > 0 && <span className="text-xs text-brand-500 bg-brand-50 px-1.5 py-0.5 rounded">⚓ {anchorCount}</span>}
+                {exclusiveSet    && <span className="text-xs text-rose-500 bg-rose-50 px-1.5 py-0.5 rounded">⊘</span>}
+                {openTextSet     && <span className="text-xs text-brand-500 bg-brand-50 px-1.5 py-0.5 rounded">💬</span>}
               </div>
 
-              {/* Required */}
-              {question.required
-                ? <span className="text-xs text-rose-500 font-medium">Required</span>
-                : <span className="text-xs text-ink-400">Optional</span>
-              }
-
-              {/* Badges */}
-              {anchorCount > 0 && <span className="text-xs text-brand-500 bg-brand-50 px-1.5 py-0.5 rounded">⚓ {anchorCount}</span>}
-              {exclusiveSet    && <span className="text-xs text-rose-500 bg-rose-50 px-1.5 py-0.5 rounded">⊘</span>}
-              {openTextSet     && <span className="text-xs text-brand-500 bg-brand-50 px-1.5 py-0.5 rounded">💬</span>}
+              {/* Actions */}
+              <div className="flex items-center gap-0.5 sm:gap-1 shrink-0" onClick={e => e.stopPropagation()}>
+                <IconBtn icon={Copy} onClick={() => dispatch({ type: 'DUPLICATE_ITEM', id: question.id })} title="Duplicate" />
+                <IconBtn icon={Trash2} onClick={() => dispatch({ type: 'DELETE_ITEM', id: question.id })} variant="danger" title="Delete" />
+                <div className="hidden sm:block w-px h-4 bg-ink-100 mx-0.5" />
+                <div className={`transition-transform duration-150 ${isActive ? 'rotate-90' : ''}`}>
+                  <ChevronRight size={16} className="text-ink-400" />
+                </div>
+              </div>
             </div>
 
-            <p className={`text-sm leading-snug ${question.text ? 'text-ink-800' : 'text-ink-400 italic'}`}>
+            <p className={`text-sm leading-snug break-words ${question.text ? 'text-ink-800' : 'text-ink-400 italic'}`}>
               {question.text || 'Untitled question — click to edit'}
             </p>
 
@@ -230,24 +260,14 @@ export const QuestionCard = memo(function QuestionCard({
               </p>
             )}
           </div>
-
-          {/* Actions */}
-          <div className="flex items-center gap-1 shrink-0" onClick={e => e.stopPropagation()}>
-            <IconBtn icon={Copy} onClick={() => dispatch({ type: 'DUPLICATE_ITEM', id: question.id })} title="Duplicate" />
-            <IconBtn icon={Trash2} onClick={() => dispatch({ type: 'DELETE_ITEM', id: question.id })} variant="danger" title="Delete" />
-            <div className="w-px h-4 bg-ink-100 mx-0.5" />
-            <div className={`transition-transform duration-150 ${isActive ? 'rotate-90' : ''}`}>
-              <ChevronRight size={16} className="text-ink-400" />
-            </div>
-          </div>
         </div>
 
         {/* ── Expanded editor ───────────────────────────────────────── */}
         {isActive && (
-          <div className="border-t border-ink-100 px-4 pt-4 pb-5 space-y-4">
+          <div className="border-t border-ink-100 px-3 sm:px-4 pt-4 pb-5 space-y-4">
             {/* Question text + piping token picker */}
             <div>
-              <div className="flex items-center justify-between mb-1.5">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-1.5">
                 <label className="text-xs font-semibold text-ink-400 uppercase tracking-wider">Question Text</label>
                 {availableQuestions.length > 0 && (
                   <TokenPicker
@@ -285,8 +305,8 @@ export const QuestionCard = memo(function QuestionCard({
             </div>
 
             {/* Required toggle */}
-            <div className="flex items-center justify-between p-3 bg-ink-50 rounded-lg">
-              <div>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between p-3 bg-ink-50 rounded-lg">
+              <div className="min-w-0">
                 <p className="text-sm font-medium text-ink-700">Required</p>
                 <p className="text-xs text-ink-400">Respondent must answer before continuing</p>
               </div>
@@ -310,7 +330,7 @@ export const QuestionCard = memo(function QuestionCard({
             {/* Email capture field — for DNC matching */}
             {question.questionType === 'open_text' && (
               <div className="mt-2 mb-2">
-                <label className="flex items-center gap-3 p-2.5 bg-ink-50 rounded-lg cursor-pointer hover:bg-ink-100 transition-all">
+                <label className="flex items-start gap-3 p-2.5 bg-ink-50 rounded-lg cursor-pointer hover:bg-ink-100 transition-all">
                   <div
                     onClick={() => dispatch({
                       type: 'SET_EMAIL_FIELD',

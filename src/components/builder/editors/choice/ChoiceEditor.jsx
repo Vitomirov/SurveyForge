@@ -44,9 +44,9 @@ export function ChoiceEditor({ question, dispatch, focusOptionId, availableQuest
     <div>
       {/* ── Option piping panel ─────────────────────────────────────────── */}
       <div className={`mb-3 p-3 rounded-xl border-2 transition-all ${pipingEnabled ? 'border-brand-400 bg-brand-50' : 'border-ink-100 bg-ink-50'}`}>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            {pipingEnabled ? <Link2 size={13} className="text-brand-600" /> : <Link2Off size={13} className="text-ink-400" />}
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-2 min-w-0">
+            {pipingEnabled ? <Link2 size={13} className="text-brand-600 shrink-0" /> : <Link2Off size={13} className="text-ink-400 shrink-0" />}
             <span className={`text-sm font-semibold ${pipingEnabled ? 'text-brand-700' : 'text-ink-600'}`}>
               Pipe options from earlier question
             </span>

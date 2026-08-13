@@ -48,7 +48,7 @@ function UserMenu({
       <button
         type="button"
         onClick={() => setOpen(v => !v)}
-        className={`flex items-center gap-2 sm:gap-2.5 pl-1.5 pr-2 sm:pr-2.5 py-1.5 rounded-xl border transition-all ${
+        className={`flex items-center gap-2 sm:gap-2.5 pl-1.5 pr-2 sm:pr-2.5 py-1.5 min-h-[44px] rounded-xl border transition-all ${
           open
             ? 'border-brand-200 bg-brand-50/50 shadow-sm'
             : 'border-ink-200 bg-white hover:border-ink-300 hover:bg-ink-50/80'
@@ -121,19 +121,18 @@ export function DashboardHeader({
         <div className={`${APP_SHELL_GRID} items-center min-h-[4.25rem] py-3`}>
           <AppLeadingZone onLogoClick={onGoHome} />
 
-          <div className={`${APP_BUILDER_PANE} flex items-center justify-end gap-2 sm:gap-3 min-w-0`}>
+          <div className={`${APP_BUILDER_PANE} flex items-center justify-end gap-1.5 sm:gap-3 min-w-0`}>
             <button
               type="button"
               onClick={onNewSurvey}
               onMouseEnter={prefetchBuilder}
               onFocus={prefetchBuilder}
-              className="btn-primary px-3 sm:px-4 py-2.5 text-sm font-semibold shadow-sm shadow-brand-600/15 shrink-0"
+              className="btn-primary px-3 sm:px-4 py-2.5 text-sm font-semibold shadow-sm shadow-brand-600/15 shrink-0 min-h-[44px]"
             >
               <Plus size={16} />
               <span className="hidden sm:inline">New survey</span>
               <span className="sm:hidden">New</span>
             </button>
-
 
             <UserMenu
               session={session}
@@ -141,8 +140,7 @@ export function DashboardHeader({
               onOpenTeam={onOpenTeam}
               onOpenPlatform={onOpenPlatform}
             />
-                        <HeaderLogoutButton onLogout={onLogout} />
-
+            <HeaderLogoutButton onLogout={onLogout} />
           </div>
         </div>
       </AppShell>

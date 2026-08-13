@@ -44,7 +44,7 @@ export function BuilderWorkspace({
             onDragEnd={onDragEnd}
             scrollContainerRef={scrollRef}
           />
-          {hasItems && <div className="h-20 lg:hidden" aria-hidden="true" />}
+          {hasItems && <div className="h-24 lg:hidden" aria-hidden="true" />}
         </div>
 
         {hasItems && (

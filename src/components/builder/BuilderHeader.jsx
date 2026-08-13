@@ -32,7 +32,7 @@ export function BuilderHeader({
             onLogoClick={onBackToDashboard}
           />
 
-          <div className={`${APP_BUILDER_PANE} flex items-center gap-2 sm:gap-3 min-w-0`}>
+          <div className={`${APP_BUILDER_PANE} flex flex-wrap items-center gap-y-2 gap-x-2 sm:gap-3 min-w-0`}>
             <BuilderDocumentBar
               survey={survey}
               dispatch={dispatch}
@@ -75,9 +75,9 @@ function BuilderDocumentBar({ survey, dispatch, saveStatus, isDirty }) {
     || SURVEY_STATUSES[0]
 
   return (
-    <div className="flex-1 min-w-0">
+    <div className="flex-1 min-w-0 w-full sm:max-w-2xl">
       <div
-        className="flex items-center gap-2 sm:gap-3 min-w-0 w-full max-w-2xl rounded-xl border border-ink-200/90 bg-ink-50/70 px-2.5 sm:px-3 py-1.5 focus-within:border-brand-300 focus-within:bg-white focus-within:ring-2 focus-within:ring-brand-100 transition-all"
+        className="flex items-center gap-2 sm:gap-3 min-w-0 w-full rounded-xl border border-ink-200/90 bg-ink-50/70 px-2.5 sm:px-3 py-1.5 focus-within:border-brand-300 focus-within:bg-white focus-within:ring-2 focus-within:ring-brand-100 transition-all"
         title="Survey you are editing"
       >
         <span

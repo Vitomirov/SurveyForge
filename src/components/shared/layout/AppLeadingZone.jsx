@@ -23,7 +23,7 @@ export function AppLeadingZone({
           <ArrowLeft size={20} />
         </button>
       ) : (
-        <div className={BACK_SLOT} aria-hidden="true" />
+        <div className={`${BACK_SLOT} hidden md:flex`} aria-hidden="true" />
       )}
       <AppLogo onClick={onLogoClick ?? onBack} size="md" />
     </div>

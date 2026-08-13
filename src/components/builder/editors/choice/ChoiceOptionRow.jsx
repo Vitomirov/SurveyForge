@@ -72,9 +72,10 @@ export function ChoiceOptionRow({ option, questionId, questionType, dispatch, ca
 
   return (
     <div ref={setNodeRef} style={style} className="group">
-      <div className={`flex items-start gap-2 p-1.5 rounded-lg hover:bg-ink-50 transition-colors ${option.anchorPosition ? 'bg-brand-50/30' : ''}`}>
+      <div className={`flex flex-col gap-2 sm:flex-row sm:items-start p-1.5 rounded-lg hover:bg-ink-50 transition-colors ${option.anchorPosition ? 'bg-brand-50/30' : ''}`}>
+        <div className="flex items-start gap-2 flex-1 min-w-0">
         {/* Drag Handle */}
-        <div {...attributes} {...listeners} className="drag-handle mt-2 p-0.5 text-ink-200 group-hover:text-ink-400 transition-colors">
+        <div {...attributes} {...listeners} className="drag-handle mt-2 p-0.5 text-ink-200 group-hover:text-ink-400 transition-colors shrink-0">
           <GripVertical size={14} />
         </div>
 
@@ -117,9 +118,10 @@ export function ChoiceOptionRow({ option, questionId, questionType, dispatch, ca
             </div>
           )}
         </div>
+        </div>
 
         {/* Controls */}
-        <div className="flex items-center gap-0.5 mt-0.5 shrink-0">
+        <div className="flex items-center gap-0.5 shrink-0 pl-8 sm:pl-0 sm:mt-0.5">
           <AnchorBtn position={option.anchorPosition} onChange={pos => update({ anchorPosition: pos })} />
           <Tip label={option.isExclusive ? 'Exclusive (active)' : 'Set as exclusive / none-of-above'}>
             <button

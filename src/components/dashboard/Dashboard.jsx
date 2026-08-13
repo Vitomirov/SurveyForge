@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useCallback, useRef, lazy, Suspense } from 'react'
 import React from 'react'
 import {
-  Plus, Search, Filter, MoreVertical, Settings,
+  Plus, Search, MoreVertical, Settings,
   Copy, Trash2, ExternalLink, ChevronUp, ChevronDown,
   Layers, BarChart3, Clock, CheckCircle2, XCircle,
   PlayCircle, PauseCircle, Edit3, Eye,
@@ -88,7 +88,7 @@ function SurveyMenu({ surveyId, onOpen, onPreview, onDuplicate, onDelete }) {
       <button
         ref={btnRef}
         onClick={handleOpen}
-        className="p-1.5 text-ink-500 hover:text-ink-800 hover:bg-ink-100 active:bg-ink-200 rounded-lg transition-all focus-ring"
+        className="p-2.5 text-ink-500 hover:text-ink-800 hover:bg-ink-100 active:bg-ink-200 rounded-lg transition-all focus-ring min-h-[44px] min-w-[44px] flex items-center justify-center"
       >
         <MoreVertical size={15} />
       </button>
@@ -134,23 +134,27 @@ function StatsBar({ surveys }) {
   }, [surveys])
 
   const cards = [
-    { label: 'Total surveys', value: counts.total, icon: Layers,       color: 'text-brand-600 bg-brand-50' },
-    { label: 'Live',          value: counts.live,  icon: CheckCircle2, color: 'text-emerald-600 bg-emerald-50' },
-    { label: 'Draft',         value: counts.draft, icon: Edit3,        color: 'text-ink-600 bg-ink-100' },
-    { label: 'Paused',        value: counts.paused, icon: PauseCircle, color: 'text-amber-600 bg-amber-50' },
-    { label: 'Closed',        value: counts.closed, icon: XCircle,     color: 'text-rose-600 bg-rose-50' },
+    { label: 'Total surveys', short: 'Total', value: counts.total, icon: Layers,       color: 'text-brand-600 bg-brand-50' },
+    { label: 'Live',          short: 'Live',  value: counts.live,  icon: CheckCircle2, color: 'text-emerald-600 bg-emerald-50' },
+    { label: 'Drafts',        short: 'Drafts', value: counts.draft, icon: Edit3,        color: 'text-ink-600 bg-ink-100' },
+    { label: 'Paused',        short: 'Paused', value: counts.paused, icon: PauseCircle, color: 'text-amber-600 bg-amber-50' },
+    { label: 'Closed',        short: 'Closed', value: counts.closed, icon: XCircle,     color: 'text-rose-600 bg-rose-50' },
   ]
 
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3 mb-4 sm:mb-6">
       {cards.map(card => (
-        <div key={card.label} className="card px-3 sm:px-4 py-2.5 sm:py-3 flex items-center gap-2 sm:gap-3">
-          <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${card.color}`}>
-            <card.icon size={18} />
+        <div key={card.label} className="card px-3 sm:px-4 py-2.5 sm:py-3 flex items-center gap-2 sm:gap-3 min-w-0">
+          <div className={`w-8 h-8 sm:w-9 sm:h-9 rounded-lg flex items-center justify-center shrink-0 ${card.color}`}>
+            <card.icon size={16} className="sm:hidden" />
+            <card.icon size={18} className="hidden sm:block" />
           </div>
-          <div>
+          <div className="min-w-0">
             <p className="text-lg sm:text-xl font-bold text-ink-800 leading-none">{card.value}</p>
-            <p className="text-[11px] sm:text-xs text-ink-400 mt-0.5 leading-tight">{card.label}</p>
+            <p className="text-[11px] sm:text-xs text-ink-400 mt-0.5 leading-tight">
+              <span className="sm:hidden">{card.short}</span>
+              <span className="hidden sm:inline">{card.label}</span>
+            </p>
           </div>
         </div>
       ))}
@@ -423,7 +427,7 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
             <button
               type="button"
               onClick={() => { setShowSettings(true); refresh() }}
-              className="card mb-4 w-full p-3 sm:p-4 flex items-center gap-2.5 text-sm font-medium text-ink-600 hover:text-ink-900 hover:bg-ink-50/80 transition-colors"
+              className="card mb-4 w-full p-3 sm:p-4 flex items-center gap-2.5 text-sm font-medium text-ink-600 hover:text-ink-900 hover:bg-ink-50/80 transition-colors min-h-[44px]"
             >
               <Settings size={16} className="text-ink-400 shrink-0" />
               Platform settings
@@ -432,67 +436,71 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
         )}
 
         {/* Filters bar */}
-        <div className="card p-3 mb-4 flex items-center gap-2 sm:gap-3 flex-wrap">
-          {/* Search */}
-          <div className="flex items-center gap-2 bg-ink-50 rounded-lg px-3 py-1.5 w-full sm:flex-1 sm:min-w-48">
-            <Search size={14} className="text-ink-400 shrink-0" />
+        <div className="card p-3 sm:p-4 mb-4 space-y-3">
+          <div className="flex items-center gap-2 bg-ink-50 rounded-lg px-3 py-2.5 min-h-[44px]">
+            <Search size={16} className="text-ink-400 shrink-0" />
             <input
-              type="text"
+              type="search"
               value={search}
               onChange={e => setSearch(e.target.value)}
-              placeholder="Search by title…"
-              className="bg-transparent border-none outline-none text-sm flex-1 text-ink-700 placeholder:text-ink-400"
+              placeholder="Search surveys…"
+              className="bg-transparent border-none outline-none text-sm flex-1 min-w-0 text-ink-700 placeholder:text-ink-400"
             />
           </div>
 
-          {/* Filter dropdowns */}
-          {[
-            { label: 'Status', value: filterStatus, setter: setFilterStatus,
-              options: SURVEY_STATUSES.map(s => ({ value: s.id, label: s.label })) },
-            { label: 'Client', value: filterClient, setter: setFilterClient,
-              options: clients.map(c => ({ value: c.id, label: c.name })) },
-            { label: 'Topic', value: filterTopic, setter: setFilterTopic,
-              options: topics.map(t => ({ value: t.id, label: t.name })) },
-            { label: 'Audience', value: filterType, setter: setFilterType,
-              options: surveyTypes.map(t => ({ value: t.id, label: t.name })) },
-            ...(isAdmin ? [{
-              label: 'Owner', value: filterOwner, setter: setFilterOwner,
-              options: ownerOptions.map(([id, name]) => ({ value: id, label: name })),
-            }] : []),
-          ].map(f => (
-            <div key={f.label} className="flex items-center gap-1.5 w-[calc(50%-0.25rem)] sm:w-auto">
-              <Filter size={12} className="text-ink-400 hidden sm:block" />
-              <select
-                value={f.value}
-                onChange={e => f.setter(e.target.value)}
-                className={`text-sm border rounded-lg px-2 py-1.5 w-full sm:w-auto focus:outline-none focus:ring-2 focus:ring-brand-400 ${
-                  f.value ? 'border-brand-400 bg-brand-50 text-brand-700' : 'border-ink-200 text-ink-600'
-                }`}
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:flex md:flex-wrap gap-2">
+            {[
+              { label: 'Status', value: filterStatus, setter: setFilterStatus,
+                options: SURVEY_STATUSES.map(s => ({ value: s.id, label: s.label })) },
+              { label: 'Client', value: filterClient, setter: setFilterClient,
+                options: clients.map(c => ({ value: c.id, label: c.name })) },
+              { label: 'Topic', value: filterTopic, setter: setFilterTopic,
+                options: topics.map(t => ({ value: t.id, label: t.name })) },
+              { label: 'Audience', value: filterType, setter: setFilterType,
+                options: surveyTypes.map(t => ({ value: t.id, label: t.name })) },
+              ...(isAdmin ? [{
+                label: 'Owner', value: filterOwner, setter: setFilterOwner,
+                options: ownerOptions.map(([id, name]) => ({ value: id, label: name })),
+              }] : []),
+            ].map(f => (
+              <label key={f.label} className="block min-w-0 md:w-auto">
+                <span className="sr-only">Filter by {f.label}</span>
+                <select
+                  value={f.value}
+                  onChange={e => f.setter(e.target.value)}
+                  className={`w-full md:w-auto text-sm border rounded-lg px-3 py-2.5 min-h-[44px] bg-white focus:outline-none focus:ring-2 focus:ring-brand-400 ${
+                    f.value ? 'border-brand-400 bg-brand-50 text-brand-700' : 'border-ink-200 text-ink-700'
+                  }`}
+                >
+                  <option value="">All {f.label}</option>
+                  {f.options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                </select>
+              </label>
+            ))}
+          </div>
+
+          <div className="flex items-center justify-between gap-2">
+            {activeFilters > 0 ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setFilterStatus('')
+                  setFilterClient('')
+                  setFilterTopic('')
+                  setFilterType('')
+                  setFilterOwner('')
+                }}
+                className="text-sm text-rose-600 hover:text-rose-700 px-2 py-1.5 hover:bg-rose-50 rounded-lg transition-all min-h-[44px] sm:min-h-0"
               >
-                <option value="">All {f.label}s</option>
-                {f.options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-              </select>
-            </div>
-          ))}
-
-          {activeFilters > 0 && (
-            <button
-              onClick={() => {
-                setFilterStatus('')
-                setFilterClient('')
-                setFilterTopic('')
-                setFilterType('')
-                setFilterOwner('')
-              }}
-              className="text-xs text-rose-500 hover:text-rose-700 px-2 py-1 hover:bg-rose-50 rounded-lg transition-all"
-            >
-              Clear {activeFilters} filter{activeFilters !== 1 ? 's' : ''}
-            </button>
-          )}
-
-          <span className="text-xs text-ink-400 w-full sm:w-auto sm:ml-auto shrink-0 text-right sm:text-left">
-            {displayed.length} of {surveys.length}
-          </span>
+                Clear {activeFilters} filter{activeFilters !== 1 ? 's' : ''}
+              </button>
+            ) : (
+              <span />
+            )}
+            <span className="text-xs text-ink-400 shrink-0">
+              {displayed.length} of {surveys.length}
+            </span>
+          </div>
         </div>
 
         {/* Empty state */}
@@ -551,7 +559,7 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
                           </span>
                           <StatusBadge statusId={sv.status || 'draft'} />
                         </div>
-                        <p className="font-semibold text-ink-800 truncate">
+                        <p className="font-semibold text-ink-800 break-words">
                           {sv.title || DEFAULT_SURVEY_TITLE}
                         </p>
                         {sv.internalName && (

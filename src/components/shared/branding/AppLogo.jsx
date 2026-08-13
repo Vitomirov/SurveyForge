@@ -17,7 +17,7 @@ export function AppLogo({
     <img
       src={logoUrl}
       alt={APP_NAME}
-      className={`${HEIGHT[size]} w-auto max-w-none object-contain object-left ${className}`}
+      className={`${HEIGHT[size]} w-auto max-w-[7.5rem] sm:max-w-[10rem] md:max-w-none object-contain object-left ${className}`}
       draggable={false}
     />
   )
