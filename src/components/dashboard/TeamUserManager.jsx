@@ -14,7 +14,7 @@ function generatePassword() {
   return out
 }
 
-export function TeamUserManager({ users, setUsers, session, seatUsage }) {
+export function TeamUserManager({ users, setUsers, session, seatUsage, hideHeader = false }) {
   const [showForm, setShowForm] = useState(false)
   const [showPass, setShowPass] = useState(false)
   const [editId, setEditId] = useState(null)
@@ -166,11 +166,13 @@ export function TeamUserManager({ users, setUsers, session, seatUsage }) {
         </div>
       )}
 
-      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
-        <div>
-          <h3 className="text-sm font-bold text-ink-800">{AUTH_PROFILE.teamMembers}</h3>
-          <p className="text-xs text-ink-400 mt-1 leading-relaxed max-w-xl">{AUTH_PROFILE.teamHint}</p>
-        </div>
+      <div className={`flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4 ${hideHeader ? 'sm:justify-end' : ''}`}>
+        {!hideHeader && (
+          <div>
+            <h3 className="text-sm font-bold text-ink-800">{AUTH_PROFILE.teamMembers}</h3>
+            <p className="text-xs text-ink-400 mt-1 leading-relaxed max-w-xl">{AUTH_PROFILE.teamHint}</p>
+          </div>
+        )}
         <div className="flex items-center gap-2 shrink-0">
           <span className="text-xs font-medium text-ink-500 bg-white border border-ink-200 rounded-lg px-2.5 py-1">
             {seatsLabel}

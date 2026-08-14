@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useRef } from 'react'
 import { Settings2 } from 'lucide-react'
 import { RichTextEditor, NavigationLockEditor } from '@/components/shared'
 import {
@@ -8,13 +8,15 @@ import {
 import { DEFAULT_SCREEN_MESSAGES } from '@/constants/surveyDefaults'
 
 export function SurveyHeaderCard({ survey, dispatch, hasItems = false }) {
-  const hadItemsRef = useRef(hasItems)
+  const prevHasItemsRef = useRef(hasItems)
   const [settingsOpen, setSettingsOpen] = useState(!hasItems)
 
-  useEffect(() => {
-    if (!hadItemsRef.current && hasItems) setSettingsOpen(false)
-    hadItemsRef.current = hasItems
-  }, [hasItems])
+  // Close settings in the same render when the first item is added so layout is
+  // stable before the new-question scroll runs (avoids landing at the card bottom).
+  if (hasItems && !prevHasItemsRef.current && settingsOpen) {
+    setSettingsOpen(false)
+  }
+  prevHasItemsRef.current = hasItems
 
   const showDescription = !hasItems || settingsOpen
 

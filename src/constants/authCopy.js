@@ -31,7 +31,9 @@ export const AUTH_ERRORS = {
 }
 
 export const AUTH_TEAM = {
-  heading:             'Team performance',
+  heading:             'Team activity',
+  teamActivity:        'Team activity',
+  teamActivityHint:    'Survey activity by employee',
   subtitle:            'Survey activity by employee',
   surveysBuilt:        'Surveys built',
   responses:           'Responses',

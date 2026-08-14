@@ -1,11 +1,12 @@
 import { useState, useRef, useEffect } from 'react'
 import {
-  Plus, Users, Building2, User,
+  Plus, Users, Building2, User, BarChart3,
 } from 'lucide-react'
 import { AppShell, APP_SHELL_GRID, APP_BUILDER_PANE } from '@/components/shared/layout/AppBuilderShell.jsx'
 import { AppBackSlot } from '@/components/shared/layout/AppLeadingZone.jsx'
 import { AppLogo } from '@/components/shared/branding/AppLogo.jsx'
 import { HeaderLogoutButton } from '@/components/shared/layout/HeaderLogoutButton.jsx'
+import { AUTH_PROFILE, AUTH_TEAM } from '@/constants/authCopy'
 import { roleLabel, canManagePlatform, canManageBilling } from '@/utils/platform/permissions'
 import { prefetchBuilder } from '@/utils/routing/routePrefetch'
 import { UserAvatar } from './UserAvatar.jsx'
@@ -13,7 +14,8 @@ import { UserAvatar } from './UserAvatar.jsx'
 function UserMenu({
   session,
   onOpenAccount,
-  onOpenTeam,
+  onOpenTeamMembers,
+  onOpenTeamActivity,
   onOpenPlatform,
 }) {
   const [open, setOpen] = useState(false)
@@ -88,8 +90,9 @@ function UserMenu({
           </div>
 
           <div className="border-t border-ink-100 my-1.5 pt-1.5 space-y-0.5">
-            {menuItem('My account', User, onOpenAccount)}
-            {isAdmin && menuItem('Team performance', Users, onOpenTeam)}
+            {menuItem(AUTH_PROFILE.myAccount, User, onOpenAccount)}
+            {isAdmin && menuItem(AUTH_PROFILE.teamMembers, Users, onOpenTeamMembers)}
+            {isAdmin && menuItem(AUTH_TEAM.teamActivity, BarChart3, onOpenTeamActivity)}
             {showPlatform && menuItem('Platform console', Building2, onOpenPlatform)}
           </div>
         </div>
@@ -104,7 +107,8 @@ export function DashboardHeader({
   onGoHome,
   onLogout,
   onOpenAccount,
-  onOpenTeam,
+  onOpenTeamMembers,
+  onOpenTeamActivity,
   onOpenPlatform,
 }) {
   return (
@@ -133,7 +137,8 @@ export function DashboardHeader({
                 <UserMenu
                   session={session}
                   onOpenAccount={onOpenAccount}
-                  onOpenTeam={onOpenTeam}
+                  onOpenTeamMembers={onOpenTeamMembers}
+                  onOpenTeamActivity={onOpenTeamActivity}
                   onOpenPlatform={onOpenPlatform}
                 />
                 <HeaderLogoutButton onLogout={onLogout} />

@@ -145,8 +145,8 @@ export function TeamPanel({ onClose }) {
   return (
     <Modal
       icon={Users}
-      title={AUTH_TEAM.heading}
-      subtitle={AUTH_TEAM.subtitle}
+      title={AUTH_TEAM.teamActivity}
+      subtitle={AUTH_TEAM.teamActivityHint}
       onClose={onClose}
     >
       {selectedId ? (

@@ -34,6 +34,7 @@ import {
 
 const PlatformSettings = lazy(() => import('./PlatformSettings.jsx'))
 const TeamPanel        = lazy(() => import('./TeamPanel.jsx'))
+const TeamMembersModal = lazy(() => import('./TeamMembersModal.jsx'))
 const PlatformConsole  = lazy(() => import('./PlatformConsole.jsx'))
 const DashboardHeader  = lazy(() => import('./DashboardHeader.jsx'))
 const AccountSettingsModal = lazy(() => import('./AccountSettingsModal.jsx'))
@@ -213,7 +214,8 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
   const [sort, setSort]             = useState({ field: 'updatedAt', dir: 'desc' })
   const [showSettings, setShowSettings] = useState(false)
   const [showAccount, setShowAccount]     = useState(false)
-  const [showTeam, setShowTeam]         = useState(false)
+  const [showTeamMembers, setShowTeamMembers] = useState(false)
+  const [showTeamActivity, setShowTeamActivity] = useState(false)
   const [showPlatform, setShowPlatform] = useState(false)
   const [deleteId, setDeleteId]     = useState(null)
   const migrateAttemptedRef = useRef(false)
@@ -427,12 +429,14 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
           onGoHome={() => {
             setShowAccount(false)
             setShowSettings(false)
-            setShowTeam(false)
+            setShowTeamMembers(false)
+            setShowTeamActivity(false)
             setShowPlatform(false)
           }}
           onLogout={onLogout}
           onOpenAccount={() => setShowAccount(true)}
-          onOpenTeam={() => setShowTeam(true)}
+          onOpenTeamMembers={() => setShowTeamMembers(true)}
+          onOpenTeamActivity={() => setShowTeamActivity(true)}
           onOpenPlatform={() => setShowPlatform(true)}
         />
       </Suspense>
@@ -475,7 +479,6 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
                   embedded
                   hideHeader
                   session={session}
-                  onSessionUpdate={onSessionUpdate}
                   onClose={() => { setShowSettings(false); refresh() }}
                 />
               </Suspense>
@@ -825,13 +828,26 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
         </Suspense>
       )}
 
-      {showTeam && canManagePlatform(session) && (
+      {showTeamMembers && canManagePlatform(session) && (
         <Suspense fallback={
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center">
-            <InlineLoader label="Loading team…" />
+            <InlineLoader label="Loading team members…" />
           </div>
         }>
-          <TeamPanel onClose={() => setShowTeam(false)} />
+          <TeamMembersModal
+            session={session}
+            onClose={() => setShowTeamMembers(false)}
+          />
+        </Suspense>
+      )}
+
+      {showTeamActivity && canManagePlatform(session) && (
+        <Suspense fallback={
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center">
+            <InlineLoader label="Loading team activity…" />
+          </div>
+        }>
+          <TeamPanel onClose={() => setShowTeamActivity(false)} />
         </Suspense>
       )}
 

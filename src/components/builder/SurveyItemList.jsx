@@ -35,13 +35,33 @@ export function SurveyItemList({
       return
     }
     prevItemCount.current = state.items.length
+
     const id = state.activeItemId
     const container = scrollContainerRef?.current
-    const run = () => {
+    const timers = []
+
+    const scrollToItem = () => {
       const el = document.getElementById(`survey-item-${id}`)
-      if (container && el) scrollChildToTop(container, el)
+      if (el) scrollChildToTop(container, el)
     }
-    requestAnimationFrame(() => requestAnimationFrame(run))
+
+    requestAnimationFrame(() => requestAnimationFrame(scrollToItem))
+    timers.push(setTimeout(scrollToItem, 50), setTimeout(scrollToItem, 150))
+
+    let ro
+    if (typeof ResizeObserver !== 'undefined') {
+      ro = new ResizeObserver(scrollToItem)
+      requestAnimationFrame(() => {
+        const el = document.getElementById(`survey-item-${id}`)
+        if (el) ro.observe(el)
+      })
+      timers.push(setTimeout(() => ro?.disconnect(), 500))
+    }
+
+    return () => {
+      timers.forEach(clearTimeout)
+      ro?.disconnect()
+    }
   }, [state.items.length, state.activeItemId, scrollContainerRef])
 
   if (state.items.length === 0) {

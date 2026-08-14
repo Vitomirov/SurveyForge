@@ -192,7 +192,6 @@ export function SurveyMetadata({ survey, dispatch }) {
         <Suspense fallback={null}>
           <PlatformSettings
             session={getSession()}
-            onSessionUpdate={updateSession}
             onClose={() => { setShowLabels(false); refreshLists() }}
           />
         </Suspense>
