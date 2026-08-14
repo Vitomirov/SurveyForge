@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef, memo, lazy, Suspense } from 'react'
 import { X, Plus, Trash2, Edit3, Check, Settings } from 'lucide-react'
 import {
   loadClients, loadTopics, loadSurveyTypes,
@@ -16,12 +16,23 @@ import {
 } from '@/api/platform/platform'
 import { fetchMe } from '@/api/auth/profile'
 import { fetchBillingOverview } from '@/api/platform/billing'
-import { BrandKitPanel } from './BrandKitPanel.jsx'
-import { DomainVerificationPanel } from './DomainVerificationPanel.jsx'
-import { ProfileSettingsPanel } from './ProfileSettingsPanel.jsx'
-import { TeamUserManager } from './TeamUserManager.jsx'
-import { BillingPanel } from './BillingPanel.jsx'
 import { canViewBilling } from '@/utils/platform/permissions'
+
+const BrandKitPanel = lazy(() =>
+  import('./BrandKitPanel.jsx').then(m => ({ default: m.BrandKitPanel })),
+)
+const DomainVerificationPanel = lazy(() =>
+  import('./DomainVerificationPanel.jsx').then(m => ({ default: m.DomainVerificationPanel })),
+)
+const ProfileSettingsPanel = lazy(() =>
+  import('./ProfileSettingsPanel.jsx').then(m => ({ default: m.ProfileSettingsPanel })),
+)
+const TeamUserManager = lazy(() =>
+  import('./TeamUserManager.jsx').then(m => ({ default: m.TeamUserManager })),
+)
+const BillingPanel = lazy(() =>
+  import('./BillingPanel.jsx').then(m => ({ default: m.BillingPanel })),
+)
 
 const BASE_SETTINGS_TABS = [
   ['lists', 'Classification labels'],
@@ -30,8 +41,16 @@ const BASE_SETTINGS_TABS = [
   ['users', 'Users'],
 ]
 
+const TAB_FALLBACK = (
+  <p className="text-sm text-ink-400 text-center py-8">Loading…</p>
+)
+
+function emptyIfApi(localLoader) {
+  return useApi ? [] : localLoader()
+}
+
 // ─── Editable list (clients / topics / types) ───────────────────────────────
-function EditableList({ label, description, items, onAdd, onUpdate, onDelete, placeholder }) {
+const EditableList = memo(function EditableList({ label, description, items, onAdd, onUpdate, onDelete, placeholder }) {
   const [newText,   setNewText]   = useState('')
   const [editingId, setEditingId] = useState(null)
   const [editText,  setEditText]  = useState('')
@@ -89,18 +108,27 @@ function EditableList({ label, description, items, onAdd, onUpdate, onDelete, pl
       </div>
     </div>
   )
-}
+})
 
 // ─── Main PlatformSettings ─────────────────────────────────────────────────
 export function PlatformSettings({ onClose, session, onSessionUpdate, embedded = false, hideHeader = false }) {
-  const [clients, setClients] = useState(loadClients)
-  const [topics,  setTopics]  = useState(loadTopics)
-  const [surveyTypes, setSurveyTypes] = useState(loadSurveyTypes)
-  const [users,   setUsers]   = useState(getUsers)
+  const [clients, setClients] = useState(() => emptyIfApi(loadClients))
+  const [topics,  setTopics]  = useState(() => emptyIfApi(loadTopics))
+  const [surveyTypes, setSurveyTypes] = useState(() => emptyIfApi(loadSurveyTypes))
+  const [users,   setUsers]   = useState(() => emptyIfApi(getUsers))
   const [profile, setProfile] = useState(null)
-  const [seatUsage, setSeatUsage] = useState(null)
+  const [billingOverview, setBillingOverview] = useState(null)
   const [tab,     setTab]     = useState('lists')
-  const [loading, setLoading] = useState(useApi)
+  const [loadingLists, setLoadingLists] = useState(useApi)
+  const [loadingUsers, setLoadingUsers] = useState(false)
+
+  const listsLoaded = useRef(!useApi)
+  const usersLoaded = useRef(!useApi)
+  const billingOverviewRef = useRef(null)
+
+  billingOverviewRef.current = billingOverview
+
+  const sessionUserId = session?.userId ?? session?.user?.id ?? null
 
   const settingsTabs = useMemo(() => (
     canViewBilling(session)
@@ -108,120 +136,172 @@ export function PlatformSettings({ onClose, session, onSessionUpdate, embedded =
       : BASE_SETTINGS_TABS
   ), [session])
 
-  const loadFromApi = useCallback(async () => {
-    if (!useApi) return
-    setLoading(true)
+  const seatUsage = useMemo(() => {
+    if (!billingOverview?.usage || !billingOverview?.subscription) return null
+    return {
+      used: billingOverview.usage.users,
+      total: billingOverview.subscription.seats,
+    }
+  }, [billingOverview])
+
+  const loadLists = useCallback(async () => {
+    if (!useApi || listsLoaded.current) return
+    setLoadingLists(true)
     try {
-      const [c, t, st, u, me, billing] = await Promise.all([
-        fetchClients(), fetchTopics(), fetchSurveyTypes(), fetchUsers(),
-        fetchMe().catch(() => null),
-        fetchBillingOverview().catch(() => null),
+      const [c, t, st] = await Promise.all([
+        fetchClients(), fetchTopics(), fetchSurveyTypes(),
       ])
       setClients(c)
       setTopics(t)
       setSurveyTypes(st)
-      setUsers(u)
-      if (me?.session) setProfile(me.session)
-      if (billing?.usage && billing?.subscription) {
-        setSeatUsage({ used: billing.usage.users, total: billing.subscription.seats })
-      }
+      listsLoaded.current = true
     } catch (err) {
-      console.error('Failed to load platform settings', err)
+      console.error('Failed to load classification labels', err)
     } finally {
-      setLoading(false)
+      setLoadingLists(false)
     }
   }, [])
 
-  const handleProfileSaved = (user) => {
+  const loadUsersTab = useCallback(async () => {
+    if (!useApi || usersLoaded.current) return
+    setLoadingUsers(true)
+    try {
+      const cachedBilling = billingOverviewRef.current
+      const [u, me, billing] = await Promise.all([
+        fetchUsers(),
+        fetchMe().catch(() => null),
+        cachedBilling ? Promise.resolve(cachedBilling) : fetchBillingOverview().catch(() => null),
+      ])
+      setUsers(u)
+      if (me?.session) setProfile(me.session)
+      if (billing) setBillingOverview(billing)
+      usersLoaded.current = true
+    } catch (err) {
+      console.error('Failed to load users settings', err)
+    } finally {
+      setLoadingUsers(false)
+    }
+  }, [])
+
+  const ensureBillingOverview = useCallback(async () => {
+    if (!useApi || billingOverview) return billingOverview
+    try {
+      const billing = await fetchBillingOverview()
+      setBillingOverview(billing)
+      return billing
+    } catch (err) {
+      console.error('Failed to load billing overview', err)
+      return null
+    }
+  }, [billingOverview])
+
+  const handleProfileSaved = useCallback((user) => {
     setProfile(prev => ({ ...prev, ...user }))
     setUsers(prev => prev.map(u => u.id === user.id ? { ...u, ...user } : u))
-  }
+  }, [])
+
+  const handleBillingOverviewChange = useCallback((next) => {
+    setBillingOverview(next)
+  }, [])
 
   useEffect(() => {
-    if (useApi) loadFromApi()
-    else if (session) setProfile(session)
-  }, [loadFromApi, session])
+    if (useApi) loadLists()
+  }, [loadLists])
 
-  const handleAddClient = async (name) => {
+  useEffect(() => {
+    if (!useApi && session) setProfile(session)
+  }, [session, sessionUserId])
+
+  useEffect(() => {
+    if (!useApi || tab !== 'users') return
+    loadUsersTab()
+  }, [tab, loadUsersTab])
+
+  useEffect(() => {
+    if (!useApi || tab !== 'billing') return
+    ensureBillingOverview()
+  }, [tab, ensureBillingOverview])
+
+  const handleAddClient = useCallback(async (name) => {
     if (useApi) {
       const client = await createClient(name)
       setClients(prev => [...prev, client])
       return
     }
     setClients(addClient(name))
-  }
+  }, [])
 
-  const handleUpdateClient = async (id, name) => {
+  const handleUpdateClient = useCallback(async (id, name) => {
     if (useApi) {
       const client = await updateClientApi(id, name)
       setClients(prev => prev.map(c => c.id === id ? client : c))
       return
     }
     setClients(updateClient(id, name))
-  }
+  }, [])
 
-  const handleDeleteClient = async (id) => {
+  const handleDeleteClient = useCallback(async (id) => {
     if (useApi) {
       await deleteClientApi(id)
       setClients(prev => prev.filter(c => c.id !== id))
       return
     }
     setClients(deleteClient(id))
-  }
+  }, [])
 
-  const handleAddTopic = async (name) => {
+  const handleAddTopic = useCallback(async (name) => {
     if (useApi) {
       const topic = await createTopic(name)
       setTopics(prev => [...prev, topic])
       return
     }
     setTopics(addTopic(name))
-  }
+  }, [])
 
-  const handleUpdateTopic = async (id, name) => {
+  const handleUpdateTopic = useCallback(async (id, name) => {
     if (useApi) {
       const topic = await updateTopicApi(id, name)
       setTopics(prev => prev.map(t => t.id === id ? topic : t))
       return
     }
     setTopics(updateTopic(id, name))
-  }
+  }, [])
 
-  const handleDeleteTopic = async (id) => {
+  const handleDeleteTopic = useCallback(async (id) => {
     if (useApi) {
       await deleteTopicApi(id)
       setTopics(prev => prev.filter(t => t.id !== id))
       return
     }
     setTopics(deleteTopic(id))
-  }
+  }, [])
 
-  const handleAddSurveyType = async (name) => {
+  const handleAddSurveyType = useCallback(async (name) => {
     if (useApi) {
       const surveyType = await createSurveyType(name)
       setSurveyTypes(prev => [...prev, surveyType])
       return
     }
     setSurveyTypes(addSurveyType(name))
-  }
+  }, [])
 
-  const handleUpdateSurveyType = async (id, name) => {
+  const handleUpdateSurveyType = useCallback(async (id, name) => {
     if (useApi) {
       const surveyType = await updateSurveyTypeApi(id, name)
       setSurveyTypes(prev => prev.map(t => t.id === id ? surveyType : t))
       return
     }
     setSurveyTypes(updateSurveyType(id, name))
-  }
+  }, [])
 
-  const handleDeleteSurveyType = async (id) => {
+  const handleDeleteSurveyType = useCallback(async (id) => {
     if (useApi) {
       await deleteSurveyTypeApi(id)
       setSurveyTypes(prev => prev.filter(t => t.id !== id))
       return
     }
     setSurveyTypes(deleteSurveyType(id))
-  }
+  }, [])
 
   const panel = (
     <div className={`bg-white w-full overflow-hidden flex flex-col ${embedded ? '' : `rounded-2xl shadow-2xl max-h-[90vh] ${tab === 'brandKit' ? 'max-w-5xl' : 'max-w-4xl'}`}`}>
@@ -252,7 +332,7 @@ export function PlatformSettings({ onClose, session, onSessionUpdate, embedded =
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 sm:p-5">
-        {loading && (tab === 'lists' || tab === 'users') ? (
+        {loadingLists && tab === 'lists' ? (
           <p className="text-sm text-ink-400 text-center py-8">Loading settings…</p>
         ) : tab === 'lists' ? (
           <div className="space-y-5">
@@ -290,27 +370,41 @@ export function PlatformSettings({ onClose, session, onSessionUpdate, embedded =
               />
             </div>
           </div>
+        ) : loadingUsers && tab === 'users' ? (
+          <p className="text-sm text-ink-400 text-center py-8">Loading settings…</p>
         ) : tab === 'users' ? (
-          <div className="space-y-5">
-            <ProfileSettingsPanel
-              session={session}
-              profile={profile}
-              onSessionUpdate={onSessionUpdate}
-              onProfileSaved={handleProfileSaved}
-            />
-            <TeamUserManager
-              users={users}
-              setUsers={setUsers}
-              session={session}
-              seatUsage={seatUsage}
-            />
-          </div>
+          <Suspense fallback={TAB_FALLBACK}>
+            <div className="space-y-5">
+              <ProfileSettingsPanel
+                session={session}
+                profile={profile}
+                onSessionUpdate={onSessionUpdate}
+                onProfileSaved={handleProfileSaved}
+              />
+              <TeamUserManager
+                users={users}
+                setUsers={setUsers}
+                session={session}
+                seatUsage={seatUsage}
+              />
+            </div>
+          </Suspense>
         ) : tab === 'brandKit' ? (
-          <BrandKitPanel embedded />
+          <Suspense fallback={TAB_FALLBACK}>
+            <BrandKitPanel embedded />
+          </Suspense>
         ) : tab === 'billing' ? (
-          <BillingPanel embedded />
+          <Suspense fallback={TAB_FALLBACK}>
+            <BillingPanel
+              embedded
+              initialOverview={billingOverview}
+              onOverviewChange={handleBillingOverviewChange}
+            />
+          </Suspense>
         ) : (
-          <DomainVerificationPanel embedded />
+          <Suspense fallback={TAB_FALLBACK}>
+            <DomainVerificationPanel embedded />
+          </Suspense>
         )}
       </div>
 

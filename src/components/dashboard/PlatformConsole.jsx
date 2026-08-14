@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { Building2, ChevronLeft, Plus } from 'lucide-react'
 import { useApi } from '@/config/api'
 import { AUTH_BILLING, AUTH_ERRORS } from '@/constants/authCopy'
@@ -21,13 +21,20 @@ const PLANS = [
 
 const STATUSES = ['trialing', 'active', 'past_due', 'canceled']
 
-function OrgDetail({ orgId, onBack }) {
+function applyDetailToForm(detail, setters) {
+  setters.setDetail(detail)
+  setters.setPlanId(detail.subscription.planId)
+  setters.setStatus(detail.subscription.status)
+  setters.setSurveyDomain(detail.organization.surveyDomain || '')
+}
+
+function OrgDetail({ orgId, cachedDetail, onCacheDetail, onOrgListPatch, onBack }) {
   const { toast } = useToast()
-  const [loading, setLoading] = useState(true)
-  const [detail, setDetail] = useState(null)
-  const [planId, setPlanId] = useState('starter')
-  const [status, setStatus] = useState('active')
-  const [surveyDomain, setSurveyDomain] = useState('')
+  const [loading, setLoading] = useState(!cachedDetail)
+  const [detail, setDetail] = useState(cachedDetail ?? null)
+  const [planId, setPlanId] = useState(cachedDetail?.subscription?.planId ?? 'starter')
+  const [status, setStatus] = useState(cachedDetail?.subscription?.status ?? 'active')
+  const [surveyDomain, setSurveyDomain] = useState(cachedDetail?.organization?.surveyDomain ?? '')
   const [saving, setSaving] = useState(false)
   const [invoiceAmount, setInvoiceAmount] = useState('')
   const [invoiceDesc, setInvoiceDesc] = useState('')
@@ -36,18 +43,23 @@ function OrgDetail({ orgId, onBack }) {
     setLoading(true)
     try {
       const orgData = await fetchVendorOrganization(orgId)
-      setDetail(orgData)
-      setPlanId(orgData.subscription.planId)
-      setStatus(orgData.subscription.status)
-      setSurveyDomain(orgData.organization.surveyDomain || '')
+      applyDetailToForm(orgData, { setDetail, setPlanId, setStatus, setSurveyDomain })
+      onCacheDetail(orgId, orgData)
     } catch (err) {
       toast({ message: err.message || AUTH_ERRORS.forbidden, type: 'error' })
     } finally {
       setLoading(false)
     }
-  }, [orgId, toast])
+  }, [orgId, toast, onCacheDetail])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => {
+    if (cachedDetail) {
+      applyDetailToForm(cachedDetail, { setDetail, setPlanId, setStatus, setSurveyDomain })
+      setLoading(false)
+      return
+    }
+    load()
+  }, [orgId, cachedDetail, load])
 
   const saveSubscription = async () => {
     setSaving(true)
@@ -57,14 +69,21 @@ function OrgDetail({ orgId, onBack }) {
         status,
         surveyDomain: planId === 'enterprise' ? surveyDomain : '',
       })
-      setDetail(prev => ({
-        ...prev,
-        subscription: data.subscription,
-        organization: {
-          ...prev.organization,
-          surveyDomain: data.surveyDomain || '',
-        },
-      }))
+      setDetail(prev => {
+        const next = {
+          ...prev,
+          subscription: data.subscription,
+          organization: {
+            ...prev.organization,
+            surveyDomain: data.surveyDomain || '',
+          },
+        }
+        onCacheDetail(orgId, next)
+        onOrgListPatch(orgId, {
+          subscription: data.subscription,
+        })
+        return next
+      })
       setSurveyDomain(data.surveyDomain || '')
       toast({ message: 'Subscription updated.', type: 'success' })
     } catch (err) {
@@ -84,10 +103,14 @@ function OrgDetail({ orgId, onBack }) {
         status: 'open',
         description: invoiceDesc.trim() || `${detail?.organization?.name} subscription`,
       })
-      setDetail(prev => ({
-        ...prev,
-        invoices: [data.invoice, ...(prev.invoices || [])],
-      }))
+      setDetail(prev => {
+        const next = {
+          ...prev,
+          invoices: [data.invoice, ...(prev.invoices || [])],
+        }
+        onCacheDetail(orgId, next)
+        return next
+      })
       setInvoiceAmount('')
       setInvoiceDesc('')
       toast({ message: 'Invoice created.', type: 'success' })
@@ -209,6 +232,7 @@ export function PlatformConsole({ onClose }) {
   const [loading, setLoading] = useState(useApi)
   const [orgs, setOrgs] = useState([])
   const [selectedId, setSelectedId] = useState(null)
+  const detailCache = useRef(new Map())
 
   const loadOrgs = useCallback(async () => {
     if (!useApi) {
@@ -228,6 +252,22 @@ export function PlatformConsole({ onClose }) {
 
   useEffect(() => { loadOrgs() }, [loadOrgs])
 
+  const cacheDetail = useCallback((orgId, detail) => {
+    detailCache.current.set(orgId, detail)
+  }, [])
+
+  const patchOrgInList = useCallback((orgId, { subscription }) => {
+    setOrgs(prev => prev.map(org => (
+      org.id === orgId
+        ? { ...org, subscription }
+        : org
+    )))
+  }, [])
+
+  const handleBack = useCallback(() => {
+    setSelectedId(null)
+  }, [])
+
   return (
     <Modal
       icon={Building2}
@@ -240,7 +280,10 @@ export function PlatformConsole({ onClose }) {
       {selectedId ? (
         <OrgDetail
           orgId={selectedId}
-          onBack={() => { setSelectedId(null); loadOrgs() }}
+          cachedDetail={detailCache.current.get(selectedId) ?? null}
+          onCacheDetail={cacheDetail}
+          onOrgListPatch={patchOrgInList}
+          onBack={handleBack}
         />
       ) : loading ? (
         <InlineLoader label="Loading organizations…" />

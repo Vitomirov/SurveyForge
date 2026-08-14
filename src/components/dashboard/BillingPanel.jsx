@@ -11,23 +11,30 @@ import { InlineLoader, Modal, StatusPill, useToast } from '@/components/ui'
 import { formatMoney, formatDate } from '@/utils/format/format'
 import { BillingPlanPicker, DowngradeConfirmDialog } from './BillingPlanPicker'
 
-export function BillingPanel({ onClose, embedded = false }) {
+export function BillingPanel({ onClose, embedded = false, initialOverview = null, onOverviewChange }) {
   const { toast } = useToast()
   const [loading, setLoading] = useState(useApi)
   const [changing, setChanging] = useState(false)
-  const [overview, setOverview] = useState(null)
+  const [overview, setOverview] = useState(initialOverview)
   const [planOptions, setPlanOptions] = useState(null)
   const [pendingDowngrade, setPendingDowngrade] = useState(null)
 
+  useEffect(() => {
+    if (initialOverview) setOverview(initialOverview)
+  }, [initialOverview])
+
   const load = useCallback(async () => {
     if (!useApi) return
+    const overviewPromise = initialOverview
+      ? Promise.resolve(initialOverview)
+      : fetchBillingOverview()
     const [overviewData, plansData] = await Promise.all([
-      fetchBillingOverview(),
+      overviewPromise,
       fetchBillingPlans(),
     ])
     setOverview(overviewData)
     setPlanOptions(plansData)
-  }, [])
+  }, [initialOverview])
 
   useEffect(() => {
     if (!useApi) {
@@ -48,13 +55,17 @@ export function BillingPanel({ onClose, embedded = false }) {
     setChanging(true)
     try {
       const data = await changeSubscriptionPlan(option.planId)
-      setOverview(prev => ({
-        ...prev,
-        subscription: data.subscription,
-        planFeatures: data.planFeatures,
-        usage: data.usage,
-        invoices: data.invoices ?? prev?.invoices,
-      }))
+      setOverview(prev => {
+        const next = {
+          ...prev,
+          subscription: data.subscription,
+          planFeatures: data.planFeatures,
+          usage: data.usage,
+          invoices: data.invoices ?? prev?.invoices,
+        }
+        onOverviewChange?.(next)
+        return next
+      })
       const plansData = await fetchBillingPlans()
       setPlanOptions(plansData)
       setPendingDowngrade(null)
