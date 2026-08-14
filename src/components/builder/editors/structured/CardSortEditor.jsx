@@ -3,9 +3,10 @@ import { Plus, Trash2 } from 'lucide-react'
 import { SectionLabel, Divider, Toggle } from '@/components/ui'
 import { EditableListRow } from '@/components/shared'
 import { makeCardSortCard, makeCardSortCategory } from '@/store/surveyStore'
+import { BRAND_COLORS } from '@shared/brandColors.js'
 
 const PRESET_COLORS = [
-  '#6366f1','#3b82f6','#10b981','#f59e0b',
+  '#6366f1', BRAND_COLORS.primary, '#10b981', '#f59e0b',
   '#ef4444','#8b5cf6','#06b6d4','#ec4899','#84cc16','#f97316',
 ]
 

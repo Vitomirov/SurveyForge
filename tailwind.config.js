@@ -1,3 +1,5 @@
+import { BRAND_PALETTE } from './shared/brandColors.js'
+
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ['./index.html', './src/**/*.{js,jsx}'],
@@ -25,16 +27,7 @@ export default {
           800: '#1c1c1c',
           900: '#0f0f0f',
         },
-        brand: {
-          DEFAULT: '#2563eb',
-          50: '#eff6ff',
-          100: '#dbeafe',
-          200: '#bfdbfe',
-          300: '#93c5fd',
-          500: '#3b82f6',
-          600: '#2563eb',
-          700: '#1d4ed8',
-        },
+        brand: BRAND_PALETTE,
         amber: {
           400: '#fbbf24',
           500: '#f59e0b',

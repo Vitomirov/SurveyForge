@@ -1,5 +1,7 @@
 // ─── Brand theme schema, validation, and merge (shared by client + server) ─
 
+import { BRAND_COLORS } from './brandColors.js'
+
 export const BRAND_THEME_VERSION = 1
 
 export const APPROVED_FONTS = [
@@ -20,8 +22,8 @@ const DATA_URL = /^data:image\/(png|jpeg|jpg|gif|webp);base64,/
 export const DEFAULT_BRAND_THEME = {
   version: BRAND_THEME_VERSION,
   logoUrl: null,
-  primaryColor: '#2563eb',
-  secondaryColor: '#64748b',
+  primaryColor: BRAND_COLORS.primary,
+  secondaryColor: BRAND_COLORS.dark,
   backgroundColor: '#f8fafc',
   textColor: '#0f172a',
   buttonTextColor: '#ffffff',

@@ -29,10 +29,21 @@ export function useSurveyBranding(survey, { enabled = true } = {}) {
         if (useApi) {
           const data = await fetchBrandKit()
           if (cancelled) return
+
+          const mustShow = data.planFeatures?.mustShowPlatformBranding
+            ?? !data.planFeatures?.hidePlatformBranding
+
           if (!data.planFeatures?.brandKit) {
-            setBranding(null)
+            setBranding({
+              theme: DEFAULT_BRAND_THEME,
+              logo: survey.companyLogo || null,
+              canHidePlatformBranding: Boolean(data.planFeatures?.hidePlatformBranding),
+              mustShowPlatformBranding: mustShow,
+              hidePlatformBranding: false,
+            })
             return
           }
+
           const theme = mergeBrandThemes(
             data.brandKit || DEFAULT_BRAND_THEME,
             survey.themeOverrides,
@@ -40,6 +51,8 @@ export function useSurveyBranding(survey, { enabled = true } = {}) {
           setBranding({
             theme,
             logo: survey.companyLogo || theme.logoUrl || null,
+            canHidePlatformBranding: Boolean(data.planFeatures?.hidePlatformBranding),
+            mustShowPlatformBranding: mustShow,
             hidePlatformBranding: data.planFeatures.hidePlatformBranding,
           })
           return

@@ -29,9 +29,14 @@ export function canUseSurveyThemeOverrides(planId) {
   return isProfessionalPlan(planId)
 }
 
-/** Hide platform branding on public taker surfaces. */
+/** Hide platform branding on public taker surfaces (Professional+ feature). */
 export function canHidePlatformBranding(planId) {
   return isProfessionalPlan(planId)
+}
+
+/** Trial & Starter must show "Powered by" on taker surfaces. */
+export function mustShowPlatformBranding(planId) {
+  return !canHidePlatformBranding(planId)
 }
 
 /** Embed surveys in approved customer websites. */
@@ -69,6 +74,7 @@ export function planFeatureSummary(planId) {
     brandKit: canUseBrandKit(resolved),
     surveyThemeOverrides: canUseSurveyThemeOverrides(resolved),
     hidePlatformBranding: canHidePlatformBranding(resolved),
+    mustShowPlatformBranding: mustShowPlatformBranding(resolved),
     embed: canEmbedOnOwnSites(resolved),
     customDomain: canUseCustomDomain(resolved),
     brandLock: canEnforceBrandLock(resolved),

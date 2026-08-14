@@ -92,7 +92,7 @@ function EditableList({ label, description, items, onAdd, onUpdate, onDelete, pl
 }
 
 // ─── Main PlatformSettings ─────────────────────────────────────────────────
-export function PlatformSettings({ onClose, session, onSessionUpdate, embedded = false }) {
+export function PlatformSettings({ onClose, session, onSessionUpdate, embedded = false, hideHeader = false }) {
   const [clients, setClients] = useState(loadClients)
   const [topics,  setTopics]  = useState(loadTopics)
   const [surveyTypes, setSurveyTypes] = useState(loadSurveyTypes)
@@ -225,18 +225,20 @@ export function PlatformSettings({ onClose, session, onSessionUpdate, embedded =
 
   const panel = (
     <div className={`bg-white w-full overflow-hidden flex flex-col ${embedded ? '' : `rounded-2xl shadow-2xl max-h-[90vh] ${tab === 'brandKit' ? 'max-w-5xl' : 'max-w-4xl'}`}`}>
-      <div className="flex items-start sm:items-center gap-3 px-4 sm:px-5 py-3 sm:py-4 border-b border-ink-100 shrink-0">
-        <div className="w-8 h-8 rounded-lg bg-ink-800 flex items-center justify-center shrink-0">
-          <Settings size={16} className="text-white" />
+      {!hideHeader && (
+        <div className="flex items-start sm:items-center gap-3 px-4 sm:px-5 py-3 sm:py-4 border-b border-ink-100 shrink-0">
+          <div className="w-8 h-8 rounded-lg bg-ink-800 flex items-center justify-center shrink-0">
+            <Settings size={16} className="text-white" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h2 className="text-base font-bold text-ink-800">Platform Settings</h2>
+            <p className="text-xs text-ink-400 hidden sm:block">Classification labels, branding, domain, users and billing</p>
+          </div>
+          <button onClick={onClose} className="p-2.5 text-ink-400 hover:text-ink-700 hover:bg-ink-100 rounded-lg transition-all min-h-[44px] min-w-[44px] flex items-center justify-center shrink-0">
+            <X size={18} />
+          </button>
         </div>
-        <div className="flex-1 min-w-0">
-          <h2 className="text-base font-bold text-ink-800">Platform Settings</h2>
-          <p className="text-xs text-ink-400 hidden sm:block">Classification labels, branding, domain, users and billing</p>
-        </div>
-        <button onClick={onClose} className="p-2.5 text-ink-400 hover:text-ink-700 hover:bg-ink-100 rounded-lg transition-all min-h-[44px] min-w-[44px] flex items-center justify-center shrink-0">
-          <X size={18} />
-        </button>
-      </div>
+      )}
 
       <div className="flex border-b border-ink-100 px-4 sm:px-5 shrink-0 overflow-x-auto">
         {settingsTabs.map(([id, label]) => (
@@ -317,6 +319,8 @@ export function PlatformSettings({ onClose, session, onSessionUpdate, embedded =
       </div>
     </div>
   )
+
+  if (embedded && hideHeader) return panel
 
   return embedded ? (
     <div className="card mb-4 overflow-hidden flex flex-col">

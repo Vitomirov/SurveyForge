@@ -49,8 +49,9 @@ export function SurveyPreview({ survey, items, onClose, isPublic = false, isEmbe
     if (brandFontKey) ensureBrandFontLoaded(brandFontKey)
   }, [brandFontKey])
   const displayLogo = survey?.companyLogo || branding?.logo || null
-  // Pro/Enterprise: hidePlatformBranding from API — never show footer unless starter plan
-  const showPoweredByFooter = isPublic && branding?.hidePlatformBranding !== true
+  const showPoweredByFooter = branding?.mustShowPlatformBranding === true
+    || (isPublic && branding?.hidePlatformBranding !== true && branding?.canHidePlatformBranding !== true)
+    || (isPublic && !branding)
   const { rootRef, postCompleted, postTerminated } = useEmbedMessaging({
     enabled: isEmbed && isPublic,
     surveyId: survey?.id,

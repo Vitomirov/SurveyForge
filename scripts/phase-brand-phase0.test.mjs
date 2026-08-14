@@ -89,7 +89,7 @@ test('mergeBrandThemes applies survey overrides', () => {
 
 test('brandThemeToCssVars maps to CSS custom properties', () => {
   const vars = brandThemeToCssVars(DEFAULT_BRAND_THEME)
-  assert.equal(vars['--sf-primary'], '#2563eb')
+  assert.equal(vars['--sf-primary'], '#1791e0')
   assert.match(vars['--sf-font'], /DM Sans/)
 })
 

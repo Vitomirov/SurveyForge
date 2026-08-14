@@ -70,6 +70,19 @@ test('buildPublicBrandingPayload merges org theme for professional', () => {
   )
   assert.equal(payload.theme.primaryColor, '#222222')
   assert.equal(payload.hidePlatformBranding, true)
+  assert.equal(payload.mustShowPlatformBranding, false)
+})
+
+test('buildPublicBrandingPayload requires powered-by footer for starter', () => {
+  const payload = buildPublicBrandingPayload({}, {}, 'starter')
+  assert.equal(payload.mustShowPlatformBranding, true)
+  assert.equal(payload.canHidePlatformBranding, false)
+  assert.equal(payload.hidePlatformBranding, false)
+})
+
+test('buildPublicBrandingPayload requires powered-by footer for free trial', () => {
+  const payload = buildPublicBrandingPayload({}, {}, 'free_trial')
+  assert.equal(payload.mustShowPlatformBranding, true)
 })
 
 test('starter PATCH survey strips companyLogo via API', async () => {

@@ -442,29 +442,45 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
         <StatsBar surveys={surveys} />
 
         {canManagePlatform(session) && (
-          showSettings ? (
-            <Suspense fallback={
-              <div className="card mb-4 p-8 flex items-center justify-center text-sm text-ink-400">
-                Loading settings…
-              </div>
-            }>
-              <PlatformSettings
-                embedded
-                session={session}
-                onSessionUpdate={onSessionUpdate}
-                onClose={() => { setShowSettings(false); refresh() }}
-              />
-            </Suspense>
-          ) : (
+          <div className="card mb-4 overflow-hidden flex flex-col">
             <button
               type="button"
-              onClick={() => { setShowSettings(true); refresh() }}
-              className="card mb-4 w-full p-3 sm:p-4 flex items-center gap-2.5 text-sm font-medium text-ink-600 hover:text-ink-900 hover:bg-ink-50/80 transition-colors min-h-[44px]"
+              onClick={() => {
+                setShowSettings(open => {
+                  if (open) refresh()
+                  return !open
+                })
+              }}
+              aria-expanded={showSettings}
+              className={`w-full p-3 sm:p-4 flex items-center gap-2.5 text-sm font-medium transition-colors min-h-[44px] ${
+                showSettings
+                  ? 'text-ink-900 bg-ink-50/80 border-b border-ink-100'
+                  : 'text-ink-600 hover:text-ink-900 hover:bg-ink-50/80'
+              }`}
             >
               <Settings size={16} className="text-ink-400 shrink-0" />
-              Platform settings
+              <span className="flex-1 text-left">Platform settings</span>
+              <ChevronDown
+                size={16}
+                className={`text-ink-400 shrink-0 transition-transform ${showSettings ? 'rotate-180' : ''}`}
+              />
             </button>
-          )
+            {showSettings && (
+              <Suspense fallback={
+                <div className="p-8 flex items-center justify-center text-sm text-ink-400">
+                  Loading settings…
+                </div>
+              }>
+                <PlatformSettings
+                  embedded
+                  hideHeader
+                  session={session}
+                  onSessionUpdate={onSessionUpdate}
+                  onClose={() => { setShowSettings(false); refresh() }}
+                />
+              </Suspense>
+            )}
+          </div>
         )}
 
         {/* Filters bar */}

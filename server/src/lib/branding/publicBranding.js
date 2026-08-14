@@ -2,6 +2,7 @@ import { mergeBrandThemes, DEFAULT_BRAND_THEME } from '../../../../shared/brandT
 import {
   canHidePlatformBranding,
   canUseBrandKit,
+  mustShowPlatformBranding,
 } from '../../../../shared/planFeatures.js'
 import { readBrandKit } from '../platform/orgSettings.js'
 
@@ -22,6 +23,9 @@ export function buildPublicBrandingPayload(orgSettings, survey, planId = 'starte
   return {
     theme,
     logo,
+    canHidePlatformBranding: canHidePlatformBranding(planId),
+    mustShowPlatformBranding: mustShowPlatformBranding(planId),
+    /** @deprecated Use mustShowPlatformBranding / canHidePlatformBranding */
     hidePlatformBranding: canHidePlatformBranding(planId),
   }
 }
