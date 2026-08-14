@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import {
-  Plus, Users, Building2, ChevronDown, User,
+  Plus, Users, Building2, User,
 } from 'lucide-react'
 import { AppShell, APP_SHELL_GRID, APP_BUILDER_PANE } from '@/components/shared/layout/AppBuilderShell.jsx'
 import { AppBackSlot } from '@/components/shared/layout/AppLeadingZone.jsx'
@@ -44,33 +44,24 @@ function UserMenu({
     </button>
   )
 
+  const accountLabel = session.name || session.username
+
   return (
     <div ref={rootRef} className="relative shrink-0">
       <button
         type="button"
         onClick={() => setOpen(v => !v)}
-        className={`flex items-center gap-2 sm:gap-2.5 pl-1.5 pr-2 sm:pr-2.5 py-1.5 min-h-[44px] rounded-xl border transition-all ${
+        className={`flex items-center justify-center w-10 h-10 rounded-full transition-all focus-ring ${
           open
-            ? 'border-brand-200 bg-brand-50/50 shadow-sm'
-            : 'border-ink-200 bg-white hover:border-ink-300 hover:bg-ink-50/80'
+            ? 'ring-2 ring-brand-500/40 ring-offset-2 bg-brand-50/60'
+            : 'hover:bg-ink-50 hover:ring-2 hover:ring-ink-200/80'
         }`}
         aria-expanded={open}
         aria-haspopup="menu"
-        aria-label="Account menu"
+        aria-label={`Account menu, ${accountLabel}`}
+        title={accountLabel}
       >
-        <UserAvatar user={session} size="sm" className="ring-2 ring-white" />
-        <div className="hidden lg:block text-left min-w-0 max-w-[160px]">
-          <p className="text-sm font-semibold text-ink-800 truncate leading-tight">
-            {session.name || session.username}
-          </p>
-          <p className="text-[11px] text-ink-400 truncate leading-tight">
-            {session.organizationName || roleLabel(session.role)}
-          </p>
-        </div>
-        <ChevronDown
-          size={14}
-          className={`text-ink-400 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`}
-        />
+        <UserAvatar user={session} size="sm" />
       </button>
 
       {open && (
@@ -125,26 +116,28 @@ export function DashboardHeader({
           <div className={`${APP_BUILDER_PANE} flex items-center gap-2 sm:gap-3 min-w-0`}>
             <AppLogo onClick={onGoHome} size="md" className="shrink-0" />
 
-            <div className="flex-1 flex items-center justify-end gap-1.5 sm:gap-3 min-w-0">
+            <div className="flex-1 flex items-center justify-end gap-3 min-w-0">
               <button
                 type="button"
                 onClick={onNewSurvey}
                 onMouseEnter={prefetchBuilder}
                 onFocus={prefetchBuilder}
-                className="btn-primary px-3 sm:px-4 py-2.5 text-sm font-semibold shadow-sm shadow-brand-600/15 shrink-0 min-h-[44px]"
+                aria-label="New survey"
+                className="btn-primary h-10 rounded-xl px-3.5 sm:px-4 text-sm font-semibold shrink-0 shadow-sm shadow-brand-600/10 hover:shadow-md hover:shadow-brand-600/15 max-sm:w-10 max-sm:p-0 max-sm:justify-center"
               >
-                <Plus size={16} />
+                <Plus size={16} className="shrink-0" />
                 <span className="hidden sm:inline">New survey</span>
-                <span className="sm:hidden">New</span>
               </button>
 
-              <UserMenu
-                session={session}
-                onOpenAccount={onOpenAccount}
-                onOpenTeam={onOpenTeam}
-                onOpenPlatform={onOpenPlatform}
-              />
-              <HeaderLogoutButton onLogout={onLogout} />
+              <div className="flex items-center gap-1 sm:gap-2 pl-3 ml-0.5 border-l border-ink-200/80 shrink-0">
+                <UserMenu
+                  session={session}
+                  onOpenAccount={onOpenAccount}
+                  onOpenTeam={onOpenTeam}
+                  onOpenPlatform={onOpenPlatform}
+                />
+                <HeaderLogoutButton onLogout={onLogout} />
+              </div>
             </div>
           </div>
         </div>
