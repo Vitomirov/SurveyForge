@@ -39,58 +39,122 @@ function fmtDate(iso) {
     ' ' + d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
 }
 
+function fmtDateShort(iso) {
+  if (!iso) return ''
+  const d = new Date(iso.includes('T') ? iso : `${iso}T12:00:00`)
+  return d.toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })
+}
+
+function todayISO() {
+  return new Date().toISOString().split('T')[0]
+}
+
+function daysAgoISO(days) {
+  const from = new Date()
+  from.setDate(from.getDate() - days)
+  return from.toISOString().split('T')[0]
+}
+
+function getDatePreset(filters) {
+  if (filters.sinceLastExport) return 'since-export'
+  if (!filters.dateFrom && !filters.dateTo) return 'all'
+  if (filters.dateFrom === todayISO() && !filters.dateTo) return 'today'
+  if (filters.dateFrom === daysAgoISO(7) && !filters.dateTo) return '7d'
+  if (filters.dateFrom === daysAgoISO(30) && !filters.dateTo) return '30d'
+  return 'custom'
+}
+
+function hasActiveFilters(filters) {
+  return filters.statuses.length > 0
+    || filters.dateFrom
+    || filters.dateTo
+    || filters.sinceLastExport
+}
+
+const DATE_PRESETS = [
+  { id: 'all', label: 'All time' },
+  { id: 'today', label: 'Today' },
+  { id: '7d', label: 'Last 7 days' },
+  { id: '30d', label: 'Last 30 days' },
+  { id: 'since-export', label: 'Since last export' },
+  { id: 'custom', label: 'Custom range' },
+]
+
+function applyDatePreset(presetId, lastExport) {
+  switch (presetId) {
+    case 'all':
+      return { dateFrom: '', dateTo: '', sinceLastExport: null }
+    case 'today':
+      return { dateFrom: todayISO(), dateTo: '', sinceLastExport: null }
+    case '7d':
+      return { dateFrom: daysAgoISO(7), dateTo: '', sinceLastExport: null }
+    case '30d':
+      return { dateFrom: daysAgoISO(30), dateTo: '', sinceLastExport: null }
+    case 'since-export':
+      return lastExport
+        ? { dateFrom: '', dateTo: '', sinceLastExport: lastExport }
+        : { dateFrom: '', dateTo: '', sinceLastExport: null }
+    case 'custom':
+      return { dateFrom: daysAgoISO(30), dateTo: todayISO(), sinceLastExport: null }
+    default:
+      return {}
+  }
+}
+
+function describeDateFilter(filters) {
+  if (filters.sinceLastExport) return `After last export (${fmtDate(filters.sinceLastExport)})`
+  if (!filters.dateFrom && !filters.dateTo) return null
+  if (filters.dateFrom && filters.dateTo) {
+    return `${fmtDateShort(filters.dateFrom)} – ${fmtDateShort(filters.dateTo)}`
+  }
+  if (filters.dateFrom) return `From ${fmtDateShort(filters.dateFrom)}`
+  return `Until ${fmtDateShort(filters.dateTo)}`
+}
+
 // ─── Filters panel ─────────────────────────────────────────────────────────
-function FiltersPanel({ filters, setFilters, lastExport, surveyId }) {
-  const allStatuses  = ['complete', 'terminated', 'partial', 'dnc']
+function ExportFiltersBar({ filters, setFilters, lastExport }) {
+  const allStatuses = ['complete', 'terminated', 'partial', 'dnc']
+  const datePreset = getDatePreset(filters)
+  const dateSummary = describeDateFilter(filters)
 
   const toggleStatus = (s) =>
     setFilters(f => ({
       ...f,
       statuses: f.statuses.includes(s) ? f.statuses.filter(x => x !== s) : [...f.statuses, s],
-      sinceLastExport: null,
     }))
 
-  const setQuickDate = (days) => {
-    const from = new Date()
-    from.setDate(from.getDate() - days)
-    setFilters(f => ({
-      ...f,
-      dateFrom: from.toISOString().split('T')[0],
-      dateTo: '',
-      sinceLastExport: null,
-    }))
-  }
-
-  const setSinceLastExport = () => {
-    if (!lastExport) return
-    setFilters(f => ({
-      ...f,
-      sinceLastExport: lastExport,
-      dateFrom: '',
-      dateTo: '',
-    }))
+  const selectDatePreset = (presetId) => {
+    if (presetId === 'since-export' && !lastExport) return
+    setFilters(f => ({ ...f, ...applyDatePreset(presetId, lastExport) }))
   }
 
   const clearAll = () =>
     setFilters({ statuses: [], dateFrom: '', dateTo: '', sinceLastExport: null })
 
-  const active = filters.statuses.length > 0 || filters.dateFrom || filters.dateTo || filters.sinceLastExport
+  const clearDateFilter = () =>
+    setFilters(f => ({ ...f, dateFrom: '', dateTo: '', sinceLastExport: null }))
 
   return (
-    <div className="space-y-4">
-      {/* Status filter */}
+    <div className="px-5 py-4 bg-ink-50/80 border-b border-ink-100 space-y-4 shrink-0">
+      <div className="flex items-center gap-2">
+        <Filter size={14} className="text-ink-500 shrink-0" />
+        <p className="text-sm font-bold text-ink-700">Filters</p>
+      </div>
+
+      {/* Status */}
       <div>
-        <p className="text-xs font-semibold text-ink-500 uppercase tracking-wider mb-2">Status</p>
+        <p className="text-xs font-semibold text-ink-500 mb-2">Response status</p>
         <div className="flex gap-2 flex-wrap">
           {allStatuses.map(s => {
-            const m   = STATUS_META[s]
+            const m = STATUS_META[s]
             const sel = filters.statuses.includes(s)
             return (
               <button
                 key={s}
+                type="button"
                 onClick={() => toggleStatus(s)}
                 className={`text-xs font-semibold px-3 py-1.5 rounded-lg border-2 transition-all ${
-                  sel ? m.color + ' border-current' : 'border-ink-200 text-ink-500 hover:border-ink-300'
+                  sel ? `${m.color} border-current` : 'border-ink-200 text-ink-500 hover:border-ink-300 bg-white'
                 }`}
               >
                 {m.label}
@@ -100,76 +164,133 @@ function FiltersPanel({ filters, setFilters, lastExport, surveyId }) {
         </div>
       </div>
 
-      {/* Date range */}
-      <div>
-        <p className="text-xs font-semibold text-ink-500 uppercase tracking-wider mb-2">Date range</p>
-        <div className="flex gap-2 items-center">
-          <div className="flex-1">
-            <label className="text-xs text-ink-400 block mb-1">From</label>
-            <input
-              type="date"
-              value={filters.dateFrom}
-              onChange={e => setFilters(f => ({ ...f, dateFrom: e.target.value, sinceLastExport: null }))}
-              className="input-base py-1.5 text-sm"
-            />
+      {/* Date — always visible */}
+      <div className="rounded-xl border border-ink-200 bg-white p-3.5 space-y-3">
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <Calendar size={15} className="text-brand-600 shrink-0" />
+            <div>
+              <p className="text-sm font-semibold text-ink-800">Date range</p>
+              <p className="text-xs text-ink-400">
+                {dateSummary || 'All response dates included'}
+              </p>
+            </div>
           </div>
-          <div className="flex-1">
-            <label className="text-xs text-ink-400 block mb-1">To</label>
-            <input
-              type="date"
-              value={filters.dateTo}
-              onChange={e => setFilters(f => ({ ...f, dateTo: e.target.value, sinceLastExport: null }))}
-              className="input-base py-1.5 text-sm"
-            />
-          </div>
-        </div>
-        {/* Quick ranges */}
-        <div className="flex gap-1.5 mt-2">
-          {[['Today', 0], ['7 days', 7], ['30 days', 30]].map(([label, days]) => (
+          {(filters.dateFrom || filters.dateTo || filters.sinceLastExport) && (
             <button
-              key={label}
-              onClick={() => days === 0 ? setFilters(f => ({ ...f, dateFrom: new Date().toISOString().split('T')[0], dateTo: '', sinceLastExport: null })) : setQuickDate(days)}
-              className="text-xs text-brand-600 hover:text-brand-700 px-2 py-1 bg-brand-50 hover:bg-brand-100 rounded-lg transition-all"
+              type="button"
+              onClick={clearDateFilter}
+              className="text-xs font-medium text-ink-500 hover:text-ink-700 px-2 py-1 rounded-lg hover:bg-ink-50 transition-colors shrink-0"
             >
-              {label}
+              Clear dates
             </button>
-          ))}
+          )}
         </div>
-      </div>
 
-      {/* Since last export */}
-      <div>
-        <p className="text-xs font-semibold text-ink-500 uppercase tracking-wider mb-2">Activity</p>
-        <button
-          onClick={setSinceLastExport}
-          disabled={!lastExport}
-          className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 text-left transition-all ${
-            filters.sinceLastExport
-              ? 'border-brand-500 bg-brand-50'
-              : 'border-ink-200 hover:border-ink-300'
-          } disabled:opacity-40 disabled:cursor-not-allowed`}
-        >
-          <RefreshCw size={16} className={filters.sinceLastExport ? 'text-brand-600' : 'text-ink-400'} />
-          <div>
-            <p className={`text-sm font-semibold ${filters.sinceLastExport ? 'text-brand-700' : 'text-ink-700'}`}>
-              Since last export
-            </p>
-            <p className="text-xs text-ink-400">
-              {lastExport ? `Last export: ${fmtDate(lastExport)}` : 'No export recorded yet'}
+        <div className="flex flex-wrap gap-1.5">
+          {DATE_PRESETS.map(({ id, label }) => {
+            const selected = datePreset === id
+            const disabled = id === 'since-export' && !lastExport
+            return (
+              <button
+                key={id}
+                type="button"
+                onClick={() => selectDatePreset(id)}
+                disabled={disabled}
+                title={disabled ? 'No export recorded yet' : undefined}
+                className={`text-xs font-semibold px-3 py-1.5 rounded-lg border transition-all ${
+                  selected
+                    ? 'border-brand-500 bg-brand-50 text-brand-800 shadow-sm'
+                    : 'border-ink-200 bg-white text-ink-600 hover:border-ink-300 hover:bg-ink-50'
+                } disabled:opacity-40 disabled:cursor-not-allowed`}
+              >
+                {label}
+              </button>
+            )
+          })}
+        </div>
+
+        {filters.sinceLastExport ? (
+          <div className="flex items-start gap-2 rounded-lg border border-brand-200 bg-brand-50/70 px-3 py-2.5">
+            <RefreshCw size={14} className="text-brand-600 shrink-0 mt-0.5" />
+            <p className="text-xs text-brand-800">
+              Showing responses submitted after{' '}
+              <span className="font-semibold">{fmtDate(lastExport)}</span>
             </p>
           </div>
-        </button>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+            <label className="block">
+              <span className="text-xs font-semibold text-ink-600 mb-1.5 block">From</span>
+              <input
+                type="date"
+                value={filters.dateFrom}
+                max={filters.dateTo || undefined}
+                onChange={e => setFilters(f => ({
+                  ...f,
+                  dateFrom: e.target.value,
+                  sinceLastExport: null,
+                }))}
+                className="input-base py-2 text-sm w-full"
+              />
+            </label>
+            <label className="block">
+              <span className="text-xs font-semibold text-ink-600 mb-1.5 block">To</span>
+              <input
+                type="date"
+                value={filters.dateTo}
+                min={filters.dateFrom || undefined}
+                onChange={e => setFilters(f => ({
+                  ...f,
+                  dateTo: e.target.value,
+                  sinceLastExport: null,
+                }))}
+                className="input-base py-2 text-sm w-full"
+              />
+            </label>
+          </div>
+        )}
       </div>
 
-      {active && (
-        <button
-          onClick={clearAll}
-          className="text-xs text-rose-500 hover:text-rose-700 flex items-center gap-1"
-        >
-          <X size={11} /> Clear all filters
-        </button>
+      {hasActiveFilters(filters) && (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs font-semibold text-ink-500">Active:</span>
+          {filters.statuses.map(s => (
+            <FilterChip
+              key={s}
+              label={STATUS_META[s]?.label || s}
+              onRemove={() => toggleStatus(s)}
+            />
+          ))}
+          {dateSummary && (
+            <FilterChip label={dateSummary} onRemove={clearDateFilter} />
+          )}
+          <button
+            type="button"
+            onClick={clearAll}
+            className="text-xs text-rose-600 hover:text-rose-700 font-medium ml-1"
+          >
+            Clear all
+          </button>
+        </div>
       )}
     </div>
+  )
+}
+
+function FilterChip({ label, onRemove }) {
+  return (
+    <span className="inline-flex items-center gap-1 text-xs font-medium text-ink-700 bg-white border border-ink-200 rounded-full pl-2.5 pr-1 py-1">
+      {label}
+      <button
+        type="button"
+        onClick={onRemove}
+        className="p-0.5 rounded-full hover:bg-ink-100 text-ink-400 hover:text-ink-700 transition-colors"
+        aria-label={`Remove ${label} filter`}
+      >
+        <X size={12} />
+      </button>
+    </span>
   )
 }
 
@@ -307,11 +428,10 @@ export function ExportManager({ survey, items, onClose }) {
 
   const filterDescription = () => {
     const parts = []
-    if (filters.statuses.length)       parts.push(filters.statuses.join('+'))
-    if (filters.sinceLastExport)       parts.push('since last export')
-    else if (filters.dateFrom || filters.dateTo)
-      parts.push(`${filters.dateFrom || '…'} → ${filters.dateTo || '…'}`)
-    return parts.length ? parts.join(', ') : 'all responses'
+    if (filters.statuses.length) parts.push(filters.statuses.join(', '))
+    const datePart = describeDateFilter(filters)
+    if (datePart) parts.push(datePart)
+    return parts.length ? parts.join(' · ') : 'All responses'
   }
 
   const handleExport = useCallback(async () => {
@@ -404,117 +524,100 @@ export function ExportManager({ survey, items, onClose }) {
           </button>
         </div>
 
-        <div className="flex flex-col md:flex-row flex-1 min-h-0">
+        <ExportFiltersBar
+          filters={filters}
+          setFilters={setFilters}
+          lastExport={lastExport}
+        />
 
-          {/* Left: filters */}
-          <div className="w-full md:w-64 shrink-0 border-b md:border-b-0 md:border-r border-ink-100 flex flex-col max-h-[40vh] md:max-h-none">
-            <div className="flex-1 overflow-y-auto p-4">
-              <div className="flex items-center gap-2 mb-4">
-                <Filter size={14} className="text-ink-500" />
-                <p className="text-sm font-bold text-ink-700">Filters</p>
-              </div>
-              <FiltersPanel
-                filters={filters}
-                setFilters={setFilters}
-                lastExport={lastExport}
-                surveyId={surveyId}
-              />
-            </div>
-
-            {/* Export button */}
-            <div className="p-4 border-t border-ink-100 space-y-2 shrink-0">
-              {/* Match count */}
-              <div className={`text-center py-2 rounded-lg text-sm font-semibold ${
-                filtered.length > 0
-                  ? 'bg-emerald-50 text-emerald-700'
-                  : 'bg-ink-50 text-ink-400'
-              }`}>
-                {filtered.length} response{filtered.length !== 1 ? 's' : ''} will export
-              </div>
-
-              <button
-                onClick={handleExport}
-                disabled={!filtered.length || isExporting}
-                className="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-all"
-              >
-                {isExporting
-                  ? <><Loader2 size={15} className="animate-spin" /> Generating…</>
-                  : <><Download size={15} /> Download CSV</>
+        <div className="flex-1 overflow-y-auto flex flex-col min-h-0">
+          {/* Response table */}
+          <div className="flex-1 p-4">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-xs font-bold text-ink-500 uppercase tracking-wider">
+                {hasActiveFilters(filters)
+                  ? `Filtered: ${filtered.length} of ${allResponses.length}`
+                  : `All responses (${allResponses.length})`
                 }
-              </button>
-
-              <p className="text-xs text-ink-400 text-center">
-                Exporting: <em>{filterDescription()}</em>
               </p>
+              <div className="flex items-center gap-2">
+                <button onClick={refresh} className="p-1.5 text-ink-400 hover:text-ink-600 hover:bg-ink-100 rounded-lg transition-all" title="Refresh">
+                  <RefreshCw size={13} />
+                </button>
+                {allResponses.length > 0 && (
+                  confirmClear ? (
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs text-rose-600">Delete all?</span>
+                      <button onClick={handleClearAll} className="text-xs font-bold text-white bg-rose-600 px-2 py-1 rounded-lg">Yes</button>
+                      <button onClick={() => setConfirmClear(false)} className="text-xs text-ink-500 px-2 py-1 hover:bg-ink-100 rounded-lg">No</button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setConfirmClear(true)}
+                      className="text-xs text-rose-500 hover:text-rose-700 flex items-center gap-1 px-2 py-1 hover:bg-rose-50 rounded-lg transition-all"
+                    >
+                      <Trash2 size={11} /> Clear all
+                    </button>
+                  )
+                )}
+              </div>
             </div>
+
+            {responsesLoading ? (
+              <div className="text-center py-16 text-ink-400 text-sm">Loading responses…</div>
+            ) : allResponses.length === 0 ? (
+              <div className="text-center py-16 text-ink-300">
+                <Download size={36} className="mx-auto mb-3 text-ink-200" />
+                <p className="text-sm font-semibold text-ink-400">No responses yet</p>
+                <p className="text-xs mt-1">Run the survey in Preview mode to collect responses.</p>
+              </div>
+            ) : (
+              <ResponseTable
+                responses={filtered}
+                surveyId={surveyId}
+                onDeleted={refresh}
+                onDeleteResponse={handleDeleteResponse}
+              />
+            )}
           </div>
 
-          {/* Right: responses + history */}
-          <div className="flex-1 overflow-y-auto flex flex-col min-h-0">
+          {/* Export history */}
+          <div className="border-t border-ink-100 px-4 pb-4 pt-3 shrink-0">
+            <button
+              onClick={() => setShowHistory(h => !h)}
+              className="flex items-center gap-2 text-xs font-semibold text-ink-500 hover:text-ink-700 transition-colors mb-2"
+            >
+              <Clock size={12} />
+              Export history ({exportHistory.length})
+              {showHistory ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
+            </button>
+            {showHistory && <ExportHistory history={exportHistory} />}
+          </div>
+        </div>
 
-            {/* Response table */}
-            <div className="flex-1 p-4">
-              <div className="flex items-center justify-between mb-3">
-                <p className="text-xs font-bold text-ink-500 uppercase tracking-wider">
-                  {filters.statuses.length || filters.dateFrom || filters.dateTo || filters.sinceLastExport
-                    ? `Filtered: ${filtered.length} of ${allResponses.length}`
-                    : `All responses (${allResponses.length})`
-                  }
-                </p>
-                <div className="flex items-center gap-2">
-                  <button onClick={refresh} className="p-1.5 text-ink-400 hover:text-ink-600 hover:bg-ink-100 rounded-lg transition-all" title="Refresh">
-                    <RefreshCw size={13} />
-                  </button>
-                  {allResponses.length > 0 && (
-                    confirmClear ? (
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-xs text-rose-600">Delete all?</span>
-                        <button onClick={handleClearAll} className="text-xs font-bold text-white bg-rose-600 px-2 py-1 rounded-lg">Yes</button>
-                        <button onClick={() => setConfirmClear(false)} className="text-xs text-ink-500 px-2 py-1 hover:bg-ink-100 rounded-lg">No</button>
-                      </div>
-                    ) : (
-                      <button
-                        onClick={() => setConfirmClear(true)}
-                        className="text-xs text-rose-500 hover:text-rose-700 flex items-center gap-1 px-2 py-1 hover:bg-rose-50 rounded-lg transition-all"
-                      >
-                        <Trash2 size={11} /> Clear all
-                      </button>
-                    )
-                  )}
-                </div>
-              </div>
-
-              {responsesLoading ? (
-                <div className="text-center py-16 text-ink-400 text-sm">Loading responses…</div>
-              ) : allResponses.length === 0 ? (
-                <div className="text-center py-16 text-ink-300">
-                  <Download size={36} className="mx-auto mb-3 text-ink-200" />
-                  <p className="text-sm font-semibold text-ink-400">No responses yet</p>
-                  <p className="text-xs mt-1">Run the survey in Preview mode to collect responses.</p>
-                </div>
-              ) : (
-                <ResponseTable
-                  responses={filtered}
-                  surveyId={surveyId}
-                  onDeleted={refresh}
-                  onDeleteResponse={handleDeleteResponse}
-                />
-              )}
+        {/* Export footer */}
+        <div className="px-5 py-4 border-t border-ink-100 bg-white shrink-0">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+            <div className="flex-1 min-w-0">
+              <p className={`text-sm font-semibold ${
+                filtered.length > 0 ? 'text-emerald-700' : 'text-ink-400'
+              }`}>
+                {filtered.length} response{filtered.length !== 1 ? 's' : ''} will export
+              </p>
+              <p className="text-xs text-ink-400 truncate mt-0.5">
+                {filterDescription()}
+              </p>
             </div>
-
-            {/* Export history */}
-            <div className="border-t border-ink-100 px-4 pb-4 pt-3 shrink-0">
-              <button
-                onClick={() => setShowHistory(h => !h)}
-                className="flex items-center gap-2 text-xs font-semibold text-ink-500 hover:text-ink-700 transition-colors mb-2"
-              >
-                <Clock size={12} />
-                Export history ({exportHistory.length})
-                {showHistory ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
-              </button>
-              {showHistory && <ExportHistory history={exportHistory} />}
-            </div>
-
+            <button
+              onClick={handleExport}
+              disabled={!filtered.length || isExporting}
+              className="w-full sm:w-auto flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-all shrink-0"
+            >
+              {isExporting
+                ? <><Loader2 size={15} className="animate-spin" /> Generating…</>
+                : <><Download size={15} /> Download CSV</>
+              }
+            </button>
           </div>
         </div>
       </div>

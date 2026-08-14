@@ -1,3 +1,4 @@
+import { useState, useRef, useEffect } from 'react'
 import { useApi } from '@/config/api'
 import { AppShell, APP_SHELL_GRID, APP_BUILDER_PANE } from '@/components/shared/layout/AppBuilderShell.jsx'
 import { AppBackSlot } from '@/components/shared/layout/AppLeadingZone.jsx'
@@ -6,7 +7,7 @@ import { DEFAULT_SURVEY_TITLE } from '@/constants/surveyDefaults'
 import { SURVEY_STATUSES } from '@/utils/data/platformStore'
 import { prefetchPreview } from '@/utils/routing/routePrefetch'
 import {
-  Eye, BarChart3, Download, PlayCircle, Menu, Save,
+  Eye, BarChart3, Download, PlayCircle, Menu, Save, ChevronDown,
 } from 'lucide-react'
 
 export function BuilderHeader({
@@ -145,6 +146,8 @@ function SaveStatus({ saveStatus, isDirty, className = '' }) {
   return null
 }
 
+const HEADER_ACTION_BASE = 'inline-flex items-center gap-1.5 text-sm font-medium px-2.5 py-2 rounded-lg transition-colors shrink-0'
+
 function DesktopActions({
   onExportCSVTemplate,
   onOpenExport,
@@ -154,46 +157,32 @@ function DesktopActions({
 }) {
   return (
     <div className="hidden sm:flex items-center gap-2">
-      <div
-        className="flex items-center gap-0.5 p-1 rounded-xl bg-ink-50/80 border border-ink-100"
-        role="group"
-        aria-label="Review survey"
+      <button
+        type="button"
+        onClick={onOpenPreview}
+        onMouseEnter={prefetchPreview}
+        onFocus={prefetchPreview}
+        title="Open respondent preview"
+        className={`${HEADER_ACTION_BASE} border border-brand-200 bg-brand-50/70 text-brand-800 hover:bg-brand-50 hover:border-brand-300`}
       >
-        <HeaderToolButton
-          icon={Eye}
-          label="Preview"
-          onClick={onOpenPreview}
-          onMouseEnter={prefetchPreview}
-          onFocus={prefetchPreview}
-          title="Open respondent preview"
-        />
-        <HeaderToolButton
-          icon={PlayCircle}
-          label="Test"
-          onClick={onOpenTest}
-          title="Run test session"
-        />
-      </div>
+        <Eye size={16} className="text-brand-600 shrink-0" />
+        <span className="hidden md:inline">Preview</span>
+      </button>
 
-      <div
-        className="hidden md:flex items-center gap-0.5 p-1 rounded-xl bg-ink-50/80 border border-ink-100"
-        role="group"
-        aria-label="Export options"
+      <button
+        type="button"
+        onClick={onOpenTest}
+        title="Run test session"
+        className={`${HEADER_ACTION_BASE} border border-ink-200 text-ink-600 hover:text-ink-900 hover:bg-ink-50`}
       >
-        <HeaderToolButton
-          icon={Download}
-          label="CSV"
-          onClick={onExportCSVTemplate}
-          title="Download CSV column template"
-        />
-        <HeaderToolButton
-          icon={BarChart3}
-          label="Exports"
-          onClick={onOpenExport}
-          title="Open export manager"
-          variant="secondary"
-        />
-      </div>
+        <PlayCircle size={16} className="text-ink-400 shrink-0" />
+        <span className="hidden md:inline">Test</span>
+      </button>
+
+      <ExportMenu
+        onExportCSVTemplate={onExportCSVTemplate}
+        onOpenExport={onOpenExport}
+      />
 
       <button
         type="button"
@@ -207,23 +196,80 @@ function DesktopActions({
   )
 }
 
-function HeaderToolButton({ icon: Icon, label, onClick, title, variant, onMouseEnter, onFocus }) {
-  const base = 'inline-flex items-center gap-1.5 text-sm font-medium px-2.5 py-2 rounded-lg transition-colors shrink-0'
-  const styles = variant === 'secondary'
-    ? `${base} text-ink-700 bg-white border border-ink-200 hover:bg-ink-50`
-    : `${base} text-ink-600 hover:text-ink-900 hover:bg-white/80`
+function ExportMenu({ onExportCSVTemplate, onOpenExport }) {
+  const [open, setOpen] = useState(false)
+  const rootRef = useRef(null)
 
+  useEffect(() => {
+    if (!open) return undefined
+    const close = (e) => {
+      if (rootRef.current && !rootRef.current.contains(e.target)) setOpen(false)
+    }
+    document.addEventListener('mousedown', close)
+    return () => document.removeEventListener('mousedown', close)
+  }, [open])
+
+  const closeAnd = (fn) => () => {
+    setOpen(false)
+    fn?.()
+  }
+
+  return (
+    <div ref={rootRef} className="relative shrink-0">
+      <button
+        type="button"
+        onClick={() => setOpen(v => !v)}
+        aria-expanded={open}
+        aria-haspopup="menu"
+        title="Export options"
+        className={`${HEADER_ACTION_BASE} border border-ink-200 text-ink-600 hover:text-ink-900 hover:bg-ink-50 ${
+          open ? 'bg-ink-50 ring-2 ring-brand-100 border-brand-200' : ''
+        }`}
+      >
+        <Download size={16} className="text-ink-400 shrink-0" />
+        <span className="hidden md:inline">Export</span>
+        <ChevronDown
+          size={14}
+          className={`text-ink-400 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`}
+        />
+      </button>
+
+      {open && (
+        <div
+          role="menu"
+          className="absolute right-0 top-[calc(100%+8px)] z-50 w-56 bg-white border border-ink-200 rounded-2xl shadow-xl shadow-ink-900/10 p-1.5"
+        >
+          <ExportMenuItem
+            icon={Download}
+            label="CSV template"
+            description="Download column headers"
+            onClick={closeAnd(onExportCSVTemplate)}
+          />
+          <ExportMenuItem
+            icon={BarChart3}
+            label="Export manager"
+            description="Scheduled and history exports"
+            onClick={closeAnd(onOpenExport)}
+          />
+        </div>
+      )}
+    </div>
+  )
+}
+
+function ExportMenuItem({ icon: Icon, label, description, onClick }) {
   return (
     <button
       type="button"
+      role="menuitem"
       onClick={onClick}
-      onMouseEnter={onMouseEnter}
-      onFocus={onFocus}
-      title={title || label}
-      className={styles}
+      className="w-full flex items-start gap-2.5 px-3 py-2.5 text-left rounded-xl hover:bg-ink-50 transition-colors"
     >
-      <Icon size={16} className="text-ink-400 shrink-0" />
-      <span className="hidden xl:inline">{label}</span>
+      <Icon size={15} className="text-ink-400 shrink-0 mt-0.5" />
+      <span className="min-w-0">
+        <span className="block text-sm font-medium text-ink-800">{label}</span>
+        <span className="block text-xs text-ink-400 mt-0.5">{description}</span>
+      </span>
     </button>
   )
 }
@@ -280,8 +326,8 @@ function MobileToolbar({
               </p>
               <SaveStatus saveStatus={saveStatus} isDirty={isDirty} className="mx-3 mb-2" />
               <MobileMenuItem icon={PlayCircle} label="Test runner" onClick={() => { onOpenTest(); closeMenu() }} />
-              <MobileMenuItem icon={BarChart3} label="Exports" onClick={() => { onOpenExport(); closeMenu() }} />
               <MobileMenuItem icon={Download} label="CSV template" onClick={() => { onExportCSVTemplate(); closeMenu() }} />
+              <MobileMenuItem icon={BarChart3} label="Export manager" onClick={() => { onOpenExport(); closeMenu() }} />
             </div>
           </>
         )}
