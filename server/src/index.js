@@ -10,12 +10,24 @@ import { loadConfig } from './config.js'
 import { seedDefaultAdmin, seedPlatformOwner } from './lib/platform/seed.js'
 import { migratePlatformLists } from './lib/platform/migratePlatformLists.js'
 
-const config = loadConfig()
+let config
+try {
+  config = loadConfig()
+} catch (err) {
+  console.error(`[config] ${err.message}`)
+  process.exit(1)
+}
 
 const app = await buildApp()
-await seedDefaultAdmin(app.prisma)
-await seedPlatformOwner(app.prisma)
-await migratePlatformLists(app.prisma)
+
+if (config.seedDefaultAccounts) {
+  await seedDefaultAdmin(app.prisma)
+  await seedPlatformOwner(app.prisma)
+}
+
+if (config.runPlatformListMigration) {
+  await migratePlatformLists(app.prisma)
+}
 
 try {
   await app.listen({ port: config.port, host: '0.0.0.0' })

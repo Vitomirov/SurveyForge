@@ -195,10 +195,10 @@ Run `npm run check:registries` after adding or renaming types.
 
 `server/src/index.js`:
 
-1. Loads config from environment
+1. Loads config from environment (fails fast in production on weak/missing `JWT_SECRET`)
 2. Builds Fastify app (`server/src/app.js`)
-3. Seeds default org admin and platform owner (idempotent — `server/src/lib/seed.js`)
-4. Runs one-time platform list migration (`migratePlatformLists`)
+3. Optionally seeds default org admin and platform owner when `SEED_DEFAULT_ACCOUNTS=true` (development default; **disabled in production Docker**)
+4. Optionally runs platform list migration when `RUN_PLATFORM_LIST_MIGRATION=true` (development default; **disabled in production Docker**)
 5. Listens on `PORT` (default 3003)
 
 ### Authentication
@@ -355,7 +355,7 @@ npm run dev:docker
 
 Vite on `:5173`, API on `:3003`, Postgres on `:5433`.
 
-On first API start, the server seeds:
+On first API start **in development**, when `SEED_DEFAULT_ACCOUNTS` is enabled (default for `NODE_ENV=development`), the server seeds:
 
 | Account | Default credentials | Role |
 |---------|---------------------|------|
@@ -364,9 +364,12 @@ On first API start, the server seeds:
 
 Override platform owner via `PLATFORM_OWNER_USERNAME`, `PLATFORM_OWNER_EMAIL`, `PLATFORM_OWNER_PASSWORD`. **Change all defaults before any production deploy.**
 
-### Option C — Docker full stack
+### Option C — Docker full stack (production)
 
 ```bash
+# Set a strong JWT secret (32+ characters) — required for production Compose
+export JWT_SECRET="$(openssl rand -base64 48)"
+
 # Pull pre-built images
 docker compose pull && docker compose up -d
 
@@ -376,7 +379,15 @@ docker compose up --build -d
 
 App UI: `http://localhost:8080` (override with `WEB_HOST_PORT`).
 
-Set `JWT_SECRET` in the environment — do not use the Compose default in production.
+Production Compose sets `SEED_DEFAULT_ACCOUNTS=false` and `RUN_PLATFORM_LIST_MIGRATION=false` — no default admin/vendor accounts are created. Use signup to create the first organization.
+
+### Option D — Docker full stack (development)
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+```
+
+Uses development bootstrap settings (default account seeding enabled, relaxed JWT validation).
 
 ---
 
@@ -387,10 +398,13 @@ Set `JWT_SECRET` in the environment — do not use the Compose default in produc
 | `DATABASE_URL` | — | PostgreSQL connection string |
 | `PORT` | `3003` | API listen port |
 | `NODE_ENV` | `development` | Enables dev-only routes (migrate), CORS |
-| `JWT_SECRET` | `dev-secret-change-me` | JWT signing key — **must override in production** |
+| `JWT_SECRET` | `dev-secret-change-me` (dev only) | JWT signing key — **required (32+ chars) in production** |
 | `JWT_EXPIRES_IN` | `7d` | Token lifetime |
+| `SEED_DEFAULT_ACCOUNTS` | `true` in dev, `false` in prod | Bootstrap admin/vendor accounts (`server/src/lib/platform/seed.js`) |
+| `RUN_PLATFORM_LIST_MIGRATION` | `true` in dev, `false` in prod | Normalize legacy platform IDs on startup |
+| `REQUIRE_STRONG_JWT` | `true` in prod, `false` in dev override | Refuse weak or placeholder JWT secrets |
 | `VITE_USE_API` | unset | Build-time flag: enable API persistence |
-| `PLATFORM_OWNER_*` | see seed.js | Platform owner bootstrap credentials |
+| `PLATFORM_OWNER_*` | see seed.js | Platform owner bootstrap credentials (dev seed only) |
 | `WEB_HOST_PORT` | `8080` | Docker web container host port |
 | `POSTGRES_HOST_PORT` | `5433` | Docker Postgres host port |
 
@@ -481,11 +495,12 @@ Postgres data persists in the `pgdata` Docker volume.
 
 Production deployments must address:
 
-- **Rotate default credentials** — seeded admin/vendor accounts and Postgres/JWT defaults are for development only.
-- **Set `JWT_SECRET`** to a strong random value; the server does not refuse weak defaults at startup.
+- **Set `JWT_SECRET`** to a strong random value (32+ characters) — production Compose requires it and the API refuses weak placeholders at startup.
+- **No default seeded accounts in production** — `SEED_DEFAULT_ACCOUNTS=false` in `docker-compose.yml`; create the first org via signup.
+- **Rotate Postgres credentials** — do not use default Compose passwords in production.
 - **HTTPS** — terminate TLS at nginx or a reverse proxy.
 - **Rich text XSS** — survey author HTML is rendered via `dangerouslySetInnerHTML` in the taker; sanitize before production fielding if untrusted authors exist.
-- **Public endpoints** — live survey fetch, response submit, and DNC list are unauthenticated; no rate limiting is built in.
+- **Public endpoints** — live survey fetch, response submit, and DNC list are unauthenticated; rate limiting is partial (responses only).
 - **Local mode** — do not deploy without `VITE_USE_API=true`; local mode stores passwords in plaintext.
 
 ---

@@ -1,7 +1,16 @@
 # Dev override — expose Postgres on the host for npm dev + DBeaver.
-# Usage: npm run db:up
+# Full dev stack: docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+# Postgres only (npm dev): npm run db:up
 # Reset: npm run db:reset
 services:
   postgres:
     ports:
       - '${POSTGRES_HOST_PORT:-5433}:5432'
+
+  api:
+    environment:
+      NODE_ENV: development
+      SEED_DEFAULT_ACCOUNTS: 'true'
+      RUN_PLATFORM_LIST_MIGRATION: 'true'
+      REQUIRE_STRONG_JWT: 'false'
+      JWT_SECRET: ${JWT_SECRET:-dev-secret-local-only-not-for-production}

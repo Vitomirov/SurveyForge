@@ -50,7 +50,9 @@ services:
       DATABASE_URL: postgresql://rescopesurveys:rescopesurveys@postgres:5432/rescopesurveys
       PORT: 3003
       NODE_ENV: production
-      JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET to a strong random value (32+ characters)}
+      SEED_DEFAULT_ACCOUNTS: 'false'
+      RUN_PLATFORM_LIST_MIGRATION: 'false'
     expose:
       - '3003'
 
