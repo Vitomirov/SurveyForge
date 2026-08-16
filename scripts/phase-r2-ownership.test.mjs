@@ -8,6 +8,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { makeApi } from './lib/apiClient.mjs'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const rootEnv = readFileSync(resolve(__dirname, '../.env'), 'utf8')
@@ -16,17 +17,7 @@ const BASE = `http://127.0.0.1:${PORT}`
 
 const unique = `${Date.now()}_${Math.random().toString(36).slice(2, 6)}`
 const surveyId = () => `s_r2_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`
-
-async function api(path, { method = 'GET', body, token } = {}) {
-  const headers = {}
-  if (body) headers['Content-Type'] = 'application/json'
-  if (token) headers.Authorization = `Bearer ${token}`
-  const res = await fetch(`${BASE}${path}`, { method, headers, body: body ? JSON.stringify(body) : undefined })
-  const text = await res.text()
-  let data
-  try { data = text ? JSON.parse(text) : null } catch { data = text }
-  return { status: res.status, data }
-}
+const api = makeApi(BASE)
 
 async function signupOrg(adminUsername) {
   const res = await api('/api/auth/signup', {

@@ -8,26 +8,14 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { makeApi } from './lib/apiClient.mjs'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const rootEnv = readFileSync(resolve(__dirname, '../.env'), 'utf8')
 const PORT = rootEnv.match(/^PORT=(\d+)/m)?.[1] || '3003'
 const BASE = `http://127.0.0.1:${PORT}`
 
-async function api(path, { method = 'GET', body, token } = {}) {
-  const headers = {}
-  if (body) headers['Content-Type'] = 'application/json'
-  if (token) headers.Authorization = `Bearer ${token}`
-  const res = await fetch(`${BASE}${path}`, {
-    method,
-    headers,
-    body: body ? JSON.stringify(body) : undefined,
-  })
-  const text = await res.text()
-  let data
-  try { data = text ? JSON.parse(text) : null } catch { data = text }
-  return { status: res.status, data }
-}
+const api = makeApi(BASE)
 
 const unique = `${Date.now()}_${Math.random().toString(36).slice(2, 6)}`
 const username = `owner_${unique}`
@@ -43,7 +31,7 @@ test('signup creates org + admin and returns a token', async () => {
     },
   })
   assert.equal(res.status, 201)
-  assert.ok(res.data.token, 'token returned')
+  assert.ok(res.cookies.rs_access || res.data.token, 'access cookie set')
   assert.equal(res.data.session.role, 'admin')
   assert.ok(res.data.session.organizationId)
   assert.equal(res.data.session.organizationName, `Test Org ${unique}`)

@@ -19,8 +19,6 @@ const Dashboard     = lazy(() => import('@/components/dashboard/Dashboard.jsx'))
 const SurveyBuilder = lazy(() => import('@/components/builder/SurveyBuilder.jsx'))
 const SurveyPreview = lazy(() => import('@/components/taker/SurveyPreview.jsx'))
 
-prefetchForRoute()
-
 /** Load the survey named by the route — public payload for the taker link. */
 async function fetchEntry(view, id, { byPath = false, clientDomain = null, isEmbed = false } = {}) {
   if (useApi) {
@@ -109,15 +107,27 @@ function PreviewPage({ entry, onClose }) {
 }
 
 export default function App() {
-  const [session, setSession] = useState(getSession)
+  const [session, setSession] = useState(() => (useApi ? null : getSession()))
+  const [authChecking, setAuthChecking] = useState(() => useApi)
   const { toast }             = useToast()
   const { view, id, byPath, clientDomain, isEmbed } = useRoute()
   const isPublic              = view === 'take'
   const { status, entry }     = useSurveyEntry(view, isPublic || session ? id : null, { byPath, clientDomain, isEmbed })
 
   useEffect(() => {
-    if (!useApi || isPublic) return
-    refreshSessionFromApi().then(next => { if (next) setSession(next) })
+    if (!useApi || isPublic) {
+      if (!useApi) setSession(getSession())
+      setAuthChecking(false)
+      return
+    }
+    let alive = true
+    refreshSessionFromApi().then(next => {
+      if (!alive) return
+      setSession(next)
+      setAuthChecking(false)
+      prefetchForRoute({ session: next })
+    })
+    return () => { alive = false }
   }, [isPublic])
 
   useEffect(() => {
@@ -153,6 +163,10 @@ export default function App() {
         />
       </Page>
     )
+  }
+
+  if (authChecking) {
+    return <PageLoader label="Loading…" />
   }
 
   if (!session) {

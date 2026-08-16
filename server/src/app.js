@@ -1,5 +1,6 @@
 import Fastify from 'fastify'
 import cors from '@fastify/cors'
+import cookie from '@fastify/cookie'
 import { registerPrisma } from './plugins/prisma.js'
 import { registerAuth } from './plugins/auth.js'
 import { registerAuthRoutes } from './routes/auth.js'
@@ -32,12 +33,17 @@ export async function buildApp() {
   })
 
   await app.register(cors, {
-    origin: config.isDev,
+    origin: config.corsOrigin,
     credentials: true,
   })
+  await app.register(cookie)
 
   await registerPrisma(app)
-  await registerAuth(app, { jwtSecret: config.jwtSecret, jwtExpiresIn: config.jwtExpiresIn })
+  await registerAuth(app, {
+    jwtSecret: config.jwtSecret,
+    jwtExpiresIn: config.accessTokenExpiresIn,
+    authAllowBearer: config.authAllowBearer,
+  })
 
   app.get('/health', async () => ({
     ok: true,

@@ -3,25 +3,10 @@
  */
 import assert from 'node:assert/strict'
 
+export { makeApi } from './apiClient.mjs'
+
 export function surveyId(prefix = 's_rbac') {
   return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`
-}
-
-export function makeApi(base) {
-  return async function api(path, { method = 'GET', body, token } = {}) {
-    const headers = {}
-    if (body) headers['Content-Type'] = 'application/json'
-    if (token) headers.Authorization = `Bearer ${token}`
-    const res = await fetch(`${base}${path}`, {
-      method,
-      headers,
-      body: body ? JSON.stringify(body) : undefined,
-    })
-    const text = await res.text()
-    let data
-    try { data = text ? JSON.parse(text) : null } catch { data = text }
-    return { status: res.status, data }
-  }
 }
 
 /** Provision a fresh org with one admin and one editor; returns both tokens. */

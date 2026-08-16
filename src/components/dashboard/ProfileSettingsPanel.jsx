@@ -3,7 +3,6 @@ import { Camera, Eye, EyeOff, Lock } from 'lucide-react'
 import { useApi } from '@/config/api'
 import { updateProfile as updateProfileApi } from '@/api/auth/profile'
 import { updateProfileLocal } from '@/utils/data/authStore'
-import { setAuthToken } from '@/api/auth/token'
 import { AUTH_PROFILE, AUTH_VALIDATION } from '@/constants/authCopy'
 import { useToast } from '@/components/ui'
 import { UserAvatar } from './UserAvatar.jsx'
@@ -143,7 +142,6 @@ export function ProfileSettingsPanel({ session, profile, onSessionUpdate, onProf
 
       if (useApi) {
         const data = await updateProfileApi(body)
-        setAuthToken(data.token)
         onSessionUpdate?.(data.session)
         onProfileSaved?.(data.user)
       } else {

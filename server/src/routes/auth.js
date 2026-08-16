@@ -2,6 +2,13 @@ import { verifyPassword, hashPassword } from '../lib/auth/password.js'
 import { provisionOrgBilling } from '../lib/billing/billingDefaults.js'
 import { createRouteLimiters, sendIfRateLimited } from '../lib/survey/rateLimit.js'
 import { loadConfig } from '../config.js'
+import { setAuthCookies, clearAuthCookies, readRefreshToken } from '../lib/auth/cookies.js'
+import {
+  createRefreshToken,
+  rotateRefreshToken,
+  revokeRefreshToken,
+  RefreshTokenError,
+} from '../lib/auth/refreshTokens.js'
 
 function buildSession(user, organizationName = null) {
   return {
@@ -26,6 +33,14 @@ function signToken(app, session) {
     name:             session.name,
     role:             session.role,
   })
+}
+
+async function issueAuthSession(app, reply, user, organizationName = null) {
+  const session = buildSession(user, organizationName)
+  const accessToken = signToken(app, session)
+  const { rawToken } = await createRefreshToken(app.prisma, user.id)
+  setAuthCookies(reply, { accessToken, refreshToken: rawToken })
+  return session
 }
 
 const MAX_AVATAR_BYTES = 512 * 1024
@@ -129,8 +144,8 @@ export async function registerAuthRoutes(app) {
       return { org, user }
     })
 
-    const session = buildSession(user, org.name)
-    return reply.code(201).send({ token: signToken(app, session), session })
+    const session = await issueAuthSession(app, reply, user, org.name)
+    return reply.code(201).send({ session })
   })
 
   app.post('/api/auth/login', async (request, reply) => {
@@ -157,8 +172,51 @@ export async function registerAuthRoutes(app) {
       return reply.code(401).send({ error: 'Invalid username or password.' })
     }
 
-    const session = buildSession(user, user.organization?.name)
-    return { token: signToken(app, session), session }
+    const session = await issueAuthSession(app, reply, user, user.organization?.name)
+    return { session }
+  })
+
+  app.post('/api/auth/logout', async (request, reply) => {
+    const raw = readRefreshToken(request)
+    if (raw) await revokeRefreshToken(app.prisma, raw)
+    clearAuthCookies(reply)
+    return { ok: true }
+  })
+
+  app.post('/api/auth/refresh', async (request, reply) => {
+    const raw = readRefreshToken(request)
+    if (!raw) {
+      clearAuthCookies(reply)
+      return reply.code(401).send({ error: 'Unauthorized', code: 'UNAUTHORIZED' })
+    }
+
+    try {
+      const rotated = await rotateRefreshToken(app.prisma, raw)
+      const user = await app.prisma.user.findUnique({
+        where: { id: rotated.userId },
+        include: { organization: true },
+      })
+      if (!user) {
+        clearAuthCookies(reply)
+        return reply.code(401).send({
+          error: 'Session is no longer valid. Please sign in again.',
+          code: 'SESSION_INVALID',
+        })
+      }
+      const session = buildSession(user, user.organization?.name)
+      setAuthCookies(reply, {
+        accessToken: signToken(app, session),
+        refreshToken: rotated.rawToken,
+      })
+      return { session }
+    } catch (err) {
+      clearAuthCookies(reply)
+      const code = err instanceof RefreshTokenError ? err.code : 'UNAUTHORIZED'
+      if (code === 'REUSE_DETECTED') {
+        return reply.code(401).send({ error: 'Unauthorized', code })
+      }
+      return reply.code(401).send({ error: 'Unauthorized', code: 'UNAUTHORIZED' })
+    }
   })
 
   /** Current caller — role and profile always read from the database. */
@@ -178,7 +236,7 @@ export async function registerAuthRoutes(app) {
       email:            user.email,
       role,
     }
-    return { session, token: signToken(app, session) }
+    return { session }
   })
 
   /** Self-service profile updates for the signed-in user. */
@@ -243,7 +301,6 @@ export async function registerAuthRoutes(app) {
         role:      row.role,
       },
       session,
-      token: signToken(app, session),
     }
   })
 }

@@ -1,10 +1,9 @@
 // ─── Auth store ────────────────────────────────────────────────────────────
 // Local mode: credentials in localStorage (self-hosted / offline).
-// API mode:   JWT in sessionStorage via POST /api/auth/login (Phase B2+).
+// API mode:   httpOnly cookies via POST /api/auth/login; session metadata in sessionStorage.
 
 import { useApi } from '@/config/api'
 import { apiFetch } from '@/api/client'
-import { setAuthToken, clearAuthToken, getAuthToken } from '@/api/auth/token'
 import { AUTH_ERRORS } from '@/constants/authCopy'
 import { newPrefixedId } from '@/store/id'
 
@@ -42,7 +41,6 @@ function writeSessionStorage(session) {
 // ─── Session ───────────────────────────────────────────────────────────────
 export function getSession() {
   if (useApi) {
-    if (!getAuthToken()) return null
     return readSessionStorage()
   }
   try {
@@ -58,7 +56,6 @@ export async function login(username, password) {
         method: 'POST',
         body: JSON.stringify({ username, password }),
       })
-      setAuthToken(data.token)
       writeSessionStorage(data.session)
       return { ok: true, session: data.session }
     } catch (err) {
@@ -88,7 +85,6 @@ export async function signup({ organizationName, name, username, password }) {
         method: 'POST',
         body: JSON.stringify({ organizationName, name, username, password }),
       })
-      setAuthToken(data.token)
       writeSessionStorage(data.session)
       return { ok: true, session: data.session }
     } catch (err) {
@@ -116,10 +112,15 @@ export async function signup({ organizationName, name, username, password }) {
   return { ok: true, session }
 }
 
-export function logout() {
+export async function logout() {
   if (useApi) {
-    clearAuthToken()
-    try { sessionStorage.removeItem(SESSION_KEY) } catch {}
+    try {
+      await apiFetch('/api/auth/logout', { method: 'POST', skipAuthInvalidate: true })
+    } catch { /* noop */ }
+    try {
+      sessionStorage.removeItem(SESSION_KEY)
+      sessionStorage.removeItem('sf_token')
+    } catch {}
     return
   }
   try { localStorage.removeItem(SESSION_KEY) } catch {}
@@ -159,16 +160,15 @@ export function updateSession(session) {
   return session
 }
 
-/** Refresh profile + lean JWT from the server (API mode). */
+/** Refresh profile from the server (API mode). Auth is the httpOnly cookie. */
 export async function refreshSessionFromApi() {
-  if (!useApi || !getAuthToken()) return null
+  if (!useApi) return null
   try {
-    const { fetchMe } = await import('@/api/auth/profile')
-    const data = await fetchMe()
-    if (data.token) setAuthToken(data.token)
+    const data = await apiFetch('/api/auth/me', { skipAuthInvalidate: true })
     if (data.session) writeSessionStorage(data.session)
     return data.session
   } catch {
+    try { sessionStorage.removeItem(SESSION_KEY) } catch {}
     return null
   }
 }

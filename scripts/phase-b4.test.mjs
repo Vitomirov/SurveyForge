@@ -8,6 +8,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { makeApi } from './lib/apiClient.mjs'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const rootEnv = readFileSync(resolve(__dirname, '../.env'), 'utf8')
@@ -20,20 +21,9 @@ let clientId = ''
 let topicId = ''
 let testUserId = ''
 
+const request = makeApi(BASE)
 async function api(path, { method = 'GET', body, auth = true } = {}) {
-  const headers = {}
-  if (body) headers['Content-Type'] = 'application/json'
-  if (auth && token) headers.Authorization = `Bearer ${token}`
-
-  const res = await fetch(`${BASE}${path}`, {
-    method,
-    headers,
-    body: body ? JSON.stringify(body) : undefined,
-  })
-  const text = await res.text()
-  let data
-  try { data = text ? JSON.parse(text) : null } catch { data = text }
-  return { status: res.status, data }
+  return request(path, { method, body, token: auth ? token : undefined })
 }
 
 before(async () => {

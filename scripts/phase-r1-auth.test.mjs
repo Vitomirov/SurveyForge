@@ -11,25 +11,23 @@ import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { isAdmin, requireRole, surveyScope } from '../server/src/lib/auth/authz.js'
 import { ROLES, isAdminRole } from '../server/src/lib/auth/roles.js'
+import { makeApi, provisionOrg } from './lib/rbacFixtures.mjs'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
-const rootEnv = readFileSync(resolve(__dirname, '../.env'), 'utf8')
-const PORT = rootEnv.match(/^PORT=(\d+)/m)?.[1] || '3003'
-const JWT_SECRET = rootEnv.match(/^JWT_SECRET=(.+)$/m)?.[1]?.trim() || 'change-me-in-production'
+function readEnvFile(path) {
+  try { return readFileSync(path, 'utf8') } catch { return '' }
+}
+const rootEnv = readEnvFile(resolve(__dirname, '../.env'))
+const serverEnv = readEnvFile(resolve(__dirname, '../server/.env'))
+const PORT = rootEnv.match(/^PORT=(\d+)/m)?.[1] || serverEnv.match(/^PORT=(\d+)/m)?.[1] || '3003'
+// `npm run dev:server` loads server/.env first; dotenv does not override it.
+const JWT_SECRET = serverEnv.match(/^JWT_SECRET=(.+)$/m)?.[1]?.trim()
+  || rootEnv.match(/^JWT_SECRET=(.+)$/m)?.[1]?.trim()
+  || 'change-me-in-production'
 const BASE = `http://127.0.0.1:${PORT}`
 
 const unique = `${Date.now()}_${Math.random().toString(36).slice(2, 6)}`
-
-async function api(path, { method = 'GET', body, token } = {}) {
-  const headers = {}
-  if (body) headers['Content-Type'] = 'application/json'
-  if (token) headers.Authorization = `Bearer ${token}`
-  const res = await fetch(`${BASE}${path}`, { method, headers, body: body ? JSON.stringify(body) : undefined })
-  const text = await res.text()
-  let data
-  try { data = text ? JSON.parse(text) : null } catch { data = text }
-  return { status: res.status, data }
-}
+const api = makeApi(BASE)
 
 function decodeJwt(token) {
   const payload = token.split('.')[1]
@@ -96,7 +94,9 @@ test('login issues a JWT with a future exp claim', async () => {
     body: { username: 'admin', password: 'admin123' },
   })
   assert.equal(login.status, 200)
-  const payload = decodeJwt(login.data.token)
+  const token = login.cookies.rs_access || login.data.token
+  assert.ok(token, 'access token should be in cookie (or bearer fallback)')
+  const payload = decodeJwt(token)
   assert.ok(payload.exp, 'token should include exp')
   assert.ok(payload.exp > Math.floor(Date.now() / 1000), 'exp should be in the future')
 })
@@ -130,43 +130,9 @@ test('garbled JWT returns 401 UNAUTHORIZED', async () => {
 })
 
 test('deleted user token returns 401 SESSION_INVALID', async () => {
-  const orgName = `R1 Org ${unique}`
-  const adminUser = `r1admin_${unique}`
-  const editorUser = `r1editor_${unique}`
+  const { adminToken, editorToken, editorUserId } = await provisionOrg(api, `r1del_${unique}`)
 
-  const signup = await api('/api/auth/signup', {
-    method: 'POST',
-    body: {
-      organizationName: orgName,
-      name: 'R1 Admin',
-      username: adminUser,
-      password: 'testpass123',
-    },
-  })
-  assert.equal(signup.status, 201)
-  const adminToken = signup.data.token
-
-  const created = await api('/api/platform/users', {
-    method: 'POST',
-    token: adminToken,
-    body: {
-      username: editorUser,
-      password: 'testpass123',
-      name: 'R1 Editor',
-      role: 'editor',
-    },
-  })
-  assert.equal(created.status, 200)
-  const editorId = created.data.user.id
-
-  const editorLogin = await api('/api/auth/login', {
-    method: 'POST',
-    body: { username: editorUser, password: 'testpass123' },
-  })
-  assert.equal(editorLogin.status, 200)
-  const editorToken = editorLogin.data.token
-
-  const deleted = await api(`/api/platform/users/${editorId}`, {
+  const deleted = await api(`/api/platform/users/${editorUserId}`, {
     method: 'DELETE',
     token: adminToken,
   })
@@ -178,43 +144,12 @@ test('deleted user token returns 401 SESSION_INVALID', async () => {
 })
 
 test('role change in DB is reflected on next request without re-login', async () => {
-  const orgName = `R1 Role Org ${unique}`
-  const adminUser = `r1roleadmin_${unique}`
-  const editorUser = `r1roleeditor_${unique}`
-
-  const signup = await api('/api/auth/signup', {
-    method: 'POST',
-    body: {
-      organizationName: orgName,
-      name: 'Role Admin',
-      username: adminUser,
-      password: 'testpass123',
-    },
-  })
-  const adminToken = signup.data.token
-
-  const created = await api('/api/platform/users', {
-    method: 'POST',
-    token: adminToken,
-    body: {
-      username: editorUser,
-      password: 'testpass123',
-      name: 'Role Editor',
-      role: 'editor',
-    },
-  })
-  const editorId = created.data.user.id
-
-  const editorLogin = await api('/api/auth/login', {
-    method: 'POST',
-    body: { username: editorUser, password: 'testpass123' },
-  })
-  const editorToken = editorLogin.data.token
+  const { adminToken, editorToken, editorUserId } = await provisionOrg(api, `r1role_${unique}`)
 
   const before = await api('/api/auth/me', { token: editorToken })
   assert.equal(before.data.session.role, 'editor')
 
-  const promoted = await api(`/api/platform/users/${editorId}`, {
+  const promoted = await api(`/api/platform/users/${editorUserId}`, {
     method: 'PATCH',
     token: adminToken,
     body: { role: 'admin' },

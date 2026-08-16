@@ -1,6 +1,12 @@
 import fastifyJwt from '@fastify/jwt'
+import { ACCESS_COOKIE } from '../lib/auth/cookies.js'
 
-const PUBLIC_EXACT = new Set(['/api/auth/login', '/api/auth/signup'])
+const PUBLIC_EXACT = new Set([
+  '/api/auth/login',
+  '/api/auth/signup',
+  '/api/auth/logout',
+  '/api/auth/refresh',
+])
 const PUBLIC_PREFIXES = ['/api/public/']
 
 function isPublicRoute(url) {
@@ -13,7 +19,16 @@ function authError(reply, { status = 401, error, code }) {
   return reply.code(status).send({ error, code })
 }
 
-export async function registerAuth(app, { jwtSecret, jwtExpiresIn }) {
+function extractAccessToken(request, authAllowBearer) {
+  const fromCookie = request.cookies?.[ACCESS_COOKIE]
+  if (fromCookie) return fromCookie
+  if (!authAllowBearer) return null
+  const header = request.headers.authorization
+  if (header?.startsWith('Bearer ')) return header.slice(7)
+  return null
+}
+
+export async function registerAuth(app, { jwtSecret, jwtExpiresIn, authAllowBearer = false }) {
   await app.register(fastifyJwt, {
     secret: jwtSecret,
     sign: { expiresIn: jwtExpiresIn },
@@ -23,8 +38,18 @@ export async function registerAuth(app, { jwtSecret, jwtExpiresIn }) {
     if (!request.url.startsWith('/api')) return
     if (isPublicRoute(request.url)) return
 
+    const token = extractAccessToken(request, authAllowBearer)
+    if (!token) {
+      return authError(reply, {
+        error: 'Unauthorized',
+        code: 'UNAUTHORIZED',
+      })
+    }
+
     try {
-      await request.jwtVerify()
+      await request.jwtVerify({
+        verify: { extractToken: () => token },
+      })
     } catch (err) {
       if (err.code === 'FST_JWT_AUTHORIZATION_TOKEN_EXPIRED') {
         return authError(reply, {

@@ -1,5 +1,4 @@
 import { useApi } from '@/config/api'
-import { getAuthToken, clearAuthToken } from '@/api/auth/token'
 import { notifyAuthInvalidated } from '@/api/auth/authEvents'
 import { AUTH_ERRORS } from '@/constants/authCopy'
 
@@ -12,18 +11,53 @@ export class ApiError extends Error {
   }
 }
 
+const AUTH_PATHS = new Set([
+  '/api/auth/login',
+  '/api/auth/signup',
+  '/api/auth/refresh',
+  '/api/auth/logout',
+])
+
+let refreshInFlight = null
+
+function pathOnly(path) {
+  return String(path || '').split('?')[0]
+}
+
+async function refreshAccessToken() {
+  if (!refreshInFlight) {
+    refreshInFlight = fetch('/api/auth/refresh', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: '{}',
+    }).then(async (res) => {
+      if (!res.ok) {
+        const err = new Error('refresh failed')
+        err.status = res.status
+        throw err
+      }
+      return res.json().catch(() => ({}))
+    }).finally(() => {
+      refreshInFlight = null
+    })
+  }
+  return refreshInFlight
+}
+
+function invalidateSession(code) {
+  try { sessionStorage.removeItem('sf_session') } catch { /* noop */ }
+  notifyAuthInvalidated(code || 'UNAUTHORIZED')
+}
+
 export async function apiFetch(path, options = {}) {
-  const headers = { ...options.headers }
-  if (options.body != null && !headers['Content-Type']) {
+  const { skipAuthInvalidate = false, skipRefresh = false, _retry = false, ...fetchOptions } = options
+  const headers = { ...fetchOptions.headers }
+  if (fetchOptions.body != null && !headers['Content-Type']) {
     headers['Content-Type'] = 'application/json'
   }
 
-  const token = useApi ? getAuthToken() : null
-  if (token) {
-    headers.Authorization = `Bearer ${token}`
-  }
-
-  const rawBody = options.body
+  const rawBody = fetchOptions.body
   const requestBody = rawBody != null
     && typeof rawBody === 'object'
     && !(rawBody instanceof FormData)
@@ -33,9 +67,10 @@ export async function apiFetch(path, options = {}) {
     : rawBody
 
   const res = await fetch(path, {
-    ...options,
+    ...fetchOptions,
     body: requestBody,
     headers,
+    ...(useApi ? { credentials: 'include' } : {}),
   })
 
   let data = null
@@ -44,10 +79,23 @@ export async function apiFetch(path, options = {}) {
     try { data = JSON.parse(text) } catch { data = text }
   }
 
-  if (res.status === 401 && useApi) {
-    clearAuthToken()
-    try { sessionStorage.removeItem('sf_session') } catch { /* noop */ }
-    notifyAuthInvalidated(data?.code || 'UNAUTHORIZED')
+  const isAuthPath = AUTH_PATHS.has(pathOnly(path))
+  const canRefresh = useApi
+    && res.status === 401
+    && !_retry
+    && !skipRefresh
+    && !isAuthPath
+    && data?.code === 'TOKEN_EXPIRED'
+
+  if (canRefresh) {
+    try {
+      await refreshAccessToken()
+      return apiFetch(path, { ...options, _retry: true })
+    } catch {
+      if (!skipAuthInvalidate) invalidateSession(data?.code || 'TOKEN_EXPIRED')
+    }
+  } else if (res.status === 401 && useApi && !skipAuthInvalidate && !isAuthPath) {
+    invalidateSession(data?.code || 'UNAUTHORIZED')
   }
 
   if (!res.ok) {

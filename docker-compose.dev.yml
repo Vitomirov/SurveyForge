@@ -18,3 +18,6 @@ services:
       REQUIRE_STRONG_JWT: 'false'
       JWT_SECRET: ${JWT_SECRET:-dev-secret-local-only-not-for-production}
       RATE_LIMIT_RELAXED: 'true'
+      COOKIE_SECURE: 'false'
+      CORS_ORIGIN: 'http://localhost:5173'
+      AUTH_ALLOW_BEARER: 'true'
