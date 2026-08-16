@@ -1,6 +1,7 @@
 /** Simple in-memory rate limiter for public endpoints. */
 
 const buckets = new Map()
+const RELAXED_FACTOR = 100
 
 export function createRateLimiter({ windowMs = 60_000, max = 60 } = {}) {
   return function rateLimit(key) {
@@ -22,4 +23,22 @@ export function clientIp(request) {
   const forwarded = request.headers['x-forwarded-for']
   if (forwarded) return String(forwarded).split(',')[0].trim()
   return request.ip || 'unknown'
+}
+
+export function createRouteLimiters({ relaxed = false } = {}) {
+  const factor = relaxed ? RELAXED_FACTOR : 1
+  return {
+    login: createRateLimiter({ windowMs: 60_000, max: 10 * factor }),
+    publicFetch: createRateLimiter({ windowMs: 60_000, max: 60 * factor }),
+    dnc: createRateLimiter({ windowMs: 60_000, max: 20 * factor }),
+    responses: createRateLimiter({ windowMs: 60_000, max: 30 * factor }),
+  }
+}
+
+export function sendIfRateLimited(limiter, request, reply, key) {
+  const limit = limiter(`${key}:${clientIp(request)}`)
+  if (!limit.allowed) {
+    return reply.code(429).send({ error: 'Too many requests. Please try again later.' })
+  }
+  return null
 }

@@ -40,6 +40,7 @@ export function loadConfig(env = process.env) {
   const seedDefaultAccounts = parseBool(env.SEED_DEFAULT_ACCOUNTS, isDev)
   const runPlatformListMigration = parseBool(env.RUN_PLATFORM_LIST_MIGRATION, isDev)
   const requireStrongJwt = parseBool(env.REQUIRE_STRONG_JWT, !isDev)
+  const rateLimitRelaxed = parseBool(env.RATE_LIMIT_RELAXED, isDev)
 
   let jwtSecret = env.JWT_SECRET
   if (!jwtSecret) {
@@ -62,5 +63,6 @@ export function loadConfig(env = process.env) {
     seedDefaultAccounts,
     runPlatformListMigration,
     requireStrongJwt,
+    rateLimitRelaxed,
   }
 }

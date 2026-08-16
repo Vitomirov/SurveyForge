@@ -1,5 +1,7 @@
 import { verifyPassword, hashPassword } from '../lib/auth/password.js'
 import { provisionOrgBilling } from '../lib/billing/billingDefaults.js'
+import { createRouteLimiters, sendIfRateLimited } from '../lib/survey/rateLimit.js'
+import { loadConfig } from '../config.js'
 
 function buildSession(user, organizationName = null) {
   return {
@@ -71,6 +73,9 @@ function validateAvatarUrl(value) {
 }
 
 export async function registerAuthRoutes(app) {
+  const { rateLimitRelaxed } = loadConfig()
+  const limits = createRouteLimiters({ relaxed: rateLimitRelaxed })
+
   app.post('/api/auth/signup', async (request, reply) => {
     const { organizationName, name, username, password } = request.body ?? {}
 
@@ -129,6 +134,9 @@ export async function registerAuthRoutes(app) {
   })
 
   app.post('/api/auth/login', async (request, reply) => {
+    const limited = sendIfRateLimited(limits.login, request, reply, 'login')
+    if (limited) return limited
+
     const { username, password } = request.body ?? {}
     if (!username?.trim() || !password) {
       return reply.code(400).send({ error: 'Username and password are required.' })

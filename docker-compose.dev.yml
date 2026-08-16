@@ -6,11 +6,15 @@ services:
   postgres:
     ports:
       - '${POSTGRES_HOST_PORT:-5433}:5432'
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-rescopesurveys}
 
   api:
     environment:
       NODE_ENV: development
+      DATABASE_URL: postgresql://${POSTGRES_USER:-rescopesurveys}:${POSTGRES_PASSWORD:-rescopesurveys}@postgres:5432/${POSTGRES_DB:-rescopesurveys}
       SEED_DEFAULT_ACCOUNTS: 'true'
       RUN_PLATFORM_LIST_MIGRATION: 'true'
       REQUIRE_STRONG_JWT: 'false'
       JWT_SECRET: ${JWT_SECRET:-dev-secret-local-only-not-for-production}
+      RATE_LIMIT_RELAXED: 'true'

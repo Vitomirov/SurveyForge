@@ -249,34 +249,40 @@ export async function applyPlanChange(prisma, organizationId, targetPlanId) {
     data.status = 'active'
   }
 
-  const updated = await prisma.subscription.update({
-    where: { organizationId },
-    data,
+  const updatedAndInvoice = await prisma.$transaction(async (tx) => {
+    const updated = await tx.subscription.update({
+      where: { organizationId },
+      data,
+    })
+
+    await stripDowngradedSettings(
+      tx,
+      organizationId,
+      subscription.planId,
+      targetPlanId,
+    )
+
+    let invoice = null
+    if (plan.priceCents > 0 && isPlanUpgrade(subscription.planId, targetPlanId)) {
+      const { start, end } = defaultBillingPeriod()
+      invoice = await tx.invoice.create({
+        data: {
+          organizationId,
+          amountCents: plan.priceCents,
+          currency: updated.currency || 'USD',
+          status: 'open',
+          description: `${plan.name} plan — monthly subscription`,
+          periodStart: start,
+          periodEnd: end,
+          dueDate: end,
+        },
+      })
+    }
+
+    return { updated, invoice }
   })
 
-  await stripDowngradedSettings(
-    prisma,
-    organizationId,
-    subscription.planId,
-    targetPlanId,
-  )
-
-  let invoice = null
-  if (plan.priceCents > 0 && isPlanUpgrade(subscription.planId, targetPlanId)) {
-    const { start, end } = defaultBillingPeriod()
-    invoice = await prisma.invoice.create({
-      data: {
-        organizationId,
-        amountCents: plan.priceCents,
-        currency: updated.currency || 'USD',
-        status: 'open',
-        description: `${plan.name} plan — monthly subscription`,
-        periodStart: start,
-        periodEnd: end,
-        dueDate: end,
-      },
-    })
-  }
+  const { updated, invoice } = updatedAndInvoice
 
   const [surveyCount, userCount] = await Promise.all([
     prisma.survey.count({ where: { organizationId } }),

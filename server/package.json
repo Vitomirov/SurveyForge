@@ -13,6 +13,7 @@
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate deploy",
     "db:migrate:dev": "prisma migrate dev",
+    "migrate:platform-lists": "node scripts/migrate-platform-lists.mjs",
     "postinstall": "prisma generate"
   },
   "dependencies": {
@@ -21,7 +22,8 @@
     "@prisma/client": "^6.9.0",
     "bcrypt": "^6.0.0",
     "dotenv": "^16.6.1",
-    "fastify": "^5.3.3"
+    "fastify": "^5.3.3",
+    "isomorphic-dompurify": "^2.36.0"
   },
   "devDependencies": {
     "prisma": "^6.9.0"

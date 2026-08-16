@@ -24,9 +24,9 @@ services:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_USER: rescopesurveys
-      POSTGRES_PASSWORD: rescopesurveys
-      POSTGRES_DB: rescopesurveys
+      POSTGRES_USER: ${POSTGRES_USER:-rescopesurveys}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-rescopesurveys}
     volumes:
       - pgdata:/var/lib/postgresql/data
     # Host port is only needed for local npm dev (`docker compose -f docker-compose.yml -f docker-compose.dev.yml up postgres -d`).
@@ -47,10 +47,11 @@ services:
       postgres:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgresql://rescopesurveys:rescopesurveys@postgres:5432/rescopesurveys
+      DATABASE_URL: postgresql://${POSTGRES_USER:-rescopesurveys}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-rescopesurveys}
       PORT: 3003
       NODE_ENV: production
       JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET to a strong random value (32+ characters)}
+      JWT_EXPIRES_IN: '24h'
       SEED_DEFAULT_ACCOUNTS: 'false'
       RUN_PLATFORM_LIST_MIGRATION: 'false'
     expose:

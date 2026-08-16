@@ -5,6 +5,7 @@ import { findAccessibleSurvey } from '../lib/auth/surveyAccess.js'
 import { assignPublicPath } from '../lib/survey/surveyPublicPath.js'
 import { enforceSurveyBranding, loadOrgPlanContext } from '../lib/branding/brandEnforcement.js'
 import { assertCanCreateSurvey } from '../lib/billing/planEnforcement.js'
+import { sanitizeSurveyHtml, sanitizeSurveyItems } from '../lib/survey/sanitizeHtml.js'
 
 async function loadPlatformLists(prisma, organizationId) {
   const [clients, topics, surveyTypes] = await Promise.all([
@@ -62,21 +63,27 @@ export async function registerSurveyRoutes(app) {
     })
 
     if (existing) {
-      if (revision != null && revision !== existing.revision) {
-        return reply.code(409).send({
-          error: 'Revision conflict',
-          revision: existing.revision,
-          updatedAt: existing.updatedAt.toISOString(),
-        })
+      if (typeof revision !== 'number' || !Number.isInteger(revision)) {
+        return reply.code(400).send({ error: 'revision is required for existing surveys' })
       }
 
+      const nextSurvey = survey !== undefined ? sanitizeSurveyHtml(survey) : undefined
+      const nextItems = items !== undefined ? sanitizeSurveyItems(items) : undefined
+
       const needsPublicPath = !existing.publicPath || !existing.survey?.publicPath
-      const surveyUnchanged = survey === undefined
-        || JSON.stringify(survey) === JSON.stringify(existing.survey)
-      const itemsUnchanged = items === undefined
-        || JSON.stringify(items) === JSON.stringify(existing.items)
+      const surveyUnchanged = nextSurvey === undefined
+        || JSON.stringify(nextSurvey) === JSON.stringify(existing.survey)
+      const itemsUnchanged = nextItems === undefined
+        || JSON.stringify(nextItems) === JSON.stringify(existing.items)
 
       if (surveyUnchanged && itemsUnchanged && !needsPublicPath) {
+        if (revision !== existing.revision) {
+          return reply.code(409).send({
+            error: 'Revision conflict',
+            revision: existing.revision,
+            updatedAt: existing.updatedAt.toISOString(),
+          })
+        }
         return {
           id:         existing.id,
           revision:   existing.revision,
@@ -88,25 +95,42 @@ export async function registerSurveyRoutes(app) {
       const { clients, topics, surveyTypes } = await loadPlatformLists(app.prisma, request.organizationId)
 
       const { planId } = await loadOrgPlanContext(app.prisma, request.organizationId)
-      const rawSurvey = survey !== undefined
+      const rawSurvey = nextSurvey !== undefined
         ? enforceSurveyBranding(
-          { ...survey, id, updatedAt: new Date().toISOString() },
+          { ...nextSurvey, id, updatedAt: new Date().toISOString() },
           planId,
         )
         : { ...existing.survey, id }
       const { survey: withPath, publicPath } = await assignPublicPath(app.prisma, rawSurvey)
 
-      const surveyData = (survey !== undefined || needsPublicPath)
+      const surveyData = (nextSurvey !== undefined || needsPublicPath)
         ? normalizeSurveyPlatformIds(withPath, clients, topics, surveyTypes)
         : undefined
 
-      const updated = await app.prisma.survey.update({
-        where: { id },
+      const { count } = await app.prisma.survey.updateMany({
+        where: { id, organizationId: request.organizationId, revision },
         data: {
           ...(surveyData !== undefined ? { survey: surveyData, publicPath } : {}),
-          ...(items !== undefined ? { items } : {}),
-          revision: existing.revision + 1,
+          ...(nextItems !== undefined ? { items: nextItems } : {}),
+          revision: revision + 1,
         },
+      })
+
+      if (count === 0) {
+        const current = await app.prisma.survey.findFirst({
+          where: { id, ...surveyScope(request) },
+          select: { revision: true, updatedAt: true },
+        })
+        return reply.code(409).send({
+          error: 'Revision conflict',
+          revision: current?.revision,
+          updatedAt: current?.updatedAt?.toISOString(),
+        })
+      }
+
+      const updated = await app.prisma.survey.findFirst({
+        where: { id, organizationId: request.organizationId },
+        select: { id: true, revision: true, updatedAt: true, publicPath: true },
       })
 
       return {
@@ -139,7 +163,7 @@ export async function registerSurveyRoutes(app) {
     const { survey: withPath, publicPath } = await assignPublicPath(
       app.prisma,
       enforceSurveyBranding(
-        { ...survey, id, updatedAt: new Date().toISOString() },
+        { ...sanitizeSurveyHtml(survey), id, updatedAt: new Date().toISOString() },
         planId,
       ),
     )
@@ -153,7 +177,7 @@ export async function registerSurveyRoutes(app) {
         createdById:    request.auth.userId,
         publicPath,
         survey: surveyData,
-        items,
+        items: sanitizeSurveyItems(items),
         revision: 1,
       },
     })

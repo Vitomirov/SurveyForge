@@ -13,12 +13,22 @@ import { registerDncRoutes } from './routes/dnc.js'
 import { registerAdminRoutes } from './routes/admin.js'
 import { registerBillingRoutes, registerVendorRoutes } from './routes/billing.js'
 import { loadConfig } from './config.js'
+import { publicErrorResponse } from './lib/httpErrors.js'
+
+const BODY_LIMIT_BYTES = 2 * 1024 * 1024
 
 export async function buildApp() {
   const config = loadConfig()
 
   const app = Fastify({
     logger: config.isDev,
+    bodyLimit: BODY_LIMIT_BYTES,
+  })
+
+  app.setErrorHandler((error, request, reply) => {
+    request.log.error(error)
+    const { status, body } = publicErrorResponse(error, { isDev: config.isDev })
+    return reply.code(status).send(body)
   })
 
   await app.register(cors, {

@@ -4,9 +4,8 @@ import { buildPublicBrandingPayload } from '../lib/branding/publicBranding.js'
 import { readEmbedAllowedOrigins } from '../lib/platform/orgSettings.js'
 import { resolvePlanId } from '../../../shared/planFeatures.js'
 import { buildFrameAncestorsDirective } from '../../../shared/embedProtocol.js'
-import { createRateLimiter, clientIp } from '../lib/survey/rateLimit.js'
-
-const responseRateLimit = createRateLimiter({ windowMs: 60_000, max: 30 })
+import { createRouteLimiters, sendIfRateLimited } from '../lib/survey/rateLimit.js'
+import { loadConfig } from '../config.js'
 
 async function loadOrgBrandingContext(prisma, organizationId) {
   const [org, subscription] = await Promise.all([
@@ -49,7 +48,13 @@ async function loadLivePublicSurvey(app, id, reply) {
 }
 
 export async function registerPublicRoutes(app) {
+  const { rateLimitRelaxed } = loadConfig()
+  const limits = createRouteLimiters({ relaxed: rateLimitRelaxed })
+
   app.get('/api/public/s/:publicPath', async (request, reply) => {
+    const limited = sendIfRateLimited(limits.publicFetch, request, reply, 'public-fetch')
+    if (limited) return limited
+
     const clientDomain = clientDomainFromRequest(request)
     const row = await findPublicSurvey(app.prisma, request.params.publicPath, clientDomain)
     if (!row) return reply.code(404).send({ error: 'Survey not found' })
@@ -68,6 +73,9 @@ export async function registerPublicRoutes(app) {
   })
 
   app.get('/api/public/surveys/:id', async (request, reply) => {
+    const limited = sendIfRateLimited(limits.publicFetch, request, reply, 'public-fetch')
+    if (limited) return limited
+
     const row = await loadLivePublicSurvey(app, request.params.id, reply)
     if (!row) return
 
@@ -85,6 +93,9 @@ export async function registerPublicRoutes(app) {
   })
 
   app.get('/api/public/surveys/:id/dnc', async (request, reply) => {
+    const limited = sendIfRateLimited(limits.dnc, request, reply, 'public-dnc')
+    if (limited) return limited
+
     const row = await loadLivePublicSurvey(app, request.params.id, reply)
     if (!row) return
 
@@ -92,11 +103,8 @@ export async function registerPublicRoutes(app) {
   })
 
   app.post('/api/public/surveys/:id/responses', async (request, reply) => {
-    const ip = clientIp(request)
-    const limit = responseRateLimit(`responses:${ip}`)
-    if (!limit.allowed) {
-      return reply.code(429).send({ error: 'Too many requests. Please try again later.' })
-    }
+    const limited = sendIfRateLimited(limits.responses, request, reply, 'responses')
+    if (limited) return limited
 
     const row = await loadLivePublicSurvey(app, request.params.id, reply)
     if (!row) return
@@ -106,13 +114,22 @@ export async function registerPublicRoutes(app) {
       return reply.code(400).send({ error: 'Response entry must include id' })
     }
 
-    await upsertResponse(app, {
+    const result = await upsertResponse(app, {
       surveyId: row.id,
       organizationId: row.organizationId,
       entry,
       surveyItems: row.items || [],
     })
+    if (!result) {
+      return reply.code(400).send({ error: 'Response entry must include id and status' })
+    }
+    if (result.conflict) {
+      return reply.code(409).send({ error: 'Response id belongs to another survey' })
+    }
+    if (result.invalidStatus) {
+      return reply.code(400).send({ error: 'Invalid response status' })
+    }
 
-    return { ok: true, id: entry.id }
+    return { ok: true, id: result.row.id }
   })
 }

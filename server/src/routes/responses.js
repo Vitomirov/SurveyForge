@@ -3,6 +3,7 @@ import { normalizeResponseEntry } from '../lib/survey/responseNormalization.js'
 
 const DEFAULT_LIMIT = 50
 const MAX_LIMIT = 200
+const ALLOWED_RESPONSE_STATUSES = new Set(['partial', 'complete', 'terminated', 'dnc'])
 
 function rowToEntry(row) {
   const payload = row.payload && typeof row.payload === 'object' ? row.payload : {}
@@ -35,6 +36,7 @@ function entryToDbFields(entry, surveyId, organizationId) {
       companions:   companions ?? {},
       terminatedBy: terminatedBy ?? null,
       fingerprint:  fingerprint ?? null,
+      answerSchemaVersion: entry.answerSchemaVersion ?? 2,
     },
   }
 }
@@ -43,8 +45,19 @@ export async function upsertResponse(app, { surveyId, organizationId, entry, sur
   const normalized = normalizeResponseEntry(entry, surveyItems)
   const data = entryToDbFields(normalized, surveyId, organizationId)
   if (!data) return null
+  if (!ALLOWED_RESPONSE_STATUSES.has(data.status)) {
+    return { invalidStatus: true }
+  }
 
-  return app.prisma.response.upsert({
+  const existing = await app.prisma.response.findUnique({
+    where: { id: data.id },
+    select: { surveyId: true, organizationId: true },
+  })
+  if (existing && (existing.surveyId !== surveyId || existing.organizationId !== organizationId)) {
+    return { conflict: true }
+  }
+
+  const row = await app.prisma.response.upsert({
     where: { id: data.id },
     create: data,
     update: {
@@ -53,6 +66,7 @@ export async function upsertResponse(app, { surveyId, organizationId, entry, sur
       payload:   data.payload,
     },
   })
+  return { row }
 }
 
 export async function registerResponseRoutes(app) {
@@ -119,14 +133,23 @@ export async function registerResponseRoutes(app) {
       return reply.code(400).send({ error: 'Response entry must include id' })
     }
 
-    const row = await upsertResponse(app, {
+    const result = await upsertResponse(app, {
       surveyId: survey.id,
       organizationId: request.organizationId,
       entry,
       surveyItems: survey.items || [],
     })
+    if (!result) {
+      return reply.code(400).send({ error: 'Response entry must include id and status' })
+    }
+    if (result.conflict) {
+      return reply.code(409).send({ error: 'Response id belongs to another survey' })
+    }
+    if (result.invalidStatus) {
+      return reply.code(400).send({ error: 'Invalid response status' })
+    }
 
-    return { ok: true, id: row.id }
+    return { ok: true, id: result.row.id }
   })
 
   app.delete('/api/surveys/:id/responses/:responseId', async (request, reply) => {

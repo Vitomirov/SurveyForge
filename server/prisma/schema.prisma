@@ -88,6 +88,7 @@ model Response {
   @@index([surveyId])
   @@index([organizationId])
   @@index([surveyId, status])
+  @@index([organizationId, surveyId])
   @@map("responses")
 }
 

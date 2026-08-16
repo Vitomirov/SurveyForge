@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client'
 import { resolveClientRecord, resolveTopicRecord, resolveSurveyTypeRecord } from '../lib/platform/platformIds.js'
 import { ownerFromSurvey, CREATOR_SELECT } from '../lib/auth/surveyOwner.js'
 import { surveyScope } from '../lib/auth/authz.js'
@@ -43,11 +44,6 @@ function buildStatsMap(groups) {
   return bySurvey
 }
 
-function countQuestions(items) {
-  const list = Array.isArray(items) ? items : []
-  return list.filter(i => i?.itemType === 'question').length
-}
-
 export async function registerDashboardRoutes(app) {
   app.get('/api/dashboard', async (request) => {
     const scope = surveyScope(request)
@@ -59,7 +55,6 @@ export async function registerDashboardRoutes(app) {
       select: {
         id: true,
         survey: true,
-        items: true,
         updatedAt: true,
         createdById: true,
         createdBy: { select: CREATOR_SELECT },
@@ -68,7 +63,7 @@ export async function registerDashboardRoutes(app) {
 
     const surveyIds = rows.map(r => r.id)
 
-    const [clients, topics, surveyTypes, groups] = await Promise.all([
+    const [clients, topics, surveyTypes, groups, questionCounts] = await Promise.all([
       app.prisma.client.findMany({
         where: { organizationId: orgId },
         select: { id: true, name: true },
@@ -88,6 +83,18 @@ export async function registerDashboardRoutes(app) {
           _count: { _all: true },
         })
         : Promise.resolve([]),
+      surveyIds.length
+        ? app.prisma.$queryRaw`
+            SELECT s.id,
+              COALESCE((
+                SELECT COUNT(*)::int
+                FROM jsonb_array_elements(s.survey_items) AS elem
+                WHERE elem->>'itemType' = 'question'
+              ), 0) AS "questionCount"
+            FROM surveys s
+            WHERE s.id IN (${Prisma.join(surveyIds)})
+          `
+        : Promise.resolve([]),
     ])
 
     const statsMap = buildStatsMap(groups.map(g => ({
@@ -95,10 +102,13 @@ export async function registerDashboardRoutes(app) {
       status: g.status,
       _count: g._count._all,
     })))
+    const questionCountMap = Object.fromEntries(
+      questionCounts.map(row => [row.id, row.questionCount]),
+    )
 
     return {
       surveys: rows.map(row => ({
-        ...surveyMeta(row, countQuestions(row.items), { clients, topics, surveyTypes }),
+        ...surveyMeta(row, questionCountMap[row.id] ?? 0, { clients, topics, surveyTypes }),
         stats: statsMap[row.id] || emptyStats(),
       })),
     }

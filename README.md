@@ -367,8 +367,9 @@ Override platform owner via `PLATFORM_OWNER_USERNAME`, `PLATFORM_OWNER_EMAIL`, `
 ### Option C — Docker full stack (production)
 
 ```bash
-# Set a strong JWT secret (32+ characters) — required for production Compose
+# Set required production secrets
 export JWT_SECRET="$(openssl rand -base64 48)"
+export POSTGRES_PASSWORD="$(openssl rand -base64 24)"
 
 # Pull pre-built images
 docker compose pull && docker compose up -d
@@ -379,7 +380,7 @@ docker compose up --build -d
 
 App UI: `http://localhost:8080` (override with `WEB_HOST_PORT`).
 
-Production Compose sets `SEED_DEFAULT_ACCOUNTS=false` and `RUN_PLATFORM_LIST_MIGRATION=false` — no default admin/vendor accounts are created. Use signup to create the first organization.
+Production Compose sets `SEED_DEFAULT_ACCOUNTS=false` and `RUN_PLATFORM_LIST_MIGRATION=false` — no default admin/vendor accounts are created. Use signup to create the first organization. After deploy, run platform-list normalization on demand with `npm run migrate:platform-lists`.
 
 ### Option D — Docker full stack (development)
 
@@ -399,10 +400,12 @@ Uses development bootstrap settings (default account seeding enabled, relaxed JW
 | `PORT` | `3003` | API listen port |
 | `NODE_ENV` | `development` | Enables dev-only routes (migrate), CORS |
 | `JWT_SECRET` | `dev-secret-change-me` (dev only) | JWT signing key — **required (32+ chars) in production** |
-| `JWT_EXPIRES_IN` | `7d` | Token lifetime |
+| `JWT_EXPIRES_IN` | `7d` (dev) / `24h` (prod Compose) | Token lifetime |
+| `POSTGRES_PASSWORD` | `rescopesurveys` (dev only) | Postgres password — **required in production Compose** |
 | `SEED_DEFAULT_ACCOUNTS` | `true` in dev, `false` in prod | Bootstrap admin/vendor accounts (`server/src/lib/platform/seed.js`) |
 | `RUN_PLATFORM_LIST_MIGRATION` | `true` in dev, `false` in prod | Normalize legacy platform IDs on startup |
 | `REQUIRE_STRONG_JWT` | `true` in prod, `false` in dev override | Refuse weak or placeholder JWT secrets |
+| `RATE_LIMIT_RELAXED` | `true` in dev, `false` in prod | Multiply public/login rate limits for local testing |
 | `VITE_USE_API` | unset | Build-time flag: enable API persistence |
 | `PLATFORM_OWNER_*` | see seed.js | Platform owner bootstrap credentials (dev seed only) |
 | `WEB_HOST_PORT` | `8080` | Docker web container host port |
@@ -424,8 +427,11 @@ See [.env.example](.env.example) for a starter template.
 | `npm run check:registries` | Verify builder/taker registry parity |
 | `npm run db:migrate` | Apply Prisma migrations (production) |
 | `npm run db:migrate:dev` | Create/apply migrations (development) |
+| `npm run migrate:platform-lists` | Normalize legacy platform IDs (ops CLI; not run at prod startup) |
 | `test:phase2`–`test:phase4` | Frontend logic unit tests |
 | `test:rbac1`–`test:rbac6` | API integration tests (requires running server + Postgres) |
+| `test:config` | Dev/prod config flag and JWT validation tests |
+| `test:security` | Security integration tests (ownership, revision, XSS, rate limits) |
 | `test:track-a` | All frontend phase tests |
 
 API integration tests expect a live server at `http://127.0.0.1:3003` with a migrated database.
@@ -436,6 +442,7 @@ API integration tests expect a live server at `http://127.0.0.1:3003` with a mig
 
 - **Frontend logic tests** — pure engine tests in `scripts/phase*.test.mjs` (visibility, conditions, piping, matrix, CSV, URLs). No browser required.
 - **API integration tests** — `scripts/phase-r*.test.mjs` hit real HTTP endpoints for auth, RBAC, ownership, permissions, employees, billing.
+- **Security tests** — `npm run test:security` (`scripts/phase-security-*.test.mjs`) requires a running API.
 - **Registry check** — `scripts/check-registries.js` ensures every question type has matching builder and taker handlers.
 - **Manual QA** — [docs/SMOKE_CHECKLIST.md](docs/SMOKE_CHECKLIST.md).
 
@@ -496,11 +503,11 @@ Postgres data persists in the `pgdata` Docker volume.
 Production deployments must address:
 
 - **Set `JWT_SECRET`** to a strong random value (32+ characters) — production Compose requires it and the API refuses weak placeholders at startup.
+- **Set `POSTGRES_PASSWORD`** — production Compose interpolates it into Postgres and `DATABASE_URL`; do not ship the local default.
 - **No default seeded accounts in production** — `SEED_DEFAULT_ACCOUNTS=false` in `docker-compose.yml`; create the first org via signup.
-- **Rotate Postgres credentials** — do not use default Compose passwords in production.
 - **HTTPS** — terminate TLS at nginx or a reverse proxy.
-- **Rich text XSS** — survey author HTML is rendered via `dangerouslySetInnerHTML` in the taker; sanitize before production fielding if untrusted authors exist.
-- **Public endpoints** — live survey fetch, response submit, and DNC list are unauthenticated; rate limiting is partial (responses only).
+- **Rich text XSS** — survey description and text-block HTML are sanitized with DOMPurify on survey write.
+- **Public endpoints** — live survey fetch, response submit, and DNC list are unauthenticated; login and public routes are rate-limited (relaxed in development).
 - **Local mode** — do not deploy without `VITE_USE_API=true`; local mode stores passwords in plaintext.
 
 ---
