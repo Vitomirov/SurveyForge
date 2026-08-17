@@ -2,6 +2,7 @@ import { hashPassword } from '../lib/auth/password.js'
 import { requireRole } from '../lib/auth/authz.js'
 import { ROLES, isAdminRole, ROLE_VALUES } from '../lib/auth/roles.js'
 import { assertCanAddUser } from '../lib/billing/planEnforcement.js'
+import { revokeAllForUser } from '../lib/auth/refreshTokens.js'
 import {
   validateEmailFormat,
   assertEmailAvailable,
@@ -278,9 +279,17 @@ export async function registerPlatformRoutes(app) {
 
     if (password) {
       data.passwordHash = await hashPassword(password)
+      data.tokenVersion = { increment: 1 }
     }
 
-    const row = await app.prisma.user.update({ where: { id: existing.id }, data })
+    const passwordChanged = Boolean(password)
+    const row = passwordChanged
+      ? await app.prisma.$transaction(async (tx) => {
+          const updated = await tx.user.update({ where: { id: existing.id }, data })
+          await revokeAllForUser(tx, existing.id)
+          return updated
+        })
+      : await app.prisma.user.update({ where: { id: existing.id }, data })
     const result = { user: userResponse(row) }
     if (password) result.temporaryPassword = password
     return result

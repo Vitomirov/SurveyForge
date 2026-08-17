@@ -7,6 +7,7 @@ import {
   createRefreshToken,
   rotateRefreshToken,
   revokeRefreshToken,
+  revokeAllForUser,
   RefreshTokenError,
 } from '../lib/auth/refreshTokens.js'
 import {
@@ -30,7 +31,7 @@ function buildSession(user, organizationName = null) {
   }
 }
 
-function signToken(app, session) {
+function signToken(app, session, tokenVersion = 0) {
   // Keep JWT lean — never embed avatarUrl (base64 images blow up Authorization headers).
   return app.jwt.sign({
     userId:           session.userId,
@@ -39,12 +40,13 @@ function signToken(app, session) {
     username:         session.username,
     name:             session.name,
     role:             session.role,
+    tv:               tokenVersion,
   })
 }
 
 async function issueAuthSession(app, reply, user, organizationName = null) {
   const session = buildSession(user, organizationName)
-  const accessToken = signToken(app, session)
+  const accessToken = signToken(app, session, user.tokenVersion ?? 0)
   const { rawToken } = await createRefreshToken(app.prisma, user.id)
   setAuthCookies(reply, { accessToken, refreshToken: rawToken })
   return session
@@ -168,7 +170,7 @@ export async function registerAuthRoutes(app) {
       }
       const session = buildSession(user, user.organization?.name)
       setAuthCookies(reply, {
-        accessToken: signToken(app, session),
+        accessToken: signToken(app, session, user.tokenVersion ?? 0),
         refreshToken: rotated.rawToken,
       })
       return { session }
@@ -250,14 +252,26 @@ export async function registerAuthRoutes(app) {
         return reply.code(401).send({ error: 'Current password is incorrect.' })
       }
       data.passwordHash = await hashPassword(newPassword)
+      data.tokenVersion = { increment: 1 }
     }
 
     if (!Object.keys(data).length) {
       return reply.code(400).send({ error: 'No changes to save.' })
     }
 
-    const row = await app.prisma.user.update({ where: { id: userId }, data })
-    const session = buildSession(row, existing.organization?.name)
+    const passwordChanged = Boolean(data.passwordHash)
+    const row = passwordChanged
+      ? await app.prisma.$transaction(async (tx) => {
+          const updated = await tx.user.update({ where: { id: userId }, data })
+          await revokeAllForUser(tx, userId)
+          return updated
+        })
+      : await app.prisma.user.update({ where: { id: userId }, data })
+
+    const session = passwordChanged
+      ? await issueAuthSession(app, reply, row, existing.organization?.name)
+      : buildSession(row, existing.organization?.name)
+
     return {
       user: {
         id:        row.id,

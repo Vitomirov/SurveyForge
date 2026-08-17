@@ -74,12 +74,21 @@ export async function registerAuth(app, { jwtSecret, jwtExpiresIn, authAllowBear
         email: true,
         name: true,
         avatarUrl: true,
+        tokenVersion: true,
       },
     })
 
-    // Trust the live DB row, not the JWT snapshot — role changes and deletions
-    // take effect on the very next request.
+    // Trust the live DB row, not the JWT snapshot — role changes, password
+    // resets, and deletions take effect on the very next request.
     if (!user || user.organizationId !== payload.organizationId) {
+      return authError(reply, {
+        error: 'Session is no longer valid. Please sign in again.',
+        code: 'SESSION_INVALID',
+      })
+    }
+
+    const tokenVersion = payload.tv ?? 0
+    if (tokenVersion !== (user.tokenVersion ?? 0)) {
       return authError(reply, {
         error: 'Session is no longer valid. Please sign in again.',
         code: 'SESSION_INVALID',
