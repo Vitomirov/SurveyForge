@@ -29,7 +29,7 @@ before(async () => {
 
   const vendorLogin = await api('/api/auth/login', {
     method: 'POST',
-    body: { username: 'vendor', password: 'vendor123' },
+    body: { email: 'vendor@rescopesurveys.local', password: 'vendor123' },
   })
   assert.equal(vendorLogin.status, 200, 'vendor login should succeed (run seed)')
   vendorToken = vendorLogin.data.token
@@ -49,7 +49,7 @@ test('new org signup provisions free trial subscription', async () => {
     body: {
       organizationName: `Trial Org ${unique}`,
       name: 'Trial Admin',
-      username: `trial_${unique}`,
+      email: `trial_${unique}@test.com`,
       password: 'testpass123',
     },
   })
@@ -67,7 +67,7 @@ test('free trial enforces survey limit', async () => {
     body: {
       organizationName: `Limit Org ${unique}`,
       name: 'Limit Admin',
-      username: `limit_${unique}`,
+      email: `limit_${unique}@test.com`,
       password: 'testpass123',
     },
   })
@@ -105,7 +105,7 @@ test('free trial enforces seat limit', async () => {
     body: {
       organizationName: `Seat Org ${unique}`,
       name: 'Seat Admin',
-      username: `seat_${unique}`,
+      email: `seat_${unique}@test.com`,
       password: 'testpass123',
     },
   })
@@ -115,7 +115,7 @@ test('free trial enforces seat limit', async () => {
     method: 'POST',
     token: signup.data.token,
     body: {
-      username: `seat2_${unique}`,
+      email: `seat2_${unique}@test.com`,
       name: 'Second User',
       password: 'testpass123',
       role: 'editor',
@@ -184,7 +184,7 @@ test('vendor org is isolated — admin cannot read another org billing via vendo
     body: {
       organizationName: `Billing Other ${unique}`,
       name: 'Other Admin',
-      username: `billoth_${unique}`,
+      email: `billoth_${unique}@test.com`,
       password: 'testpass123',
     },
   })
@@ -210,7 +210,7 @@ test('org admin upgrades subscription from billing dashboard', async () => {
     body: {
       organizationName: `Upgrade Org ${unique}`,
       name: 'Upgrade Admin',
-      username: `upgr_${unique}`,
+      email: `upgr_${unique}@test.com`,
       password: 'testpass123',
     },
   })

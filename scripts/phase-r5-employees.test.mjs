@@ -29,12 +29,12 @@ before(async () => {
 })
 
 test('POST /api/platform/users returns temporaryPassword once', async () => {
-  const username = `r5new_${unique}`
+  const email = `r5new_${unique}@test.com`
   const res = await api('/api/platform/users', {
     method: 'POST',
     token: fixtures.adminToken,
     body: {
-      username,
+      email,
       password: 'temppass123',
       name: 'Temp User',
       role: 'editor',
@@ -85,7 +85,7 @@ test('admin cannot read employee from another org', async () => {
     body: {
       organizationName: `Other Org ${unique}`,
       name: 'Other Admin',
-      username: `other_${unique}`,
+      email: `other_${unique}@test.com`,
       password: 'testpass123',
     },
   })

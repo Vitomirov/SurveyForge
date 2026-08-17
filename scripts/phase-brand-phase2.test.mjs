@@ -27,7 +27,7 @@ before(async () => {
   fixtures = await provisionOrg(api, unique)
   const vendorLogin = await api('/api/auth/login', {
     method: 'POST',
-    body: { username: 'vendor', password: 'vendor123' },
+    body: { email: 'vendor@rescopesurveys.local', password: 'vendor123' },
   })
   vendorToken = vendorLogin.data.token
 

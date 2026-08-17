@@ -11,15 +11,15 @@ export function surveyId(prefix = 's_rbac') {
 
 /** Provision a fresh org with one admin and one editor; returns both tokens. */
 export async function provisionOrg(api, unique, { planId = 'starter' } = {}) {
-  const adminUsername = `rbac_adm_${unique}`
-  const editorUsername = `rbac_ed_${unique}`
+  const adminEmail = `rbac_adm_${unique}@test.com`
+  const editorEmail = `rbac_ed_${unique}@test.com`
 
   const signup = await api('/api/auth/signup', {
     method: 'POST',
     body: {
       organizationName: `RBAC Org ${unique}`,
       name: 'RBAC Admin',
-      username: adminUsername,
+      email: adminEmail,
       password: 'testpass123',
     },
   })
@@ -30,7 +30,7 @@ export async function provisionOrg(api, unique, { planId = 'starter' } = {}) {
   if (planId !== 'free_trial') {
     const vendorLogin = await api('/api/auth/login', {
       method: 'POST',
-      body: { username: 'vendor', password: 'vendor123' },
+      body: { email: 'vendor@rescopesurveys.local', password: 'vendor123' },
     })
     assert.equal(vendorLogin.status, 200, 'vendor login should succeed (run seed)')
 
@@ -52,8 +52,8 @@ export async function provisionOrg(api, unique, { planId = 'starter' } = {}) {
       editorToken: null,
       editorSession: null,
       editorUserId: null,
-      adminUsername,
-      editorUsername: null,
+      adminEmail,
+      editorEmail: null,
     }
   }
 
@@ -61,7 +61,7 @@ export async function provisionOrg(api, unique, { planId = 'starter' } = {}) {
     method: 'POST',
     token: adminToken,
     body: {
-      username: editorUsername,
+      email: editorEmail,
       password: 'testpass123',
       name: 'RBAC Editor',
       role: 'editor',
@@ -71,7 +71,7 @@ export async function provisionOrg(api, unique, { planId = 'starter' } = {}) {
 
   const editorLogin = await api('/api/auth/login', {
     method: 'POST',
-    body: { username: editorUsername, password: 'testpass123' },
+    body: { email: editorEmail, password: 'testpass123' },
   })
   assert.equal(editorLogin.status, 200)
 
@@ -81,8 +81,8 @@ export async function provisionOrg(api, unique, { planId = 'starter' } = {}) {
     editorToken: editorLogin.data.token,
     editorSession: editorLogin.data.session,
     editorUserId: created.data.user.id,
-    adminUsername,
-    editorUsername,
+    adminEmail,
+    editorEmail,
   }
 }
 

@@ -19,34 +19,49 @@ const unique = `${Date.now()}_${Math.random().toString(36).slice(2, 6)}`
 const surveyId = () => `s_r2_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`
 const api = makeApi(BASE)
 
-async function signupOrg(adminUsername) {
+async function upgradeOrg(orgId) {
+  const vendorLogin = await api('/api/auth/login', {
+    method: 'POST',
+    body: { email: 'vendor@rescopesurveys.local', password: 'vendor123' },
+  })
+  assert.equal(vendorLogin.status, 200)
+  const upgrade = await api(`/api/vendor/organizations/${orgId}/subscription`, {
+    method: 'PATCH',
+    token: vendorLogin.data.token,
+    body: { planId: 'starter', status: 'active' },
+  })
+  assert.equal(upgrade.status, 200)
+}
+
+async function signupOrg(adminEmail) {
   const res = await api('/api/auth/signup', {
     method: 'POST',
     body: {
       organizationName: `R2 Org ${unique}`,
       name: 'R2 Admin',
-      username: adminUsername,
+      email: adminEmail,
       password: 'testpass123',
     },
   })
   assert.equal(res.status, 201)
+  await upgradeOrg(res.data.session.organizationId)
   return res.data
 }
 
-async function addEditor(adminToken, username) {
+async function addEditor(adminToken, editorEmail) {
   const res = await api('/api/platform/users', {
     method: 'POST',
     token: adminToken,
-    body: { username, password: 'testpass123', name: 'R2 Editor', role: 'editor' },
+    body: { email: editorEmail, password: 'testpass123', name: 'R2 Editor', role: 'editor' },
   })
   assert.equal(res.status, 200)
   return res.data.user
 }
 
-async function login(username) {
+async function loginUser(email) {
   const res = await api('/api/auth/login', {
     method: 'POST',
-    body: { username, password: 'testpass123' },
+    body: { email, password: 'testpass123' },
   })
   assert.equal(res.status, 200)
   return res.data
@@ -71,12 +86,12 @@ before(async () => {
 })
 
 test('editor-created survey records the editor as owner', async () => {
-  const adminUser = `r2adm_${unique}`
-  const editorUser = `r2ed_${unique}`
-  const { token: adminToken } = await signupOrg(adminUser)
-  await addEditor(adminToken, editorUser)
+  const adminEmail = `r2adm_${unique}@test.com`
+  const editorEmail = `r2ed_${unique}@test.com`
+  const { token: adminToken } = await signupOrg(adminEmail)
+  await addEditor(adminToken, editorEmail)
 
-  const { token: editorToken, session: editorSession } = await login(editorUser)
+  const { token: editorToken, session: editorSession } = await loginUser(editorEmail)
   const id = surveyId()
   await createSurvey(editorToken, id, 'Editor Survey')
 
@@ -93,8 +108,8 @@ test('editor-created survey records the editor as owner', async () => {
 })
 
 test('admin-created survey records the admin as owner', async () => {
-  const adminUser = `r2adm2_${unique}`
-  const { token: adminToken, session: adminSession } = await signupOrg(adminUser)
+  const adminEmail = `r2adm2_${unique}@test.com`
+  const { token: adminToken, session: adminSession } = await signupOrg(adminEmail)
   const id = surveyId()
   await createSurvey(adminToken, id, 'Admin Survey')
 
@@ -104,12 +119,12 @@ test('admin-created survey records the admin as owner', async () => {
 })
 
 test('admin editing an editor survey does not steal ownership', async () => {
-  const adminUser = `r2adm3_${unique}`
-  const editorUser = `r2ed3_${unique}`
-  const { token: adminToken } = await signupOrg(adminUser)
-  await addEditor(adminToken, editorUser)
+  const adminEmail = `r2adm3_${unique}@test.com`
+  const editorEmail = `r2ed3_${unique}@test.com`
+  const { token: adminToken } = await signupOrg(adminEmail)
+  await addEditor(adminToken, editorEmail)
 
-  const { token: editorToken, session: editorSession } = await login(editorUser)
+  const { token: editorToken, session: editorSession } = await loginUser(editorEmail)
   const id = surveyId()
   await createSurvey(editorToken, id, 'Original Title')
 
@@ -131,12 +146,12 @@ test('admin editing an editor survey does not steal ownership', async () => {
 })
 
 test('editor dashboard lists only surveys they created', async () => {
-  const adminUser = `r2adm4_${unique}`
-  const editorUser = `r2ed4_${unique}`
-  const { token: adminToken } = await signupOrg(adminUser)
-  await addEditor(adminToken, editorUser)
+  const adminEmail = `r2adm4_${unique}@test.com`
+  const editorEmail = `r2ed4_${unique}@test.com`
+  const { token: adminToken } = await signupOrg(adminEmail)
+  await addEditor(adminToken, editorEmail)
 
-  const { token: editorToken } = await login(editorUser)
+  const { token: editorToken } = await loginUser(editorEmail)
   const editorSurveyId = surveyId()
   const adminSurveyId = surveyId()
   await createSurvey(editorToken, editorSurveyId, 'Editor Only')

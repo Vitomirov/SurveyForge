@@ -9,6 +9,13 @@ import {
   revokeRefreshToken,
   RefreshTokenError,
 } from '../lib/auth/refreshTokens.js'
+import {
+  normalizeEmail,
+  validateEmailFormat,
+  assertEmailAvailable,
+  assertUsernameAvailableInOrg,
+  deriveUsernameForOrg,
+} from '../lib/auth/userIdentity.js'
 
 function buildSession(user, organizationName = null) {
   return {
@@ -45,33 +52,6 @@ async function issueAuthSession(app, reply, user, organizationName = null) {
 
 const MAX_AVATAR_BYTES = 512 * 1024
 
-function normalizeUsername(raw) {
-  return raw?.trim() || ''
-}
-
-function emailForUsername(username) {
-  const uname = normalizeUsername(username)
-  return uname.includes('@') ? uname.toLowerCase() : `${uname.toLowerCase()}@rescopesurveys.local`
-}
-
-async function assertUsernameAvailable(prisma, username, excludeUserId = null) {
-  const uname = normalizeUsername(username)
-  if (!uname) return { ok: false, error: 'Username is required.' }
-
-  const email = emailForUsername(uname)
-  const clash = await prisma.user.findFirst({
-    where: {
-      ...(excludeUserId ? { NOT: { id: excludeUserId } } : {}),
-      OR: [
-        { username: { equals: uname, mode: 'insensitive' } },
-        { email: { equals: email, mode: 'insensitive' } },
-      ],
-    },
-  })
-  if (clash) return { ok: false, error: 'That username is already taken.' }
-  return { ok: true, username: uname, email }
-}
-
 function validateAvatarUrl(value) {
   if (value === null || value === '') return { ok: true, avatarUrl: null }
   if (typeof value !== 'string') return { ok: false, error: 'Invalid profile image.' }
@@ -92,36 +72,23 @@ export async function registerAuthRoutes(app) {
   const limits = createRouteLimiters({ relaxed: rateLimitRelaxed })
 
   app.post('/api/auth/signup', async (request, reply) => {
-    const { organizationName, name, username, password } = request.body ?? {}
+    const { organizationName, name, email, password } = request.body ?? {}
 
     if (!organizationName?.trim()) {
       return reply.code(400).send({ error: 'Organization name is required.' })
     }
-    if (!name?.trim() || !username?.trim() || !password) {
-      return reply.code(400).send({ error: 'Name, username, and password are required.' })
+    if (!name?.trim() || !email?.trim() || !password) {
+      return reply.code(400).send({ error: 'Name, email, and password are required.' })
     }
     if (password.length < 8) {
       return reply.code(400).send({ error: 'Password must be at least 8 characters.' })
     }
 
-    const uname = username.trim()
-    const email = uname.includes('@')
-      ? uname.toLowerCase()
-      : `${uname.toLowerCase()}@rescopesurveys.local`
+    const formatCheck = validateEmailFormat(email)
+    if (!formatCheck.ok) return reply.code(400).send({ error: formatCheck.error })
 
-    // Login resolves users by username/email across all orgs, so both must be
-    // globally unique for authentication to stay unambiguous.
-    const clash = await app.prisma.user.findFirst({
-      where: {
-        OR: [
-          { username: { equals: uname, mode: 'insensitive' } },
-          { email: { equals: email, mode: 'insensitive' } },
-        ],
-      },
-    })
-    if (clash) {
-      return reply.code(409).send({ error: 'That username or email is already taken.' })
-    }
+    const emailCheck = await assertEmailAvailable(app.prisma, formatCheck.email)
+    if (!emailCheck.ok) return reply.code(409).send({ error: emailCheck.error })
 
     const passwordHash = await hashPassword(password)
 
@@ -131,11 +98,12 @@ export async function registerAuthRoutes(app) {
         data: { name: organizationName.trim(), settings: {} },
       })
       await provisionOrgBilling(tx, org.id)
+      const username = await deriveUsernameForOrg(tx, org.id, emailCheck.email)
       const user = await tx.user.create({
         data: {
           organizationId: org.id,
-          username:       uname,
-          email,
+          username,
+          email:          emailCheck.email,
           passwordHash,
           name:           name.trim(),
           role:           'admin',
@@ -152,24 +120,19 @@ export async function registerAuthRoutes(app) {
     const limited = sendIfRateLimited(limits.login, request, reply, 'login')
     if (limited) return limited
 
-    const { username, password } = request.body ?? {}
-    if (!username?.trim() || !password) {
-      return reply.code(400).send({ error: 'Username and password are required.' })
+    const { email, password } = request.body ?? {}
+    if (!email?.trim() || !password) {
+      return reply.code(400).send({ error: 'Email and password are required.' })
     }
 
-    const normalized = username.trim().toLowerCase()
+    const normalized = normalizeEmail(email)
     const user = await app.prisma.user.findFirst({
-      where: {
-        OR: [
-          { username: { equals: normalized, mode: 'insensitive' } },
-          { email: { equals: normalized, mode: 'insensitive' } },
-        ],
-      },
+      where: { email: { equals: normalized, mode: 'insensitive' } },
       include: { organization: true },
     })
 
     if (!user || !(await verifyPassword(password, user.passwordHash))) {
-      return reply.code(401).send({ error: 'Invalid username or password.' })
+      return reply.code(401).send({ error: 'Invalid email or password.' })
     }
 
     const session = await issueAuthSession(app, reply, user, user.organization?.name)
@@ -260,10 +223,14 @@ export async function registerAuthRoutes(app) {
     }
 
     if (username !== undefined) {
-      const check = await assertUsernameAvailable(app.prisma, username, userId)
+      const check = await assertUsernameAvailableInOrg(
+        app.prisma,
+        organizationId,
+        username,
+        { excludeUserId: userId },
+      )
       if (!check.ok) return reply.code(409).send({ error: check.error })
       data.username = check.username
-      data.email = check.email
     }
 
     if (avatarUrl !== undefined) {

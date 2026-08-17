@@ -70,8 +70,7 @@ export function ProfileSettingsPanel({ session, profile, onSessionUpdate, onProf
     }))
   }, [profile, session])
 
-  const email = profile?.email
-    || (form.username.includes('@') ? form.username.toLowerCase() : `${form.username.toLowerCase()}@rescopesurveys.local`)
+  const email = profile?.email || session?.email || ''
 
   const previewUser = {
     name: form.name,

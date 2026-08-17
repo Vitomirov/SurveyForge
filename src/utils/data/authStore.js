@@ -10,10 +10,17 @@ import { newPrefixedId } from '@/store/id'
 const USERS_KEY   = 'sf_users'
 const SESSION_KEY = 'sf_session'
 
-export const DEFAULT_CREDENTIALS = { username: 'admin', password: 'admin123' }
+export const DEFAULT_CREDENTIALS = { email: 'admin@rescopesurveys.local', password: 'admin123' }
 
 const DEFAULT_USERS = [
-  { id: 'u_admin', username: DEFAULT_CREDENTIALS.username, password: DEFAULT_CREDENTIALS.password, role: 'admin', name: 'Admin' },
+  {
+    id: 'u_admin',
+    email: DEFAULT_CREDENTIALS.email,
+    username: 'admin',
+    password: DEFAULT_CREDENTIALS.password,
+    role: 'admin',
+    name: 'Admin',
+  },
 ]
 
 function loadUsers() {
@@ -49,12 +56,12 @@ export function getSession() {
   } catch { return null }
 }
 
-export async function login(username, password) {
+export async function login(email, password) {
   if (useApi) {
     try {
       const data = await apiFetch('/api/auth/login', {
         method: 'POST',
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({ email, password }),
       })
       writeSessionStorage(data.session)
       return { ok: true, session: data.session }
@@ -63,14 +70,16 @@ export async function login(username, password) {
     }
   }
 
+  // Local mode: match by email (or legacy username field).
   const users = loadUsers()
-  const user  = users.find(
-    u => u.username.toLowerCase() === username.toLowerCase().trim() &&
+  const normalized = email.toLowerCase().trim()
+  const user = users.find(
+    u => (u.email?.toLowerCase() === normalized || u.username?.toLowerCase() === normalized) &&
          u.password === password
   )
   if (!user) return { ok: false, error: AUTH_ERRORS.invalidCredentials }
   const session = {
-    userId: user.id, username: user.username, name: user.name,
+    userId: user.id, username: user.username || user.email, name: user.name,
     avatarUrl: user.avatarUrl || null,
     role: user.role, loginAt: new Date().toISOString(),
   }
@@ -78,12 +87,12 @@ export async function login(username, password) {
   return { ok: true, session }
 }
 
-export async function signup({ organizationName, name, username, password }) {
+export async function signup({ organizationName, name, email, password }) {
   if (useApi) {
     try {
       const data = await apiFetch('/api/auth/signup', {
         method: 'POST',
-        body: JSON.stringify({ organizationName, name, username, password }),
+        body: JSON.stringify({ organizationName, name, email, password }),
       })
       writeSessionStorage(data.session)
       return { ok: true, session: data.session }
@@ -94,11 +103,13 @@ export async function signup({ organizationName, name, username, password }) {
 
   // Local (offline) mode has no org concept — create the admin user locally.
   const users = loadUsers()
-  if (users.find(u => u.username.toLowerCase() === username.toLowerCase().trim())) {
-    return { ok: false, error: AUTH_ERRORS.usernameTakenSignup }
+  const normalized = email.toLowerCase().trim()
+  if (users.find(u => u.email?.toLowerCase() === normalized)) {
+    return { ok: false, error: AUTH_ERRORS.emailTakenSignup }
   }
+  const localPart = normalized.split('@')[0] || 'user'
   const user = {
-    id: newPrefixedId('u'), username: username.trim(), password,
+    id: newPrefixedId('u'), email: normalized, username: localPart, password,
     name: name.trim(), role: 'admin',
   }
   saveUsers([...users, user])
@@ -129,11 +140,21 @@ export async function logout() {
 // ─── User management (admin only — local mode until B4 API) ────────────────
 export function getUsers()              { return loadUsers() }
 
-export function addUser({ username, password, name, role = 'editor' }) {
+export function addUser({ email, username, password, name, role = 'editor' }) {
   const users = loadUsers()
-  if (users.find(u => u.username.toLowerCase() === username.toLowerCase()))
-    return { ok: false, error: AUTH_ERRORS.usernameTakenAdmin }
-  const newUser = { id: newPrefixedId('u'), username: username.trim(), password, name: name.trim(), role }
+  const normalized = email?.toLowerCase().trim()
+  if (normalized && users.find(u => u.email?.toLowerCase() === normalized)) {
+    return { ok: false, error: AUTH_ERRORS.emailTakenAdmin }
+  }
+  const localPart = normalized?.split('@')[0] || username?.trim() || 'user'
+  const newUser = {
+    id: newPrefixedId('u'),
+    email: normalized || `${localPart}@local.dev`,
+    username: username?.trim() || localPart,
+    password,
+    name: name.trim(),
+    role,
+  }
   saveUsers([...users, newUser])
   return { ok: true, user: newUser }
 }

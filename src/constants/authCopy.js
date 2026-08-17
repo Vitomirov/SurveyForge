@@ -14,17 +14,19 @@ export const AUTH_COPY = {
 export const AUTH_VALIDATION = {
   orgRequired:         'Please enter an organization name.',
   nameRequired:        'Please enter your full name.',
-  credentialsRequired: 'Please enter a username and password.',
+  credentialsRequired: 'Please enter an email and password.',
   passwordMinLength:   'Password must be at least 8 characters.',
   passwordsMismatch:   'Passwords do not match.',
-  loginRequired:       'Please enter both username and password.',
+  loginRequired:       'Please enter both email and password.',
 }
 
 export const AUTH_ERRORS = {
-  invalidCredentials:  'Invalid username or password.',
+  invalidCredentials:  'Invalid email or password.',
   signupFailed:        'Could not create the organization.',
+  emailTakenSignup:    'That email is already registered.',
+  emailTakenAdmin:     'That email is already registered.',
   usernameTakenSignup: 'That username is already taken.',
-  usernameTakenAdmin:  'Username already exists.',
+  usernameTakenAdmin:  'That username is already taken.',
   sessionExpired:      'Session expired. Please sign in again.',
   sessionInvalid:      'Session is no longer valid. Please sign in again.',
   forbidden:           'You don\'t have permission to do that.',
@@ -51,7 +53,7 @@ export const AUTH_PROFILE = {
   displayName:         'Display name',
   username:            'Username',
   email:               'Email',
-  emailHint:           'Used for login and notifications. Derived from your username.',
+  emailHint:           'Used to sign in. We\'ll send account notifications to this address when available.',
   profilePhoto:        'Profile photo',
   uploadPhoto:         'Upload photo',
   removePhoto:         'Remove',

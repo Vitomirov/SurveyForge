@@ -91,7 +91,7 @@ test('authz: requireRole rejects wrong role with 403', async () => {
 test('login issues a JWT with a future exp claim', async () => {
   const login = await api('/api/auth/login', {
     method: 'POST',
-    body: { username: 'admin', password: 'admin123' },
+    body: { email: 'admin@rescopesurveys.local', password: 'admin123' },
   })
   assert.equal(login.status, 200)
   const token = login.cookies.rs_access || login.data.token
@@ -104,7 +104,7 @@ test('login issues a JWT with a future exp claim', async () => {
 test('GET /api/auth/me returns the live DB role', async () => {
   const login = await api('/api/auth/login', {
     method: 'POST',
-    body: { username: 'admin', password: 'admin123' },
+    body: { email: 'admin@rescopesurveys.local', password: 'admin123' },
   })
   const me = await api('/api/auth/me', { token: login.data.token })
   assert.equal(me.status, 200)

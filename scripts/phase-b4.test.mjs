@@ -30,7 +30,7 @@ before(async () => {
   const login = await api('/api/auth/login', {
     method: 'POST',
     auth: false,
-    body: { username: 'admin', password: 'admin123' },
+    body: { email: 'admin@rescopesurveys.local', password: 'admin123' },
   })
   assert.equal(login.status, 200, 'login should succeed')
   token = login.data.token
@@ -94,7 +94,7 @@ test('user CRUD lifecycle', async () => {
   const created = await api('/api/platform/users', {
     method: 'POST',
     body: {
-      username: `b4user_${Date.now()}`,
+      email: `b4user_${Date.now()}@test.com`,
       password: 'testpass123',
       name: 'B4 Test User',
       role: 'editor',

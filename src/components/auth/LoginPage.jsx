@@ -11,7 +11,7 @@ export function LoginPage({ onLogin }) {
 
   const [organizationName, setOrganizationName] = useState('')
   const [name,     setName]     = useState('')
-  const [username, setUsername] = useState('')
+  const [email,    setEmail]    = useState('')
   const [password, setPassword] = useState('')
   const [confirm,  setConfirm]  = useState('')
   const [showPass, setShowPass] = useState(false)
@@ -35,12 +35,12 @@ export function LoginPage({ onLogin }) {
     if (isSignup) {
       if (!organizationName.trim()) { setError(AUTH_VALIDATION.orgRequired); return }
       if (!name.trim())            { setError(AUTH_VALIDATION.nameRequired); return }
-      if (!username.trim() || !password) { setError(AUTH_VALIDATION.credentialsRequired); return }
+      if (!email.trim() || !password) { setError(AUTH_VALIDATION.credentialsRequired); return }
       if (password.length < 8)     { setError(AUTH_VALIDATION.passwordMinLength); return }
       if (password !== confirm)    { setError(AUTH_VALIDATION.passwordsMismatch); return }
 
       setLoading(true)
-      const result = await signup({ organizationName, name, username, password })
+      const result = await signup({ organizationName, name, email, password })
       setLoading(false)
       if (result.ok) {
         prefetchDashboard()
@@ -50,9 +50,9 @@ export function LoginPage({ onLogin }) {
       return
     }
 
-    if (!username || !password) { setError(AUTH_VALIDATION.loginRequired); return }
+    if (!email || !password) { setError(AUTH_VALIDATION.loginRequired); return }
     setLoading(true)
-    const result = await login(username, password)
+    const result = await login(email, password)
     setLoading(false)
     if (result.ok) {
       prefetchDashboard()
@@ -111,14 +111,16 @@ export function LoginPage({ onLogin }) {
             )}
 
             <div>
-              <label className="text-xs font-semibold text-ink-500 block mb-1.5">Username</label>
+              <label className="text-xs font-semibold text-ink-500 block mb-1.5">
+                {isSignup ? 'Work email' : 'Email'}
+              </label>
               <input
-                type="text"
-                value={username}
-                onChange={e => setUsername(e.target.value)}
+                type="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
                 autoFocus={!isSignup}
-                autoComplete="username"
-                placeholder={isSignup ? 'jsmith' : DEFAULT_CREDENTIALS.username}
+                autoComplete="email"
+                placeholder={isSignup ? 'jane@company.com' : DEFAULT_CREDENTIALS.email}
                 className="input-base"
               />
             </div>
@@ -207,7 +209,7 @@ export function LoginPage({ onLogin }) {
         {/* Default credential hint — sign-in only */}
         {!isSignup && (
           <p className="text-center text-xs text-ink-300 mt-2">
-            Default: <span className="font-mono">{DEFAULT_CREDENTIALS.username}</span> / <span className="font-mono">{DEFAULT_CREDENTIALS.password}</span>
+            Default: <span className="font-mono">{DEFAULT_CREDENTIALS.email}</span> / <span className="font-mono">{DEFAULT_CREDENTIALS.password}</span>
           </p>
         )}
       </div>

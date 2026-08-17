@@ -18,6 +18,7 @@ const BASE = `http://127.0.0.1:${PORT}`
 const unique = `${Date.now()}_${Math.random().toString(36).slice(2, 6)}`
 const username = `cookie_${unique}`
 const password = 'testpass123'
+const signupEmail = `${username}@test.com`
 
 function setCookieNames(headers) {
   const list = typeof headers.getSetCookie === 'function' ? headers.getSetCookie() : []
@@ -34,7 +35,7 @@ test('login sets httpOnly cookies and JSON has session but no token', async () =
   const api = makeApi(BASE, { injectTokenFromCookie: false })
   const login = await api('/api/auth/login', {
     method: 'POST',
-    body: { username: 'admin', password: 'admin123' },
+    body: { email: 'admin@rescopesurveys.local', password: 'admin123' },
   })
   assert.equal(login.status, 200)
   assert.ok(login.data.session?.userId)
@@ -51,7 +52,7 @@ test('/api/auth/me works with cookie jar and fails without', async () => {
   const client = createCookieClient(BASE)
   const login = await client.request('/api/auth/login', {
     method: 'POST',
-    body: { username: 'admin', password: 'admin123' },
+    body: { email: 'admin@rescopesurveys.local', password: 'admin123' },
   })
   assert.equal(login.status, 200)
 
@@ -69,7 +70,7 @@ test('refresh rotates cookies and returns a session', async () => {
   const client = createCookieClient(BASE)
   await client.request('/api/auth/login', {
     method: 'POST',
-    body: { username: 'admin', password: 'admin123' },
+    body: { email: 'admin@rescopesurveys.local', password: 'admin123' },
   })
   const before = client.getCookies()
   assert.ok(before.rs_access)
@@ -90,7 +91,7 @@ test('logout clears auth cookies', async () => {
   const client = createCookieClient(BASE)
   await client.request('/api/auth/login', {
     method: 'POST',
-    body: { username: 'admin', password: 'admin123' },
+    body: { email: 'admin@rescopesurveys.local', password: 'admin123' },
   })
   const logout = await client.request('/api/auth/logout', { method: 'POST' })
   assert.equal(logout.status, 200)
@@ -106,7 +107,7 @@ test('refresh reuse returns 401 and revokes the family', async () => {
     body: {
       organizationName: `Cookie Org ${unique}`,
       name: 'Cookie Admin',
-      username,
+      email: signupEmail,
       password,
     },
   })

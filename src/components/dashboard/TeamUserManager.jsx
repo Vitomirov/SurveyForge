@@ -19,7 +19,7 @@ export function TeamUserManager({ users, setUsers, session, seatUsage, hideHeade
   const [showPass, setShowPass] = useState(false)
   const [editId, setEditId] = useState(null)
   const [query, setQuery] = useState('')
-  const [form, setForm] = useState({ username: '', password: '', name: '', role: 'editor' })
+  const [form, setForm] = useState({ email: '', username: '', password: '', name: '', role: 'editor' })
   const [error, setError] = useState('')
   const [revealed, setRevealed] = useState(null)
 
@@ -34,15 +34,19 @@ export function TeamUserManager({ users, setUsers, session, seatUsage, hideHeade
   }, [users, query])
 
   const resetForm = () => {
-    setForm({ username: '', password: '', name: '', role: 'editor' })
+    setForm({ email: '', username: '', password: '', name: '', role: 'editor' })
     setError('')
     setEditId(null)
     setShowForm(false)
   }
 
   const handleSubmit = async () => {
-    if (!form.username.trim() || !form.name.trim()) {
-      setError('Username and display name are required.')
+    if (!form.name.trim()) {
+      setError('Display name is required.')
+      return
+    }
+    if (!editId && !form.email.trim()) {
+      setError('Email is required for new users.')
       return
     }
     if (!editId && !form.password) {
@@ -59,14 +63,15 @@ export function TeamUserManager({ users, setUsers, session, seatUsage, hideHeade
         if (editId) {
           const patch = {
             name: form.name.trim(),
-            username: form.username.trim(),
             role: form.role,
           }
+          if (form.username.trim()) patch.username = form.username.trim()
           if (form.password) patch.password = form.password
           const data = await updateUserApi(editId, patch)
           setUsers(prev => prev.map(u => u.id === editId ? data.user : u))
           if (data.temporaryPassword) {
             setRevealed({
+              email: data.user.email,
               username: data.user.username,
               password: data.temporaryPassword,
               reset: true,
@@ -74,7 +79,7 @@ export function TeamUserManager({ users, setUsers, session, seatUsage, hideHeade
           }
         } else {
           const data = await createUser({
-            username: form.username.trim(),
+            email: form.email.trim(),
             password: form.password,
             name: form.name.trim(),
             role: form.role,
@@ -82,6 +87,7 @@ export function TeamUserManager({ users, setUsers, session, seatUsage, hideHeade
           setUsers(prev => [...prev, data.user])
           if (data.temporaryPassword) {
             setRevealed({
+              email: data.user.email,
               username: data.user.username,
               password: data.temporaryPassword,
               reset: false,
@@ -96,11 +102,13 @@ export function TeamUserManager({ users, setUsers, session, seatUsage, hideHeade
     }
 
     if (editId) {
-      const patch = { name: form.name.trim(), username: form.username.trim(), role: form.role }
+      const patch = { name: form.name.trim(), role: form.role }
+      if (form.username.trim()) patch.username = form.username.trim()
       if (form.password) patch.password = form.password
       setUsers(updateUser(editId, patch))
     } else {
       const result = addUser({
+        email: form.email.trim(),
         username: form.username.trim(),
         password: form.password,
         name: form.name.trim(),
@@ -117,7 +125,7 @@ export function TeamUserManager({ users, setUsers, session, seatUsage, hideHeade
 
   const startEdit = (u) => {
     setEditId(u.id)
-    setForm({ username: u.username, password: '', name: u.name, role: u.role })
+    setForm({ email: u.email || '', username: u.username || '', password: '', name: u.name, role: u.role })
     setError('')
     setShowForm(true)
   }
@@ -153,7 +161,8 @@ export function TeamUserManager({ users, setUsers, session, seatUsage, hideHeade
             {revealed.reset ? AUTH_TEAM.passwordResetOnce : AUTH_TEAM.credentialsOnce}
           </p>
           <p className="text-ink-700 font-mono text-xs break-all">
-            Username: {revealed.username}<br />
+            Email: {revealed.email}<br />
+            Username: @{revealed.username}<br />
             Password: {revealed.password}
           </p>
           <button
@@ -183,7 +192,7 @@ export function TeamUserManager({ users, setUsers, session, seatUsage, hideHeade
               onClick={() => {
                 setShowForm(true)
                 setEditId(null)
-                setForm({ username: '', password: generatePassword(), name: '', role: 'editor' })
+                setForm({ email: '', username: '', password: generatePassword(), name: '', role: 'editor' })
               }}
               className="text-xs font-medium text-brand-600 hover:text-brand-700 flex items-center gap-1 px-2.5 py-1.5 hover:bg-brand-50 border border-brand-200 rounded-lg transition-all"
             >
@@ -227,7 +236,9 @@ export function TeamUserManager({ users, setUsers, session, seatUsage, hideHeade
                     {roleLabel(u.role)}
                   </span>
                 </div>
-                <p className="text-xs text-ink-400 truncate">@{u.username}{u.email ? ` · ${u.email}` : ''}</p>
+                <p className="text-xs text-ink-400 truncate">
+                  {u.email}{u.username ? ` · @${u.username}` : ''}
+                </p>
               </div>
               <div className="flex gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all">
                 <button
@@ -272,6 +283,19 @@ export function TeamUserManager({ users, setUsers, session, seatUsage, hideHeade
               />
             </div>
             <div>
+              <label className="text-xs text-ink-500 mb-1 block">{AUTH_PROFILE.email}</label>
+              <input
+                type="email"
+                value={form.email}
+                onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
+                placeholder="jane@company.com"
+                readOnly={Boolean(editId)}
+                className={`input-base py-1.5 text-sm ${editId ? 'bg-ink-50 text-ink-500 cursor-not-allowed' : ''}`}
+              />
+            </div>
+          </div>
+          {editId && (
+            <div>
               <label className="text-xs text-ink-500 mb-1 block">{AUTH_PROFILE.username}</label>
               <input
                 type="text"
@@ -281,7 +305,7 @@ export function TeamUserManager({ users, setUsers, session, seatUsage, hideHeade
                 className="input-base py-1.5 text-sm"
               />
             </div>
-          </div>
+          )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <div>
               <label className="text-xs text-ink-500 mb-1 block">

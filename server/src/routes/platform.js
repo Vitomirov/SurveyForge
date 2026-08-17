@@ -2,6 +2,12 @@ import { hashPassword } from '../lib/auth/password.js'
 import { requireRole } from '../lib/auth/authz.js'
 import { ROLES, isAdminRole, ROLE_VALUES } from '../lib/auth/roles.js'
 import { assertCanAddUser } from '../lib/billing/planEnforcement.js'
+import {
+  validateEmailFormat,
+  assertEmailAvailable,
+  assertUsernameAvailableInOrg,
+  deriveUsernameForOrg,
+} from '../lib/auth/userIdentity.js'
 
 const newId = (prefix) => `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`
 const adminOnly = requireRole(ROLES.ADMIN)
@@ -182,32 +188,32 @@ export async function registerPlatformRoutes(app) {
   })
 
   app.post('/api/platform/users', { preHandler: adminOnly }, async (request, reply) => {
-    const { username, password, name, role = ROLES.EDITOR } = request.body ?? {}
-    if (!username?.trim() || !name?.trim() || !password) {
-      return reply.code(400).send({ error: 'Username, name, and password are required.' })
+    const { email, password, name, role = ROLES.EDITOR } = request.body ?? {}
+    if (!email?.trim() || !name?.trim() || !password) {
+      return reply.code(400).send({ error: 'Email, name, and password are required.' })
     }
     if (!ROLE_VALUES.has(role) || role === ROLES.PLATFORM_OWNER) {
       return reply.code(400).send({ error: 'Invalid role.' })
     }
 
-    const uname = username.trim()
-    const email = uname.includes('@') ? uname.toLowerCase() : `${uname.toLowerCase()}@rescopesurveys.local`
+    const formatCheck = validateEmailFormat(email)
+    if (!formatCheck.ok) return reply.code(400).send({ error: formatCheck.error })
 
-    const dup = await app.prisma.user.findFirst({
-      where: { organizationId: request.organizationId, email },
-    })
-    if (dup) return reply.code(409).send({ error: 'Username already exists.' })
+    const emailCheck = await assertEmailAvailable(app.prisma, formatCheck.email)
+    if (!emailCheck.ok) return reply.code(409).send({ error: emailCheck.error })
 
     const seatCheck = await assertCanAddUser(app.prisma, request.organizationId)
     if (!seatCheck.ok) {
       return reply.code(403).send({ error: seatCheck.error, code: seatCheck.code })
     }
 
+    const username = await deriveUsernameForOrg(app.prisma, request.organizationId, emailCheck.email)
+
     const row = await app.prisma.user.create({
       data: {
         organizationId: request.organizationId,
-        username:       uname,
-        email,
+        username,
+        email:          emailCheck.email,
         passwordHash:   await hashPassword(password),
         name:           name.trim(),
         role,
@@ -245,21 +251,14 @@ export async function registerPlatformRoutes(app) {
     if (role) data.role = role
 
     if (username !== undefined) {
-      const uname = username?.trim()
-      if (!uname) return reply.code(400).send({ error: 'Username is required.' })
-      const email = uname.includes('@') ? uname.toLowerCase() : `${uname.toLowerCase()}@rescopesurveys.local`
-      const clash = await app.prisma.user.findFirst({
-        where: {
-          NOT: { id: existing.id },
-          OR: [
-            { username: { equals: uname, mode: 'insensitive' } },
-            { email: { equals: email, mode: 'insensitive' } },
-          ],
-        },
-      })
-      if (clash) return reply.code(409).send({ error: 'Username already exists.' })
-      data.username = uname
-      data.email = email
+      const check = await assertUsernameAvailableInOrg(
+        app.prisma,
+        request.organizationId,
+        username,
+        { excludeUserId: existing.id },
+      )
+      if (!check.ok) return reply.code(409).send({ error: check.error })
+      data.username = check.username
     }
 
     if (avatarUrl !== undefined) {

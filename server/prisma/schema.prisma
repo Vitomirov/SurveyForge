@@ -45,7 +45,8 @@ model User {
   surveys          Survey[]         @relation("SurveyCreator")
   refreshTokens    RefreshToken[]
 
-  @@unique([organizationId, email])
+  @@unique([email])
+  @@unique([organizationId, username])
   @@map("users")
 }
 

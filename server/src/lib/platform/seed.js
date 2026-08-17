@@ -2,6 +2,7 @@ import { hashPassword } from '../auth/password.js'
 import { provisionOrgBilling } from '../billing/billingDefaults.js'
 import { ROLES } from '../auth/roles.js'
 
+// Dev-only legacy accounts — .local emails are not used for new signups.
 const DEFAULT_ORG_NAME = 'Default Organization'
 const PLATFORM_ORG_NAME = 'Rescope Surveys Platform'
 const ADMIN_USERNAME   = 'admin'

@@ -124,7 +124,7 @@ test('editor cannot access user management', async () => {
     method: 'POST',
     token: fixtures.editorToken,
     body: {
-      username: `hack_${unique}`,
+      email: `hack_${unique}@test.com`,
       password: 'testpass123',
       name: 'Hacker',
       role: 'admin',
