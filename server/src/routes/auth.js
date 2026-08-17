@@ -74,6 +74,9 @@ export async function registerAuthRoutes(app) {
   const limits = createRouteLimiters({ relaxed: rateLimitRelaxed })
 
   app.post('/api/auth/signup', async (request, reply) => {
+    const limited = sendIfRateLimited(limits.signup, request, reply, 'signup')
+    if (limited) return limited
+
     const { organizationName, name, email, password } = request.body ?? {}
 
     if (!organizationName?.trim()) {

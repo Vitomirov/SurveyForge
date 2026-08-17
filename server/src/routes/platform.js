@@ -193,6 +193,9 @@ export async function registerPlatformRoutes(app) {
     if (!email?.trim() || !name?.trim() || !password) {
       return reply.code(400).send({ error: 'Email, name, and password are required.' })
     }
+    if (password.length < 8) {
+      return reply.code(400).send({ error: 'Password must be at least 8 characters.' })
+    }
     if (!ROLE_VALUES.has(role) || role === ROLES.PLATFORM_OWNER) {
       return reply.code(400).send({ error: 'Invalid role.' })
     }
@@ -278,6 +281,9 @@ export async function registerPlatformRoutes(app) {
     }
 
     if (password) {
+      if (password.length < 8) {
+        return reply.code(400).send({ error: 'Password must be at least 8 characters.' })
+      }
       data.passwordHash = await hashPassword(password)
       data.tokenVersion = { increment: 1 }
     }

@@ -29,6 +29,7 @@ export function createRouteLimiters({ relaxed = false } = {}) {
   const factor = relaxed ? RELAXED_FACTOR : 1
   return {
     login: createRateLimiter({ windowMs: 60_000, max: 10 * factor }),
+    signup: createRateLimiter({ windowMs: 60_000, max: 10 * factor }),
     publicFetch: createRateLimiter({ windowMs: 60_000, max: 60 * factor }),
     dnc: createRateLimiter({ windowMs: 60_000, max: 20 * factor }),
     responses: createRateLimiter({ windowMs: 60_000, max: 30 * factor }),

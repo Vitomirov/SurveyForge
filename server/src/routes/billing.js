@@ -15,6 +15,7 @@ import {
   markOrgBillingSeen,
 } from '../lib/billing/billingNotifications.js'
 import { buildPlanChangeOptions, applyPlanChange } from '../lib/billing/changePlan.js'
+import { loadConfig } from '../config.js'
 
 const adminOnly = requireRole(ROLES.ADMIN)
 
@@ -165,6 +166,9 @@ export async function registerBillingRoutes(app) {
       return reply.code(400).send({ error: 'Domain verification not initialized.' })
     }
 
+    if (request.body?.forceVerified === true && !loadConfig().isDev) {
+      return reply.code(400).send({ error: 'forceVerified is not allowed in production.' })
+    }
     const forceVerified = request.body?.forceVerified === true
     const now = new Date().toISOString()
     const verification = normalizeDomainVerification({
