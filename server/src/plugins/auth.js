@@ -1,5 +1,5 @@
 import fastifyJwt from '@fastify/jwt'
-import { ACCESS_COOKIE } from '../lib/auth/cookies.js'
+import { ACCESS_COOKIE, REFRESH_COOKIE } from '../lib/auth/cookies.js'
 
 const PUBLIC_EXACT = new Set([
   '/api/auth/login',
@@ -40,9 +40,12 @@ export async function registerAuth(app, { jwtSecret, jwtExpiresIn, authAllowBear
 
     const token = extractAccessToken(request, authAllowBearer)
     if (!token) {
+      // Access cookie expires with the JWT (~15m). The refresh cookie lasts
+      // much longer — tell the client to rotate instead of treating this as logout.
+      const hasRefresh = Boolean(request.cookies?.[REFRESH_COOKIE])
       return authError(reply, {
-        error: 'Unauthorized',
-        code: 'UNAUTHORIZED',
+        error: hasRefresh ? 'Session expired. Please sign in again.' : 'Unauthorized',
+        code: hasRefresh ? 'TOKEN_EXPIRED' : 'UNAUTHORIZED',
       })
     }
 

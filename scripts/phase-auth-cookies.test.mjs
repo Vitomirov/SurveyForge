@@ -66,6 +66,38 @@ test('/api/auth/me works with cookie jar and fails without', async () => {
   assert.equal(unauth.status, 401)
 })
 
+test('expired access cookie with valid refresh cookie can restore the session', async () => {
+  const client = createCookieClient(BASE)
+  const login = await client.request('/api/auth/login', {
+    method: 'POST',
+    body: { email: 'admin@rescopesurveys.local', password: 'admin123' },
+  })
+  assert.equal(login.status, 200)
+  const refreshCookie = client.getCookies().rs_refresh
+  assert.ok(refreshCookie)
+
+  const api = makeApi(BASE, { injectTokenFromCookie: false })
+  const meWithoutAccess = await api('/api/auth/me', {
+    cookies: { rs_refresh: refreshCookie },
+  })
+  assert.equal(meWithoutAccess.status, 401)
+  assert.equal(meWithoutAccess.data.code, 'TOKEN_EXPIRED')
+
+  const rotated = await api('/api/auth/refresh', {
+    method: 'POST',
+    cookies: { rs_refresh: refreshCookie },
+  })
+  assert.equal(rotated.status, 200)
+  assert.ok(rotated.cookies.rs_access)
+  assert.ok(rotated.cookies.rs_refresh)
+
+  const me = await api('/api/auth/me', {
+    cookies: { rs_access: rotated.cookies.rs_access },
+  })
+  assert.equal(me.status, 200)
+  assert.equal(me.data.session.role, 'admin')
+})
+
 test('refresh rotates cookies and returns a session', async () => {
   const client = createCookieClient(BASE)
   await client.request('/api/auth/login', {

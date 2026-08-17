@@ -80,14 +80,15 @@ export async function apiFetch(path, options = {}) {
   }
 
   const isAuthPath = AUTH_PATHS.has(pathOnly(path))
-  const canRefresh = useApi
+  const expiredOrMissing = data?.code === 'TOKEN_EXPIRED' || data?.code === 'UNAUTHORIZED'
+  const shouldTryRefresh = useApi
     && res.status === 401
     && !_retry
     && !skipRefresh
     && !isAuthPath
-    && data?.code === 'TOKEN_EXPIRED'
+    && expiredOrMissing
 
-  if (canRefresh) {
+  if (shouldTryRefresh) {
     try {
       await refreshAccessToken()
       return apiFetch(path, { ...options, _retry: true })

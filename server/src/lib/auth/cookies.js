@@ -16,9 +16,12 @@ function cookieBase() {
 export function setAuthCookies(reply, { accessToken, refreshToken }) {
   const { accessTokenExpiresIn, refreshTokenExpiresIn } = loadConfig()
   const base = cookieBase()
+  const accessTtlSec = Math.floor(durationToMs(accessTokenExpiresIn, 15 * 60 * 1000) / 1000)
   reply.setCookie(ACCESS_COOKIE, accessToken, {
     ...base,
-    maxAge: Math.floor(durationToMs(accessTokenExpiresIn, 15 * 60 * 1000) / 1000),
+    // Keep the cookie slightly longer than the JWT so an expired token is still
+    // sent and can return TOKEN_EXPIRED (which triggers refresh) instead of vanishing.
+    maxAge: accessTtlSec + 60,
   })
   reply.setCookie(REFRESH_COOKIE, refreshToken, {
     ...base,
