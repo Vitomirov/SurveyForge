@@ -1,3 +1,8 @@
+/**
+ * Do-not-contact (DNC) list routes.
+ * Authenticated CRUD for per-survey email blocklists used to suppress
+ * re-contact during fieldwork.
+ */
 import { findAccessibleSurvey } from '../lib/auth/surveyAccess.js'
 
 function normalizeEmail(email) {

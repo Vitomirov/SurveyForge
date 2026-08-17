@@ -1,3 +1,8 @@
+/**
+ * HttpOnly authentication cookie helpers.
+ * Sets, clears, and reads access/refresh token cookies with secure defaults
+ * derived from server config (SameSite, Secure, TTL alignment with JWT expiry).
+ */
 import { durationToMs, loadConfig } from '../../config.js'
 
 export const ACCESS_COOKIE = 'rs_access'

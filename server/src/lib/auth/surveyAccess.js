@@ -1,3 +1,8 @@
+/**
+ * Role-scoped survey lookup.
+ * Loads a survey only when it falls within the caller's `surveyScope`, returning
+ * 404 (not 403) when missing to avoid leaking existence of other users' surveys.
+ */
 import { surveyScope } from './authz.js'
 
 /**

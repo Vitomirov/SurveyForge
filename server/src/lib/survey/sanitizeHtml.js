@@ -1,3 +1,8 @@
+/**
+ * HTML sanitization for survey content.
+ * Strips unsafe markup from survey descriptions and text-block items using
+ * DOMPurify with a restricted tag/attribute allowlist.
+ */
 import DOMPurify from 'isomorphic-dompurify'
 
 const ALLOWED_TAGS = ['b', 'i', 'u', 'strong', 'em', 'a', 'p', 'br', 'ul', 'ol', 'li', 'div', 'span']

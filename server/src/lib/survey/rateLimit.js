@@ -1,5 +1,8 @@
-/** Simple in-memory rate limiter for public endpoints. */
-
+/**
+ * In-memory rate limiting for sensitive endpoints.
+ * Sliding-window counters keyed by route + client IP. Limits are relaxed in
+ * development via config. Used by auth and public survey routes.
+ */
 const buckets = new Map()
 const RELAXED_FACTOR = 100
 

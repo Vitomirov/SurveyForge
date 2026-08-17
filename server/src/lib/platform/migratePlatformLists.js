@@ -1,3 +1,8 @@
+/**
+ * Legacy platform list ID migration.
+ * One-time startup job that rewrites stored survey metadata from legacy
+ * hardcoded IDs to current org client/topic/survey-type records.
+ */
 import { normalizeSurveyPlatformIds } from './platformIds.js'
 
 async function normalizeOrgSurveys(prisma, organizationId) {

@@ -1,3 +1,8 @@
+/**
+ * Organization settings JSON helpers.
+ * Read and patch the `organizations.settings` blob: survey domain, brand kit,
+ * embed origins, and DNS domain verification state.
+ */
 import { normalizeSurveyDomain } from '../../../../shared/surveyUrl.js'
 import { validateBrandTheme, DEFAULT_BRAND_THEME } from '../../../../shared/brandTheme.js'
 import { normalizeEmbedOrigin } from '../../../../shared/embedProtocol.js'

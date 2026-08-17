@@ -1,4 +1,8 @@
-/** Legacy hardcoded IDs from pre-database platform lists — resolve old survey metadata only. */
+/**
+ * Legacy platform list ID resolution.
+ * Maps hardcoded pre-database client/topic/survey-type IDs and slugs to current
+ * org-managed records for reads and writes of survey metadata.
+ */
 const LEGACY_CLIENT_NAMES = {
   c_dmr: 'DMR',
   c_fsi: 'FSI',

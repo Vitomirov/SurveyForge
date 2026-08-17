@@ -1,3 +1,8 @@
+/**
+ * User identity validation and uniqueness checks.
+ * Normalizes email/username input, validates format, asserts global email and
+ * per-org username availability, and derives collision-free usernames from email.
+ */
 export function normalizeEmail(raw) {
   return raw?.trim().toLowerCase() || ''
 }

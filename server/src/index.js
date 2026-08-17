@@ -1,3 +1,9 @@
+/**
+ * Server entry point.
+ * Loads environment variables, builds the Fastify app, optionally seeds default
+ * accounts and migrates legacy platform IDs, then starts listening on the
+ * configured port.
+ */
 import { config as loadEnv } from 'dotenv'
 import { dirname, resolve } from 'path'
 import { fileURLToPath } from 'url'

@@ -1,3 +1,8 @@
+/**
+ * Authorization helpers and route guards.
+ * Role checks (admin, platform owner), Fastify `preHandler` factories, and
+ * `surveyScope()` — the Prisma where-clause that limits editors to their own surveys.
+ */
 import { isAdminRole, isPlatformOwnerRole, ROLES } from './roles.js'
 
 /** True when the authenticated caller is an org admin (CEO). */

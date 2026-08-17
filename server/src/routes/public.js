@@ -1,3 +1,8 @@
+/**
+ * Public (unauthenticated) survey taker routes.
+ * Serves live survey definitions by public path or ID, returns DNC lists,
+ * accepts response submissions, and applies embed CSP headers and branding.
+ */
 import { upsertResponse } from './responses.js'
 import { clientDomainFromRequest, findPublicSurvey } from '../lib/survey/surveyPublicPath.js'
 import { buildPublicBrandingPayload } from '../lib/branding/publicBranding.js'

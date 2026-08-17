@@ -1,3 +1,8 @@
+/**
+ * Billing notification counters.
+ * Tracks unseen open invoices per organization using a `billingLastSeenAt`
+ * timestamp stored in org settings JSON.
+ */
 function settingsBillingSeenAt(settings) {
   const raw = settings?.billingLastSeenAt
   return raw ? new Date(raw) : null

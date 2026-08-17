@@ -1,3 +1,9 @@
+/**
+ * Billing and vendor administration routes.
+ * Org-admin billing overview, brand kit, domain verification, plan changes,
+ * and invoices. Vendor (platform owner) routes manage all organizations
+ * cross-tenant.
+ */
 import { requireRole, requirePlatformOwner } from '../lib/auth/authz.js'
 import { ROLES } from '../lib/auth/roles.js'
 import {

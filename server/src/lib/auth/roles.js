@@ -1,4 +1,8 @@
-/** Canonical role strings stored in `users.user_role`. */
+/**
+ * User role constants and predicates.
+ * Defines canonical role strings (admin, editor, platform_owner) stored in
+ * `users.role` and helper functions to test role membership.
+ */
 export const ROLES = {
   ADMIN:           'admin',
   EDITOR:          'editor', // UI label: "User"

@@ -1,4 +1,8 @@
-/** Dev-only: import localStorage library snapshots into Postgres. */
+/**
+ * Dev-only data migration route.
+ * Imports survey snapshots from browser localStorage into Postgres for the
+ * authenticated user's organization. Disabled in production.
+ */
 import { surveyScope } from '../lib/auth/authz.js'
 
 export async function registerMigrateRoutes(app, { isDev }) {

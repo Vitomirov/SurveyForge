@@ -1,3 +1,8 @@
+/**
+ * Subscription plan catalog and serializers.
+ * Re-exports plan definitions from shared catalog, plus helpers to serialize
+ * subscription and invoice rows for API responses.
+ */
 import { maxSurveys } from '../../../../shared/planFeatures.js'
 import { PLAN_CATALOG } from '../../../../shared/planCatalog.js'
 

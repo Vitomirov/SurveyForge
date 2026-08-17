@@ -1,3 +1,8 @@
+/**
+ * Self-service subscription plan changes.
+ * Evaluates upgrade/downgrade eligibility (seat and survey limits), applies plan
+ * switches, strips downgraded features from org settings, and creates invoices.
+ */
 import {
   canUseBrandKit,
   canUseCustomDomain,

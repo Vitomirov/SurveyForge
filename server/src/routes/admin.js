@@ -1,3 +1,8 @@
+/**
+ * Admin employee performance routes.
+ * Org-admin-only views summarizing team member survey activity, response
+ * stats, and completion rates across owned surveys.
+ */
 import { requireRole } from '../lib/auth/authz.js'
 import { ROLES } from '../lib/auth/roles.js'
 import {

@@ -1,3 +1,8 @@
+/**
+ * Fastify application factory.
+ * Registers CORS, cookies, Prisma, JWT auth, the global error handler, and
+ * all API route modules. Exported as `buildApp()` for use by index.js and tests.
+ */
 import Fastify from 'fastify'
 import cors from '@fastify/cors'
 import cookie from '@fastify/cookie'

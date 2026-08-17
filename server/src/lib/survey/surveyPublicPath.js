@@ -1,3 +1,8 @@
+/**
+ * Public survey URL path management.
+ * Assigns globally unique `publicPath` slugs, resolves surveys by path and
+ * request host (custom domain routing), and extracts client domain from headers.
+ */
 import {
   buildPublicPath,
   isPublicPathLocked,

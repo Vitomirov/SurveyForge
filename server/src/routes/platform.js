@@ -1,3 +1,8 @@
+/**
+ * Organization platform list and user management routes.
+ * CRUD for clients, topics, and survey types (admin write); team member
+ * provisioning with seat-limit checks and last-admin safeguards.
+ */
 import { hashPassword } from '../lib/auth/password.js'
 import { requireRole } from '../lib/auth/authz.js'
 import { ROLES, isAdminRole, ROLE_VALUES } from '../lib/auth/roles.js'

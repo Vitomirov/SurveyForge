@@ -1,3 +1,9 @@
+/**
+ * Authenticated survey definition routes.
+ * GET/PATCH/DELETE for individual surveys with optimistic revision locking,
+ * plan-based branding enforcement, public-path assignment, and role-scoped
+ * access (admins see all org surveys; editors see their own).
+ */
 import { normalizeSurveyPlatformIds } from '../lib/platform/platformIds.js'
 import { ownerFromSurvey, CREATOR_SELECT } from '../lib/auth/surveyOwner.js'
 import { surveyScope } from '../lib/auth/authz.js'

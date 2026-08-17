@@ -1,3 +1,9 @@
+/**
+ * Authentication and session routes.
+ * Handles signup, login, logout, token refresh, and self-service profile
+ * updates. Issues JWT access tokens and rotating refresh tokens via HttpOnly
+ * cookies.
+ */
 import { verifyPassword, hashPassword } from '../lib/auth/password.js'
 import { provisionOrgBilling } from '../lib/billing/billingDefaults.js'
 import { createRouteLimiters, sendIfRateLimited } from '../lib/survey/rateLimit.js'

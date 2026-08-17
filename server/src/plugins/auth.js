@@ -1,3 +1,9 @@
+/**
+ * JWT authentication plugin.
+ * Verifies access tokens from cookies (or Bearer header in dev), reloads the
+ * live user row from the database, and attaches `request.auth` on protected
+ * /api routes. Public auth and /api/public/* paths are excluded.
+ */
 import fastifyJwt from '@fastify/jwt'
 import { ACCESS_COOKIE, REFRESH_COOKIE } from '../lib/auth/cookies.js'
 

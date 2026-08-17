@@ -1,3 +1,8 @@
+/**
+ * Subscription plan limit enforcement.
+ * Pre-flight checks before creating surveys or adding team members — compares
+ * current usage against plan seat and survey caps.
+ */
 import { maxSurveys } from '../../../../shared/planFeatures.js'
 import { ensureOrgBilling } from './billingDefaults.js'
 

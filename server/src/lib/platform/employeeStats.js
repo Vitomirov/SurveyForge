@@ -1,3 +1,8 @@
+/**
+ * Employee performance aggregation helpers.
+ * Pure functions that build response stat maps, survey status counts, and
+ * per-employee summary objects for the admin dashboard routes.
+ */
 function emptyResponseStats() {
   return { total: 0, complete: 0, terminated: 0, partial: 0 }
 }

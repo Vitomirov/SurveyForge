@@ -1,3 +1,9 @@
+/**
+ * Dashboard listing route.
+ * Returns all surveys visible to the caller with metadata (client, topic,
+ * type names), per-survey response stats, and question counts for the home
+ * dashboard view.
+ */
 import { Prisma } from '@prisma/client'
 import { resolveClientRecord, resolveTopicRecord, resolveSurveyTypeRecord } from '../lib/platform/platformIds.js'
 import { ownerFromSurvey, CREATOR_SELECT } from '../lib/auth/surveyOwner.js'

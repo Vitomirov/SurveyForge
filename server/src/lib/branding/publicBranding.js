@@ -1,3 +1,8 @@
+/**
+ * Public survey branding payload builder.
+ * Merges org brand kit with per-survey theme overrides and computes which
+ * platform-branding flags apply for anonymous survey takers.
+ */
 import { mergeBrandThemes, DEFAULT_BRAND_THEME } from '../../../../shared/brandTheme.js'
 import {
   canHidePlatformBranding,

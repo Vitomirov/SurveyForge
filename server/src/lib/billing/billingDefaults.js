@@ -1,3 +1,8 @@
+/**
+ * Default subscription provisioning.
+ * Ensures every organization has a trial subscription row on first access —
+ * idempotent create used during signup and billing route handlers.
+ */
 import { DEFAULT_PLAN_ID } from '../../../../shared/planFeatures.js'
 import { defaultTrialPeriod, planById } from './billingPlans.js'
 

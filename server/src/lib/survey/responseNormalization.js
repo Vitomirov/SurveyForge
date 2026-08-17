@@ -1,7 +1,8 @@
-// ─── Response payload normalization ─────────────────────────────────────────
-// Matrix answers are stored as structured objects: { [rowId]: columnId | columnId[] }.
-// Coerces legacy string values and validates shape before persisting to JSONB.
-
+/**
+ * Response payload normalization before persistence.
+ * Coerces legacy answer shapes (especially matrix questions) into the current
+ * JSONB schema and stamps `answerSchemaVersion` on each entry.
+ */
 import { normalizeMatrixAnswer } from '../../../../shared/matrixAnswer.js'
 
 /**

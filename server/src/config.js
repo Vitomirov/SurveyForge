@@ -1,3 +1,8 @@
+/**
+ * Environment configuration loader.
+ * Parses process.env into a typed config object (port, JWT, CORS, cookie flags,
+ * dev toggles) and validates JWT secrets when required for production.
+ */
 const DEFAULT_PORT = 3003
 const DEFAULT_ACCESS_TOKEN_EXPIRES_IN = '15m'
 const DEFAULT_REFRESH_TOKEN_EXPIRES_IN = '30d'

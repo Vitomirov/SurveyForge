@@ -1,4 +1,8 @@
-/** Owner fields attached to survey API responses. */
+/**
+ * Survey owner metadata for API responses.
+ * Maps Prisma survey rows to `ownerId` / `ownerName` fields and defines the
+ * Prisma select fragment for joined creator user data.
+ */
 export function ownerFromSurvey(row) {
   const user = row.createdBy
   return {

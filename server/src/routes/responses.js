@@ -1,3 +1,8 @@
+/**
+ * Survey response routes (authenticated).
+ * Lists, creates, and deletes response entries for surveys the caller can
+ * access. Exports `upsertResponse()` shared by the public response endpoint.
+ */
 import { findAccessibleSurvey } from '../lib/auth/surveyAccess.js'
 import { normalizeResponseEntry } from '../lib/survey/responseNormalization.js'
 

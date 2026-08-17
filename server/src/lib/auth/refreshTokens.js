@@ -1,3 +1,8 @@
+/**
+ * Refresh token lifecycle management.
+ * Creates, rotates, and revokes opaque refresh tokens stored as SHA-256 hashes.
+ * Detects token reuse within a family and revokes the entire family on theft.
+ */
 import { createHash, randomBytes, randomUUID } from 'node:crypto'
 import { durationToMs, loadConfig } from '../../config.js'
 

@@ -1,3 +1,8 @@
+/**
+ * Subscription plan branding enforcement.
+ * Strips or validates survey themes, org brand kits, and embed origins based on
+ * the organization's current plan tier.
+ */
 import {
   canUseBrandKit,
   canUseSurveyThemeOverrides,

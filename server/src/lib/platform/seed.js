@@ -1,3 +1,8 @@
+/**
+ * Development database seeding.
+ * Idempotently creates default admin and platform-owner organizations with
+ * billing rows and credentials for local development (controlled by config).
+ */
 import { hashPassword } from '../auth/password.js'
 import { provisionOrgBilling } from '../billing/billingDefaults.js'
 import { ROLES } from '../auth/roles.js'
