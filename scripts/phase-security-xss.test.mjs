@@ -9,7 +9,7 @@ import { readFileSync } from 'node:fs'
 import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { makeApi, provisionOrg, surveyId } from './lib/rbacFixtures.mjs'
-import { sanitizeHtml } from '../server/src/lib/survey/sanitizeHtml.js'
+import { sanitizeHtml, sanitizeSurveyHtml, sanitizeSurveyItems } from '../server/src/lib/survey/sanitizeHtml.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const rootEnv = readFileSync(resolve(__dirname, '../.env'), 'utf8')
@@ -30,6 +30,33 @@ test('sanitizeHtml strips script tags and keeps formatting', () => {
   assert.equal(cleaned.includes('alert(1)'), false)
   assert.match(cleaned, /<b>ok<\/b>/)
   assert.match(cleaned, /href="https:\/\/example.com"/)
+})
+
+test('sanitizeHtml strips event handlers and javascript URLs', () => {
+  const cleaned = sanitizeHtml('<a href="javascript:alert(1)" onclick="alert(1)">x</a><img src=x onerror=alert(1)>')
+  assert.equal(cleaned.toLowerCase().includes('javascript:'), false)
+  assert.equal(cleaned.toLowerCase().includes('onclick'), false)
+  assert.equal(cleaned.toLowerCase().includes('onerror'), false)
+})
+
+test('sanitizeSurveyHtml only sanitizes description', () => {
+  const out = sanitizeSurveyHtml({
+    title: '<script>t</script>',
+    description: '<script>d</script><b>desc</b>',
+  })
+  assert.equal(out.title, '<script>t</script>')
+  assert.equal(out.description.includes('<script>'), false)
+  assert.match(out.description, /<b>desc<\/b>/)
+})
+
+test('sanitizeSurveyItems only sanitizes text_block content', () => {
+  const out = sanitizeSurveyItems([
+    { id: 'q1', itemType: 'single_choice', title: '<script>t</script>' },
+    { id: 'tb1', itemType: 'text_block', content: '<script>c</script><i>hi</i>' },
+  ])
+  assert.equal(out[0].title, '<script>t</script>')
+  assert.equal(out[1].content.includes('<script>'), false)
+  assert.match(out[1].content, /<i>hi<\/i>/)
 })
 
 test('survey PATCH sanitizes description and text_block content', async () => {
@@ -70,4 +97,8 @@ test('survey PATCH sanitizes description and text_block content', async () => {
   assert.equal(pub.status, 200)
   assert.equal(pub.data.survey.description.includes('<script>'), false)
   assert.match(pub.data.survey.description, /<b>safe<\/b>/)
+  const pubBlock = pub.data.items.find(item => item.id === 'tb1')
+  assert.ok(pubBlock)
+  assert.equal((pubBlock.content || '').toLowerCase().includes('onerror'), false)
+  assert.match(pubBlock.content, /<i>hello<\/i>/)
 })

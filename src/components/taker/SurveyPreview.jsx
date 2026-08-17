@@ -18,6 +18,7 @@ import { prefetchModule, prefetchCommonQuestions } from '@/utils/routing/routePr
 import { usePageNavigationLock } from '@/hooks/usePageNavigationLock'
 import { useEmbedMessaging } from '@/hooks/useEmbedMessaging'
 import { brandThemeToCssVars, ensureBrandFontLoaded } from '@shared/brandTheme.js'
+import { sanitizeHtml } from '@/utils/sanitizeHtml'
 import { APP_NAME } from '@/constants/branding'
 import { QUESTION_LOADERS } from './questions/questionLoaders'
 import { QuestionRenderer } from './questions'
@@ -409,7 +410,7 @@ export function SurveyPreview({ survey, items, onClose, isPublic = false, isEmbe
                       )}
                       {item.content && (
                         <div className="rte-content text-ink-700 text-sm leading-relaxed"
-                          dangerouslySetInnerHTML={{ __html: piped.content }} />
+                          dangerouslySetInnerHTML={{ __html: sanitizeHtml(piped.content) }} />
                       )}
                       {!item.title && !item.image && !item.content && (
                         <p className="text-ink-300 italic text-sm">Empty text block</p>

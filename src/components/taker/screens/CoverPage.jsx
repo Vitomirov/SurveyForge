@@ -1,4 +1,5 @@
 import { DEFAULT_START_BUTTON_TEXT, DEFAULT_SURVEY_TITLE } from '@/constants/surveyDefaults'
+import { sanitizeHtml } from '@/utils/sanitizeHtml'
 
 export function CoverPage({ survey, onStart, isPublic = false }) {
   const logoJustify =
@@ -32,7 +33,7 @@ export function CoverPage({ survey, onStart, isPublic = false }) {
         {survey?.description && (
           <div
             className="rte-content text-ink-600 leading-relaxed mb-8"
-            dangerouslySetInnerHTML={{ __html: survey.description }}
+            dangerouslySetInnerHTML={{ __html: sanitizeHtml(survey.description) }}
           />
         )}
 

@@ -3,6 +3,7 @@ import {
   Bold, Italic, Underline, List, ListOrdered,
   AlignLeft, AlignCenter, AlignRight, Eraser,
 } from 'lucide-react'
+import { sanitizeHtml } from '@/utils/sanitizeHtml'
 
 function ToolBtn({ icon: Icon, onClick, title, active }) {
   return (
@@ -34,16 +35,17 @@ function ToolBtn({ icon: Icon, onClick, title, active }) {
 export function RichTextEditor({ value, onChange, placeholder = 'Start typing…' }) {
   const editorRef        = useRef(null)
   const lastEmittedRef    = useRef(value || '')
-  const [initialHtml]     = useState(value || '') // frozen at mount on purpose
+  const [initialHtml]     = useState(() => sanitizeHtml(value || '')) // frozen at mount on purpose
   const [isEmpty, setIsEmpty] = useState(!value || value === '<br>')
 
   // Sync external value changes (not ones that originated from typing here)
   useEffect(() => {
     if (!editorRef.current) return
     if (value !== lastEmittedRef.current && document.activeElement !== editorRef.current) {
-      editorRef.current.innerHTML = value || ''
-      lastEmittedRef.current = value || ''
-      setIsEmpty(!value || value === '<br>')
+      const cleaned = sanitizeHtml(value || '')
+      editorRef.current.innerHTML = cleaned
+      lastEmittedRef.current = cleaned
+      setIsEmpty(!cleaned || cleaned === '<br>')
     }
   }, [value])
 
@@ -64,6 +66,13 @@ export function RichTextEditor({ value, onChange, placeholder = 'Start typing…
     editorRef.current?.focus()
     document.execCommand('removeFormat')
     document.execCommand('formatBlock', false, 'div')
+    emit()
+  }
+
+  const handlePaste = (e) => {
+    e.preventDefault()
+    const raw = e.clipboardData.getData('text/html') || e.clipboardData.getData('text/plain')
+    document.execCommand('insertHTML', false, sanitizeHtml(raw))
     emit()
   }
 
@@ -93,6 +102,7 @@ export function RichTextEditor({ value, onChange, placeholder = 'Start typing…
           suppressContentEditableWarning
           onInput={emit}
           onBlur={emit}
+          onPaste={handlePaste}
           className="rte-content min-h-[72px] max-h-64 overflow-y-auto px-3 py-2.5 text-sm text-ink-700 outline-none"
           dangerouslySetInnerHTML={{ __html: initialHtml }}
         />
