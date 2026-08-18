@@ -4,7 +4,7 @@
 
 import { useApi } from '@/config/api'
 import {
-  fetchDNCList, fetchPublicDNCList, importDNC, clearDNCApi, removeDNCApi,
+  fetchDNCList, checkPublicDNC, importDNC, clearDNCApi, removeDNCApi,
 } from '@/api/survey/dnc'
 import { ApiError } from '@/api/client'
 
@@ -20,12 +20,10 @@ export function loadDNCList(surveyId) {
   } catch { return [] }
 }
 
-export async function loadDNCListAsync(surveyId, { publicMode = false } = {}) {
+export async function loadDNCListAsync(surveyId) {
   if (!useApi) return loadDNCList(surveyId)
   try {
-    const data = publicMode
-      ? await fetchPublicDNCList(surveyId)
-      : await fetchDNCList(surveyId)
+    const data = await fetchDNCList(surveyId)
     dncCache.set(surveyId, data.emails || [])
   } catch (err) {
     // New drafts are not persisted yet — treat as an empty exclusion list.
@@ -39,14 +37,18 @@ export async function loadDNCListAsync(surveyId, { publicMode = false } = {}) {
 }
 
 // ─── Check ─────────────────────────────────────────────────────────────────
-/** Async DNC check — ensures API cache is loaded before matching. */
+/** Async DNC check — uses public check endpoint or authenticated list cache. */
 export async function isOnDNCListAsync(surveyId, email, { publicMode = false } = {}) {
   if (!email || !surveyId) return false
   const normalised = String(email).toLowerCase().trim()
   if (!normalised || !normalised.includes('@')) return false
-  const list = useApi
-    ? await loadDNCListAsync(surveyId, { publicMode })
-    : loadDNCList(surveyId)
+
+  if (useApi && publicMode) {
+    const data = await checkPublicDNC(surveyId, normalised)
+    return data.onList === true
+  }
+
+  const list = useApi ? await loadDNCListAsync(surveyId) : loadDNCList(surveyId)
   return list.includes(normalised)
 }
 

@@ -4,6 +4,7 @@
  * access. Exports `upsertResponse()` shared by the public response endpoint.
  */
 import { findAccessibleSurvey } from '../lib/auth/surveyAccess.js'
+import { resolveDncStatus } from '../lib/survey/dncCheck.js'
 import { normalizeResponseEntry } from '../lib/survey/responseNormalization.js'
 
 const DEFAULT_LIMIT = 50
@@ -61,6 +62,13 @@ export async function upsertResponse(app, { surveyId, organizationId, entry, sur
   if (existing && (existing.surveyId !== surveyId || existing.organizationId !== organizationId)) {
     return { conflict: true }
   }
+
+  data.status = await resolveDncStatus(app.prisma, {
+    surveyId,
+    entry: normalized,
+    surveyItems,
+    status: data.status,
+  })
 
   const row = await app.prisma.response.upsert({
     where: { id: data.id },

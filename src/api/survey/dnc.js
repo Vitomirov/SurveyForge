@@ -4,9 +4,12 @@ export async function fetchDNCList(surveyId) {
   return apiFetch(`/api/surveys/${encodeURIComponent(surveyId)}/dnc`)
 }
 
-/** Unauthenticated read for live public take route (#/take/:id). */
-export async function fetchPublicDNCList(surveyId) {
-  return apiFetch(`/api/public/surveys/${encodeURIComponent(surveyId)}/dnc`)
+/** Unauthenticated single-email check for live public take route. */
+export async function checkPublicDNC(surveyId, email) {
+  return apiFetch(`/api/public/surveys/${encodeURIComponent(surveyId)}/dnc/check`, {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+  })
 }
 
 export async function importDNC(surveyId, emails) {

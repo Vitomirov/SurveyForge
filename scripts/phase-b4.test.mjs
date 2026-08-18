@@ -147,7 +147,7 @@ test('DNC import, list, remove, clear', async () => {
   assert.equal(cleared.status, 200)
 })
 
-test('public DNC list for live survey (no auth)', async () => {
+test('public DNC check for live survey (no auth)', async () => {
   const email = 'public-dnc@example.com'
 
   await api(`/api/surveys/${surveyId}/dnc`, { method: 'DELETE' })
@@ -159,10 +159,18 @@ test('public DNC list for live survey (no auth)', async () => {
   const noAuth = await api(`/api/surveys/${surveyId}/dnc`, { auth: false })
   assert.equal(noAuth.status, 401)
 
-  const pub = await api(`/api/public/surveys/${surveyId}/dnc`, { auth: false })
-  // 404 when survey is not live; 200 with emails when live
+  const oldList = await api(`/api/public/surveys/${surveyId}/dnc`, { auth: false })
+  assert.equal(oldList.status, 404, 'full-list GET should be removed')
+
+  const pub = await api(`/api/public/surveys/${surveyId}/dnc/check`, {
+    method: 'POST',
+    auth: false,
+    body: { email },
+  })
+  // 404 when survey is not live; 200 with onList when live
   if (pub.status === 200) {
-    assert.ok(pub.data.emails.includes(email))
+    assert.equal(pub.data.onList, true)
+    assert.equal(pub.data.emails, undefined)
   } else {
     assert.equal(pub.status, 404)
   }

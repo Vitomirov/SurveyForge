@@ -1,6 +1,6 @@
 /**
  * Public (unauthenticated) survey taker routes.
- * Serves live survey definitions by public path or ID, returns DNC lists,
+ * Serves live survey definitions by public path or ID, DNC email checks,
  * accepts response submissions, and applies embed CSP headers and branding.
  */
 import { upsertResponse } from './responses.js'
@@ -11,6 +11,7 @@ import { resolvePlanId } from '../../../shared/planFeatures.js'
 import { buildFrameAncestorsDirective } from '../../../shared/embedProtocol.js'
 import { createRouteLimiters, sendIfRateLimited } from '../lib/survey/rateLimit.js'
 import { loadConfig } from '../config.js'
+import { isEmailOnDncList, normalizeEmail } from '../lib/survey/dncCheck.js'
 
 async function loadOrgBrandingContext(prisma, organizationId) {
   const [org, subscription] = await Promise.all([
@@ -33,14 +34,6 @@ function applyEmbedSecurityHeaders(reply, { isEmbed, embedOrigins }) {
   if (!isEmbed) return
   const directive = buildFrameAncestorsDirective(embedOrigins)
   reply.header('Content-Security-Policy', `frame-ancestors ${directive}`)
-}
-
-async function dncEmailsForSurvey(prisma, surveyRow) {
-  const rows = await prisma.dncEntry.findMany({
-    where: { surveyId: surveyRow.id },
-    orderBy: { email: 'asc' },
-  })
-  return rows.map(r => r.email)
 }
 
 async function loadLivePublicSurvey(app, id, reply) {
@@ -97,14 +90,20 @@ export async function registerPublicRoutes(app) {
     }
   })
 
-  app.get('/api/public/surveys/:id/dnc', async (request, reply) => {
+  app.post('/api/public/surveys/:id/dnc/check', async (request, reply) => {
     const limited = sendIfRateLimited(limits.dnc, request, reply, 'public-dnc')
     if (limited) return limited
 
     const row = await loadLivePublicSurvey(app, request.params.id, reply)
     if (!row) return
 
-    return { emails: await dncEmailsForSurvey(app.prisma, row) }
+    const email = normalizeEmail(request.body?.email)
+    if (!email || !email.includes('@')) {
+      return reply.code(400).send({ error: 'Body must include a valid email' })
+    }
+
+    const onList = await isEmailOnDncList(app.prisma, row.id, email)
+    return { onList }
   })
 
   app.post('/api/public/surveys/:id/responses', async (request, reply) => {

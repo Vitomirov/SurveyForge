@@ -71,8 +71,8 @@ export function SurveyPreview({ survey, items, onClose, isPublic = false, isEmbe
   }, [fpEnabled])
 
   useEffect(() => {
-    if (!survey?.id || !useApi) return
-    loadDNCListAsync(survey.id, { publicMode: isPublic })
+    if (!survey?.id || !useApi || isPublic) return
+    loadDNCListAsync(survey.id)
       .catch(err => console.error('Failed to load DNC list', err))
   }, [survey?.id, isPublic])
 
