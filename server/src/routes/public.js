@@ -13,21 +13,38 @@ import { createRouteLimiters, sendIfRateLimited } from '../lib/survey/rateLimit.
 import { loadConfig } from '../config.js'
 import { isEmailOnDncList, normalizeEmail } from '../lib/survey/dncCheck.js'
 
-async function loadOrgBrandingContext(prisma, organizationId) {
-  const [org, subscription] = await Promise.all([
-    prisma.organization.findUnique({
-      where: { id: organizationId },
-      select: { settings: true },
-    }),
-    prisma.subscription.findUnique({
-      where: { organizationId },
-      select: { planId: true },
-    }),
-  ])
-  return {
-    settings: org?.settings,
-    planId: resolvePlanId(subscription?.planId),
-  }
+const LIVE_SURVEY_SELECT = {
+  id: true,
+  organizationId: true,
+  survey: true,
+  items: true,
+  revision: true,
+}
+
+async function loadOrgBrandingContext(app, organizationId) {
+  const cached = app.cache.getOrgBranding(organizationId)
+  if (cached) return cached
+
+  return app.cache.loadOnce(`org:${organizationId}`, async () => {
+    const hit = app.cache.getOrgBranding(organizationId)
+    if (hit) return hit
+    const [org, subscription] = await Promise.all([
+      app.prisma.organization.findUnique({
+        where: { id: organizationId },
+        select: { settings: true },
+      }),
+      app.prisma.subscription.findUnique({
+        where: { organizationId },
+        select: { planId: true },
+      }),
+    ])
+    const value = {
+      settings: org?.settings,
+      planId: resolvePlanId(subscription?.planId),
+    }
+    app.cache.setOrgBranding(organizationId, value)
+    return value
+  })
 }
 
 function applyEmbedSecurityHeaders(reply, { isEmbed, embedOrigins }) {
@@ -36,13 +53,71 @@ function applyEmbedSecurityHeaders(reply, { isEmbed, embedOrigins }) {
   reply.header('Content-Security-Policy', `frame-ancestors ${directive}`)
 }
 
+function publicSurveyPayload(row, branding) {
+  return {
+    survey: row.survey,
+    items:  row.items,
+    branding,
+  }
+}
+
 async function loadLivePublicSurvey(app, id, reply) {
-  const row = await app.prisma.survey.findUnique({ where: { id } })
+  const cached = app.cache.getLiveSurvey(id)
+  if (cached) {
+    if (cached.survey?.status !== 'live') {
+      reply.code(404).send({ error: 'Survey not found' })
+      return null
+    }
+    return cached
+  }
+
+  const row = await app.cache.loadOnce(`survey:${id}`, async () => {
+    const hit = app.cache.getLiveSurvey(id)
+    if (hit) return hit
+    const loaded = await app.prisma.survey.findUnique({
+      where: { id },
+      select: {
+        ...LIVE_SURVEY_SELECT,
+        organization: {
+          select: {
+            settings: true,
+            subscription: { select: { planId: true } },
+          },
+        },
+      },
+    })
+    if (loaded?.organization) {
+      app.cache.setOrgBranding(loaded.organizationId, {
+        settings: loaded.organization.settings,
+        planId: resolvePlanId(loaded.organization.subscription?.planId),
+      })
+    }
+    const row = loaded
+      ? {
+        id: loaded.id,
+        organizationId: loaded.organizationId,
+        survey: loaded.survey,
+        items: loaded.items,
+        revision: loaded.revision,
+      }
+      : null
+    if (row?.survey?.status === 'live') app.cache.setLiveSurvey(id, row)
+    return row
+  })
   if (!row || row.survey?.status !== 'live') {
     reply.code(404).send({ error: 'Survey not found' })
     return null
   }
   return row
+}
+
+async function sendPublicSurvey(app, request, reply, row) {
+  const isEmbed = request.query?.embed === '1' || request.query?.embed === 'true'
+  const { settings, planId } = await loadOrgBrandingContext(app, row.organizationId)
+  const branding = buildPublicBrandingPayload(settings, row.survey, planId)
+  const embedOrigins = readEmbedAllowedOrigins(settings)
+  applyEmbedSecurityHeaders(reply, { isEmbed, embedOrigins })
+  return publicSurveyPayload(row, branding)
 }
 
 export async function registerPublicRoutes(app) {
@@ -57,17 +132,14 @@ export async function registerPublicRoutes(app) {
     const row = await findPublicSurvey(app.prisma, request.params.publicPath, clientDomain)
     if (!row) return reply.code(404).send({ error: 'Survey not found' })
 
-    const isEmbed = request.query?.embed === '1' || request.query?.embed === 'true'
-    const { settings, planId } = await loadOrgBrandingContext(app.prisma, row.organizationId)
-    const branding = buildPublicBrandingPayload(settings, row.survey, planId)
-    const embedOrigins = readEmbedAllowedOrigins(settings)
-    applyEmbedSecurityHeaders(reply, { isEmbed, embedOrigins })
-
-    return {
+    app.cache.setLiveSurvey(row.id, {
+      id: row.id,
+      organizationId: row.organizationId,
       survey: row.survey,
-      items:  row.items,
-      branding,
-    }
+      items: row.items,
+      revision: row.revision,
+    })
+    return sendPublicSurvey(app, request, reply, row)
   })
 
   app.get('/api/public/surveys/:id', async (request, reply) => {
@@ -77,17 +149,7 @@ export async function registerPublicRoutes(app) {
     const row = await loadLivePublicSurvey(app, request.params.id, reply)
     if (!row) return
 
-    const isEmbed = request.query?.embed === '1' || request.query?.embed === 'true'
-    const { settings, planId } = await loadOrgBrandingContext(app.prisma, row.organizationId)
-    const branding = buildPublicBrandingPayload(settings, row.survey, planId)
-    const embedOrigins = readEmbedAllowedOrigins(settings)
-    applyEmbedSecurityHeaders(reply, { isEmbed, embedOrigins })
-
-    return {
-      survey: row.survey,
-      items:  row.items,
-      branding,
-    }
+    return sendPublicSurvey(app, request, reply, row)
   })
 
   app.post('/api/public/surveys/:id/dnc/check', async (request, reply) => {

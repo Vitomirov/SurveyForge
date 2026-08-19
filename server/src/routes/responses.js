@@ -85,29 +85,38 @@ export async function upsertResponse(app, { surveyId, organizationId, entry, sur
 export async function registerResponseRoutes(app) {
   app.get('/api/surveys/:id/responses/stats', async (request, reply) => {
     const survey = await findAccessibleSurvey(
-      app.prisma, request, request.params.id, reply
+      app.prisma, request, request.params.id, reply, { id: true }
     )
     if (!survey) return
 
-    const groups = await app.prisma.response.groupBy({
-      by: ['status'],
-      where: { surveyId: survey.id, organizationId: request.organizationId },
-      _count: { _all: true },
+    const cached = app.cache.getStats(survey.id)
+    if (cached) return cached
+
+    const stats = await app.cache.loadOnce(`stats:${survey.id}`, async () => {
+      const hit = app.cache.getStats(survey.id)
+      if (hit) return hit
+
+      const groups = await app.prisma.response.groupBy({
+        by: ['status'],
+        where: { surveyId: survey.id, organizationId: request.organizationId },
+        _count: { _all: true },
+      })
+
+      const next = { total: 0, complete: 0, terminated: 0, partial: 0, dnc: 0 }
+      for (const row of groups) {
+        const count = row._count._all
+        if (next[row.status] !== undefined) next[row.status] = count
+        next.total += count
+      }
+      app.cache.setStats(survey.id, next)
+      return next
     })
-
-    const stats = { total: 0, complete: 0, terminated: 0, partial: 0, dnc: 0 }
-    for (const row of groups) {
-      const count = row._count._all
-      if (stats[row.status] !== undefined) stats[row.status] = count
-      stats.total += count
-    }
-
     return stats
   })
 
   app.get('/api/surveys/:id/responses', async (request, reply) => {
     const survey = await findAccessibleSurvey(
-      app.prisma, request, request.params.id, reply
+      app.prisma, request, request.params.id, reply, { id: true }
     )
     if (!survey) return
 
@@ -137,7 +146,7 @@ export async function registerResponseRoutes(app) {
 
   app.post('/api/surveys/:id/responses', async (request, reply) => {
     const survey = await findAccessibleSurvey(
-      app.prisma, request, request.params.id, reply
+      app.prisma, request, request.params.id, reply, { id: true, items: true }
     )
     if (!survey) return
 
@@ -167,7 +176,7 @@ export async function registerResponseRoutes(app) {
 
   app.delete('/api/surveys/:id/responses/:responseId', async (request, reply) => {
     const survey = await findAccessibleSurvey(
-      app.prisma, request, request.params.id, reply
+      app.prisma, request, request.params.id, reply, { id: true }
     )
     if (!survey) return
 
@@ -186,7 +195,7 @@ export async function registerResponseRoutes(app) {
 
   app.delete('/api/surveys/:id/responses', async (request, reply) => {
     const survey = await findAccessibleSurvey(
-      app.prisma, request, request.params.id, reply
+      app.prisma, request, request.params.id, reply, { id: true }
     )
     if (!survey) return
 

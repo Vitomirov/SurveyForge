@@ -6,8 +6,8 @@
  */
 import { Prisma } from '@prisma/client'
 import { resolveClientRecord, resolveTopicRecord, resolveSurveyTypeRecord } from '../lib/platform/platformIds.js'
-import { ownerFromSurvey, CREATOR_SELECT } from '../lib/auth/surveyOwner.js'
-import { surveyScope } from '../lib/auth/authz.js'
+import { ownerFromSurvey } from '../lib/auth/surveyOwner.js'
+import { isAdmin } from '../lib/auth/authz.js'
 
 function surveyMeta(row, questionCount = 0, { clients = [], topics = [], surveyTypes = [] } = {}) {
   const survey = row.survey
@@ -50,26 +50,80 @@ function buildStatsMap(groups) {
   return bySurvey
 }
 
+function listingFromSql(row) {
+  return {
+    id: row.id,
+    updatedAt: row.updatedAt instanceof Date ? row.updatedAt : new Date(row.updatedAt),
+    createdById: row.createdById,
+    survey: {
+      title: row.title,
+      status: row.status,
+      internalName: row.internalName,
+      surveyCode: row.surveyCode,
+      clientId: row.clientId,
+      topicId: row.topicId,
+      surveyType: row.surveyType,
+    },
+    createdBy: row.creatorId
+      ? {
+        id: row.creatorId,
+        name: row.creatorName,
+        username: row.creatorUsername,
+        email: row.creatorEmail,
+      }
+      : null,
+    questionCount: row.questionCount ?? 0,
+  }
+}
+
 export async function registerDashboardRoutes(app) {
   app.get('/api/dashboard', async (request) => {
-    const scope = surveyScope(request)
-    const orgId = scope.organizationId
+    const orgId = request.organizationId
+    const userId = request.auth.userId
 
-    const rows = await app.prisma.survey.findMany({
-      where: scope,
-      orderBy: { updatedAt: 'desc' },
-      select: {
-        id: true,
-        survey: true,
-        updatedAt: true,
-        createdById: true,
-        createdBy: { select: CREATOR_SELECT },
-      },
-    })
+    const cached = app.cache.getDashboard(orgId, userId)
+    if (cached) return cached
 
+    return app.cache.loadOnce(`dashboard:${orgId}:${userId}`, async () => {
+      const hit = app.cache.getDashboard(orgId, userId)
+      if (hit) return hit
+
+    const editorFilter = isAdmin(request)
+      ? Prisma.empty
+      : Prisma.sql`AND s.survey_created_by_id = ${userId}`
+
+    const sqlRows = await app.prisma.$queryRaw`
+      SELECT
+        s.id,
+        s.survey_updated_at AS "updatedAt",
+        s.survey_created_by_id AS "createdById",
+        s.survey_data->>'title' AS title,
+        COALESCE(s.survey_data->>'status', 'draft') AS status,
+        COALESCE(s.survey_data->>'internalName', '') AS "internalName",
+        COALESCE(s.survey_data->>'surveyCode', '') AS "surveyCode",
+        COALESCE(s.survey_data->>'clientId', '') AS "clientId",
+        COALESCE(s.survey_data->>'topicId', '') AS "topicId",
+        COALESCE(s.survey_data->>'surveyType', '') AS "surveyType",
+        COALESCE((
+          SELECT COUNT(*)::int
+          FROM jsonb_array_elements(s.survey_items) AS elem
+          WHERE elem->>'itemType' = 'question'
+        ), 0) AS "questionCount",
+        u.id AS "creatorId",
+        u.user_name AS "creatorName",
+        u.user_username AS "creatorUsername",
+        u.user_email AS "creatorEmail"
+      FROM surveys s
+      LEFT JOIN users u ON u.id = s.survey_created_by_id
+      WHERE s.organization_id = ${orgId}
+        ${editorFilter}
+      ORDER BY s.survey_updated_at DESC
+    `
+
+    const rows = sqlRows.map(listingFromSql)
     const surveyIds = rows.map(r => r.id)
 
-    const [clients, topics, surveyTypes, groups, questionCounts] = await Promise.all([
+    const [clients, topics, surveyTypes, groups] = await Promise.all([
       app.prisma.client.findMany({
         where: { organizationId: orgId },
         select: { id: true, name: true },
@@ -89,18 +143,6 @@ export async function registerDashboardRoutes(app) {
           _count: { _all: true },
         })
         : Promise.resolve([]),
-      surveyIds.length
-        ? app.prisma.$queryRaw`
-            SELECT s.id,
-              COALESCE((
-                SELECT COUNT(*)::int
-                FROM jsonb_array_elements(s.survey_items) AS elem
-                WHERE elem->>'itemType' = 'question'
-              ), 0) AS "questionCount"
-            FROM surveys s
-            WHERE s.id IN (${Prisma.join(surveyIds)})
-          `
-        : Promise.resolve([]),
     ])
 
     const statsMap = buildStatsMap(groups.map(g => ({
@@ -108,15 +150,15 @@ export async function registerDashboardRoutes(app) {
       status: g.status,
       _count: g._count._all,
     })))
-    const questionCountMap = Object.fromEntries(
-      questionCounts.map(row => [row.id, row.questionCount]),
-    )
 
-    return {
+    const payload = {
       surveys: rows.map(row => ({
-        ...surveyMeta(row, questionCountMap[row.id] ?? 0, { clients, topics, surveyTypes }),
+        ...surveyMeta(row, row.questionCount ?? 0, { clients, topics, surveyTypes }),
         stats: statsMap[row.id] || emptyStats(),
       })),
     }
+    app.cache.setDashboard(orgId, userId, payload)
+    return payload
+    })
   })
 }

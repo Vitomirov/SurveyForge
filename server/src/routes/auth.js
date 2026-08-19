@@ -193,20 +193,20 @@ export async function registerAuthRoutes(app) {
     }
   })
 
-  /** Current caller — role and profile always read from the database. */
+  /** Current caller — role from the auth hook (live DB row, short TTL cache). */
   app.get('/api/auth/me', async (request) => {
     const { user, organizationId, role, userId } = request.auth
-    const org = await app.prisma.organization.findUnique({
-      where: { id: organizationId },
-      select: { name: true },
+    const extra = await app.prisma.user.findUnique({
+      where: { id: userId },
+      select: { avatarUrl: true },
     })
     const session = {
       userId,
       organizationId,
-      organizationName: org?.name ?? null,
+      organizationName: user.organization?.name ?? null,
       username:         user.username || user.email,
       name:             user.name || user.username || user.email,
-      avatarUrl:        user.avatarUrl || null,
+      avatarUrl:        extra?.avatarUrl || null,
       email:            user.email,
       role,
     }
@@ -276,6 +276,8 @@ export async function registerAuthRoutes(app) {
           return updated
         })
       : await app.prisma.user.update({ where: { id: userId }, data })
+
+    app.cache.invalidateUser(userId)
 
     const session = passwordChanged
       ? await issueAuthSession(app, reply, row, existing.organization?.name)

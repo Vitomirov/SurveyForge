@@ -73,22 +73,34 @@ export async function registerAuth(app, { jwtSecret, jwtExpiresIn, authAllowBear
     }
 
     const payload = request.user
-    const user = await app.prisma.user.findUnique({
-      where: { id: payload.userId },
-      select: {
-        id: true,
-        organizationId: true,
-        role: true,
-        username: true,
-        email: true,
-        name: true,
-        avatarUrl: true,
-        tokenVersion: true,
-      },
-    })
+    // Reload role / tokenVersion from DB (cached a few seconds). Avatar is
+    // not selected here — it can be a large data-URL and is only needed on /me.
+    let user = app.cache.getUser(payload.userId)
+    if (!user) {
+      user = await app.cache.loadOnce(`user:${payload.userId}`, async () => {
+        const hit = app.cache.getUser(payload.userId)
+        if (hit) return hit
+        const row = await app.prisma.user.findUnique({
+          where: { id: payload.userId },
+          select: {
+            id: true,
+            organizationId: true,
+            role: true,
+            username: true,
+            email: true,
+            name: true,
+            tokenVersion: true,
+            organization: { select: { name: true } },
+          },
+        })
+        if (row) app.cache.setUser(row.id, row)
+        return row
+      })
+    }
 
     // Trust the live DB row, not the JWT snapshot — role changes, password
-    // resets, and deletions take effect on the very next request.
+    // resets, and deletions take effect on the very next request (writes
+    // invalidate this cache).
     if (!user || user.organizationId !== payload.organizationId) {
       return authError(reply, {
         error: 'Session is no longer valid. Please sign in again.',

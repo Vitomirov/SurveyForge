@@ -301,6 +301,7 @@ export async function registerPlatformRoutes(app) {
           return updated
         })
       : await app.prisma.user.update({ where: { id: existing.id }, data })
+    app.cache.invalidateUser(existing.id)
     const result = { user: userResponse(row) }
     if (password) result.temporaryPassword = password
     return result
@@ -340,6 +341,7 @@ export async function registerPlatformRoutes(app) {
     }
 
     await app.prisma.user.delete({ where: { id: existing.id } })
+    app.cache.invalidateUser(existing.id)
     return { ok: true }
   })
 }

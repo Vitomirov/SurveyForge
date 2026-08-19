@@ -37,7 +37,9 @@
     "test:brand1": "node --test scripts/phase-brand-phase1.test.mjs",
     "test:brand2": "node --test scripts/phase-brand-phase2.test.mjs",
     "test:brand3": "node --test scripts/phase-brand-phase3.test.mjs",
-    "test:brand": "node --test scripts/phase-brand-phase0.test.mjs scripts/phase-brand-phase1.test.mjs scripts/phase-brand-phase2.test.mjs scripts/phase-brand-phase3.test.mjs"
+    "test:brand": "node --test scripts/phase-brand-phase0.test.mjs scripts/phase-brand-phase1.test.mjs scripts/phase-brand-phase2.test.mjs scripts/phase-brand-phase3.test.mjs",
+    "test:load": "./scripts/load-test.sh",
+    "test:load:quick": "./scripts/load-test.sh --quick"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.1.0",

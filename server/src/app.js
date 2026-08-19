@@ -7,6 +7,7 @@ import Fastify from 'fastify'
 import cors from '@fastify/cors'
 import cookie from '@fastify/cookie'
 import { registerPrisma } from './plugins/prisma.js'
+import { registerHotCache } from './plugins/hotCache.js'
 import { registerAuth } from './plugins/auth.js'
 import { registerAuthRoutes } from './routes/auth.js'
 import { registerPublicRoutes } from './routes/public.js'
@@ -44,6 +45,7 @@ export async function buildApp() {
   await app.register(cookie)
 
   await registerPrisma(app)
+  await registerHotCache(app)
   await registerAuth(app, {
     jwtSecret: config.jwtSecret,
     jwtExpiresIn: config.accessTokenExpiresIn,

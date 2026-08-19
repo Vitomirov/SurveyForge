@@ -13,6 +13,7 @@ Browser-based survey authoring and delivery platform for market research and CX 
 | **Backend** | Fastify 5, @fastify/jwt, @fastify/cors, bcrypt |
 | **Database** | PostgreSQL 16, Prisma 6 |
 | **Deploy** | Docker Compose (nginx + API + Postgres), multi-stage Dockerfiles |
+| **Load tests** | k6 against a Compose stack capped at 2 CPU / 4 GB |
 | **Tests** | Node.js built-in test runner (`node --test`) |
 
 ---
@@ -114,8 +115,10 @@ survey-builder/
 ├── shared/                 Cross-package utilities (surveyUrl, matrixAnswer)
 ├── scripts/                Registry check + phase tests (logic + API integration)
 ├── docker/                 nginx config for production web container
+├── k6/                     Load test script + Docker stats sidecar
 ├── docs/                   Module reference, smoke checklist
 ├── docker-compose.yml      Full stack (Postgres + API + web)
+├── docker-compose.load.yml 2 CPU / 4 GB limits + k6 runner
 ├── Dockerfile              Production web image (VITE_USE_API=true)
 └── vite.config.js          Aliases (@/, @shared/), API proxy, code splitting
 ```
@@ -433,6 +436,8 @@ See [.env.example](.env.example) for a starter template.
 | `test:config` | Dev/prod config flag and JWT validation tests |
 | `test:security` | Security integration tests (ownership, revision, XSS, rate limits) |
 | `test:track-a` | All frontend phase tests |
+| `test:load` | k6 load test vs Docker stack (2 CPU / 4 GB) |
+| `test:load:quick` | Short k6 smoke ramp |
 
 API integration tests expect a live server at `http://127.0.0.1:3003` with a migrated database.
 
@@ -445,6 +450,30 @@ API integration tests expect a live server at `http://127.0.0.1:3003` with a mig
 - **Security tests** — `npm run test:security` (`scripts/phase-security-*.test.mjs`) requires a running API.
 - **Registry check** — `scripts/check-registries.js` ensures every question type has matching builder and taker handlers.
 - **Manual QA** — [docs/SMOKE_CHECKLIST.md](docs/SMOKE_CHECKLIST.md).
+- **Load tests** — `npm run test:load` (k6 + Docker, 2 CPU / 4 GB). Use `npm run test:load:quick` for a ~1 minute smoke ramp.
+
+### Load testing (k6)
+
+The load stack is a separate Compose project (`survey-builder-load`) so it does not reuse your normal `docker compose up` data or port 8080. Application containers are capped at **2 CPU and 4 GB RAM** total (API 1.40 / 2816 MB, Postgres 0.40 / 768 MB, nginx 0.20 / 512 MB).
+
+```bash
+npm run test:load          # ramp to 200 respondent VUs (~8 min)
+npm run test:load:quick    # 20 VUs, ~1 min
+MAX_VUS=100 npm run test:load
+./scripts/load-test.sh --down
+```
+
+k6 simulates mixed traffic: public respondents (SPA shell, live survey fetch, DNC check, response submit) and authenticated authors (session, dashboard, builder GET, response stats). Concurrent users increase in stages until a threshold fails — that is the capacity ceiling on this hardware budget.
+
+| Signal | Threshold | Abort |
+|--------|-----------|--------|
+| Error rate | `< 1%` | yes (after 30s) |
+| Latency | p95 `< 800ms`, p99 `< 2s` | yes (after 30s) |
+| Survey submit | p95 `< 1.2s`, p99 `< 2.5s` | no |
+| CPU (api+web+postgres) | `< 95%` of 2 CPU | yes (after 45s) |
+| RAM (api+web+postgres) | `< 90%` of 4 GB | yes (after 45s) |
+
+Request rate, p95/p99, error rate, CPU, and RAM are printed at the end and written to `k6/results/summary.json`. Public rate limits are relaxed on this overlay so the run measures application capacity, not the 429 limiter.
 
 There is no E2E browser test suite or coverage reporting yet.
 

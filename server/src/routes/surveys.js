@@ -139,6 +139,7 @@ export async function registerSurveyRoutes(app) {
         select: { id: true, revision: true, updatedAt: true, publicPath: true },
       })
 
+      app.cache.invalidateSurvey(id, request.organizationId)
       return {
         id:         updated.id,
         revision:   updated.revision,
@@ -188,6 +189,7 @@ export async function registerSurveyRoutes(app) {
       },
     })
 
+    app.cache.invalidateSurvey(created.id, request.organizationId)
     return reply.code(201).send({
       id:         created.id,
       revision:   created.revision,
@@ -198,11 +200,12 @@ export async function registerSurveyRoutes(app) {
 
   app.delete('/api/surveys/:id', async (request, reply) => {
     const existing = await findAccessibleSurvey(
-      app.prisma, request, request.params.id, reply
+      app.prisma, request, request.params.id, reply, { id: true }
     )
     if (!existing) return
 
     await app.prisma.survey.delete({ where: { id: request.params.id } })
+    app.cache.invalidateSurvey(request.params.id, request.organizationId)
     return { ok: true }
   })
 }

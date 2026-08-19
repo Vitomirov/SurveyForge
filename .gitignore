@@ -41,6 +41,7 @@ Desktop.ini
 
 # Testing / coverage
 coverage/
+k6/results/
 
 # Cache
 .cache/

@@ -1,0 +1,89 @@
+# Load-test overlay — cap the app stack at 2 CPU / 4 GB and run k6.
+#
+#   ./scripts/load-test.sh
+#   # or:
+#   docker compose -p survey-builder-load -f docker-compose.yml -f docker-compose.load.yml up -d --build
+#   docker compose -p survey-builder-load -f docker-compose.yml -f docker-compose.load.yml --profile k6 run --rm k6
+#
+# Resource budget (application only; k6 + load-stats are uncapped):
+#   api      1.40 CPU / 2816 MB
+#   postgres 0.40 CPU /  768 MB
+#   web      0.20 CPU /  512 MB
+#   total    2.00 CPU / 4096 MB
+
+services:
+  postgres:
+    cpus: 0.40
+    mem_limit: 768m
+    deploy:
+      resources:
+        limits:
+          cpus: '0.40'
+          memory: 768M
+
+  api:
+    cpus: 1.40
+    mem_limit: 2816m
+    environment:
+      SEED_DEFAULT_ACCOUNTS: 'true'
+      RUN_PLATFORM_LIST_MIGRATION: 'true'
+      RATE_LIMIT_RELAXED: 'true'
+      AUTH_ALLOW_BEARER: 'true'
+      REQUIRE_STRONG_JWT: 'false'
+      COOKIE_SECURE: 'false'
+      ACCESS_TOKEN_EXPIRES_IN: '2h'
+      JWT_SECRET: ${JWT_SECRET:-load-test-secret-not-for-production-use-32ch}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-rescopesurveys}:${POSTGRES_PASSWORD:-rescopesurveys}@postgres:5432/${POSTGRES_DB:-rescopesurveys}
+    deploy:
+      resources:
+        limits:
+          cpus: '1.40'
+          memory: 2816M
+
+  web:
+    cpus: 0.20
+    mem_limit: 512m
+    deploy:
+      resources:
+        limits:
+          cpus: '0.20'
+          memory: 512M
+
+  load-stats:
+    image: node:20-alpine
+    restart: unless-stopped
+    environment:
+      COMPOSE_PROJECT_NAME: ${COMPOSE_PROJECT_NAME:-survey-builder-load}
+      STATS_PORT: 9123
+      STATS_SERVICES: postgres,api,web
+      APP_CPU_BUDGET: '2'
+      APP_MEM_BUDGET_BYTES: '4294967296'
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./k6/stats-server.mjs:/app/stats-server.mjs:ro
+    command: ['node', '/app/stats-server.mjs']
+    expose:
+      - '9123'
+    depends_on:
+      api:
+        condition: service_healthy
+      web:
+        condition: service_healthy
+
+  k6:
+    image: grafana/k6:0.54.0
+    profiles: ['k6']
+    environment:
+      BASE_URL: http://web
+      STATS_URL: http://load-stats:9123
+      MAX_VUS: ${MAX_VUS:-200}
+      QUICK: ${QUICK:-0}
+    volumes:
+      - ./k6:/scripts
+    working_dir: /scripts
+    command: ['run', '/scripts/load-test.js']
+    depends_on:
+      web:
+        condition: service_healthy
+      load-stats:
+        condition: service_started

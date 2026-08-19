@@ -108,6 +108,7 @@ export async function registerBillingRoutes(app) {
       where: { id: orgId },
       data: { settings },
     })
+    app.cache.invalidateOrg(orgId)
 
     return {
       brandKit: readBrandKit(settings),
@@ -157,6 +158,7 @@ export async function registerBillingRoutes(app) {
     })
     const settings = patchOrgSettings(org.settings, { domainVerification: verification })
     await app.prisma.organization.update({ where: { id: orgId }, data: { settings } })
+    app.cache.invalidateOrg(orgId)
     return { domainVerification: verification }
   })
 
@@ -186,6 +188,7 @@ export async function registerBillingRoutes(app) {
     })
     const settings = patchOrgSettings(org.settings, { domainVerification: verification })
     await app.prisma.organization.update({ where: { id: orgId }, data: { settings } })
+    app.cache.invalidateOrg(orgId)
     return { domainVerification: verification }
   })
 
@@ -215,6 +218,7 @@ export async function registerBillingRoutes(app) {
         blockers: result.blockers,
       })
     }
+    app.cache.invalidateOrg(request.organizationId)
 
     const invoices = await app.prisma.invoice.findMany({
       where: { organizationId: request.organizationId },
@@ -312,6 +316,7 @@ export async function registerVendorRoutes(app) {
       where: { organizationId: org.id },
       data,
     })
+    app.cache.invalidateOrg(org.id)
 
     let organizationSurveyDomain = readSurveyDomain(org.settings)
     if (surveyDomain !== undefined) {
@@ -320,6 +325,7 @@ export async function registerVendorRoutes(app) {
         where: { id: org.id },
         data: { settings },
       })
+      app.cache.invalidateOrg(org.id)
       organizationSurveyDomain = readSurveyDomain(settings)
     }
 
