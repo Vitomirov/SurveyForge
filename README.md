@@ -114,10 +114,11 @@ survey-builder/
 │   └── prisma/             Schema and migrations
 ├── shared/                 Cross-package utilities (surveyUrl, matrixAnswer)
 ├── scripts/                Registry check + phase tests (logic + API integration)
-├── docker/                 nginx config for production web container
+├── docker/                 nginx config for the web container + host Caddyfile template
 ├── k6/                     Load test script + Docker stats sidecar
-├── docs/                   Module reference, smoke checklist
+├── docs/                   Module reference, smoke checklist, deploy guide
 ├── docker-compose.yml      Full stack (Postgres + API + web)
+├── docker-compose.prod.yml VPS override — publish web on 127.0.0.1 only
 ├── docker-compose.load.yml 2 CPU / 4 GB limits + k6 runner
 ├── Dockerfile              Production web image (VITE_USE_API=true)
 └── vite.config.js          Aliases (@/, @shared/), API proxy, code splitting
@@ -517,15 +518,34 @@ Frontend helper: `migrateLocalLibrary()` in `src/api/surveys.js`.
 
 ## Production deployment
 
-### Docker Compose topology
+Full VPS walkthrough (DNS, secrets, Caddy, firewall, backups, rollback): **[docs/DEPLOY.md](docs/DEPLOY.md)**.
+
+### Topology
 
 ```
-Browser → nginx:80 (web container)
-              ├── /        → static React build (VITE_USE_API=true)
-              └── /api/    → Fastify:3003 (api container) → Postgres:5432
+Internet
+   ↓
+Caddy — VPS host :80/:443            TLS + domains (rescopesurveys.com, www, surveys)
+   ↓
+127.0.0.1:8080 (WEB_HOST_PORT)       loopback only, never published publicly
+   ↓
+nginx:80 (web container)
+   ├── /        → static React build (VITE_USE_API=true)
+   ├── /api/    → Fastify:3003 (api container) → Postgres:5432
+   └── /health  → Fastify:3003/health
 ```
 
-Postgres data persists in the `pgdata` Docker volume.
+Two proxy layers, each with one job:
+
+- **nginx in the web container** ships with the image — serves the SPA, rewrites unknown paths to `index.html` (white-label survey URLs), and proxies `/api/` over the Docker network. Identical in local Docker, load tests, and production.
+- **Caddy on the VPS host** handles server-specific concerns — Let's Encrypt certificates, the real domain names, and HTTP→HTTPS redirect. It stays outside Docker so certificates survive `docker compose down` and the image stays environment-agnostic.
+
+`docker-compose.prod.yml` publishes the web container on `127.0.0.1:${WEB_HOST_PORT}:80` so port 8080 is reachable only by Caddy. Postgres is never published in production. Postgres data persists in the `pgdata` Docker volume.
+
+```bash
+# On the VPS, after the first deploy
+./scripts/deploy.sh    # validates .env secrets, pulls images, restarts, waits for /health
+```
 
 ### Security considerations
 
@@ -534,7 +554,8 @@ Production deployments must address:
 - **Set `JWT_SECRET`** to a strong random value (32+ characters) — production Compose requires it and the API refuses weak placeholders at startup.
 - **Set `POSTGRES_PASSWORD`** — production Compose interpolates it into Postgres and `DATABASE_URL`; do not ship the local default.
 - **No default seeded accounts in production** — `SEED_DEFAULT_ACCOUNTS=false` in `docker-compose.yml`; create the first org via signup.
-- **HTTPS** — terminate TLS at nginx or a reverse proxy.
+- **HTTPS is required** — production Compose sets `COOKIE_SECURE=true`, so sessions only persist over TLS. Terminate TLS at the host Caddy ([docker/caddy/Caddyfile](docker/caddy/Caddyfile)).
+- **Do not publish 8080 publicly** — use `docker-compose.prod.yml`; ufw does not filter Docker-published ports.
 - **Rich text XSS** — survey description and text-block HTML are sanitized with DOMPurify on survey write.
 - **Public endpoints** — live survey fetch, response submit, and DNC list are unauthenticated; login and public routes are rate-limited (relaxed in development).
 - **Local mode** — do not deploy without `VITE_USE_API=true`; local mode stores passwords in plaintext.
@@ -560,6 +581,7 @@ Production deployments must address:
 |----------|----------|
 | [docs/PUBLIC_API.md](docs/PUBLIC_API.md) | Module exports, store actions, engine reference |
 | [docs/SMOKE_CHECKLIST.md](docs/SMOKE_CHECKLIST.md) | Manual QA checklist |
+| [docs/DEPLOY.md](docs/DEPLOY.md) | Production VPS deploy — Caddy, DNS, secrets, firewall, backups |
 
 ---
 

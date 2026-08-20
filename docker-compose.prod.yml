@@ -1,0 +1,23 @@
+# Production override — publish the web container on loopback only.
+#
+# On the VPS, HTTPS and domain routing are handled by Caddy running on the host
+# (docker/caddy/Caddyfile), which proxies to 127.0.0.1:8080. Port 8080 itself
+# must never be reachable from the internet. Docker publishes ports through its
+# own iptables chain, which ufw rules do not filter, so binding to 127.0.0.1 is
+# the control that actually closes the port.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml pull
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#   # or simply: ./scripts/deploy.sh  (picks this file up automatically)
+#
+# `!override` replaces the base `ports` list instead of appending to it
+# (requires Docker Compose v2.24+; older versions concatenate and would keep
+# publishing 0.0.0.0:8080). On older Compose, delete this file and set
+# WEB_HOST_PORT=127.0.0.1:8080 in .env instead.
+#
+# Keep WEB_HOST_PORT a bare port number (e.g. 8080) when using this file.
+
+services:
+  web:
+    ports: !override
+      - '127.0.0.1:${WEB_HOST_PORT:-8080}:80'

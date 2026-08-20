@@ -1,0 +1,24 @@
+# Rescope Surveys — host Caddy (VPS), in front of the Docker stack.
+#
+# Install on the VPS:
+#   sudo cp docker/caddy/Caddyfile /etc/caddy/Caddyfile
+#   sudo systemctl reload caddy
+#
+# Caddy terminates TLS (Let's Encrypt certificates are issued and renewed
+# automatically) and forwards plain HTTP to the web container, which is
+# published on loopback only. The nginx inside that container keeps serving
+# the React build and proxying /api/ to the api container — unchanged.
+#
+# Full guide: docs/DEPLOY.md
+
+rescopesurveys.com, www.rescopesurveys.com, surveys.rescopesurveys.com {
+	# WEB_HOST_PORT from .env — keep both values in sync if you change it.
+	reverse_proxy 127.0.0.1:8080
+}
+
+# Optional: send www to the apex domain instead of serving both.
+# Replace the www entry above with this block if you want a single canonical host.
+#
+# www.rescopesurveys.com {
+# 	redir https://rescopesurveys.com{uri} permanent
+# }
