@@ -41,6 +41,15 @@ test('signup limiter rejects 11th request per IP (production limits)', () => {
   assert.equal(signup(key).allowed, false, '11th signup should be rate limited')
 })
 
+test('refresh limiter rejects 31st request per IP (production limits)', () => {
+  const { refresh } = createRouteLimiters({ relaxed: false })
+  const key = 'refresh:127.0.0.1'
+  for (let i = 0; i < 30; i += 1) {
+    assert.equal(refresh(key).allowed, true, `request ${i + 1} should be allowed`)
+  }
+  assert.equal(refresh(key).allowed, false, '31st refresh should be rate limited')
+})
+
 test('signup spam from the same client is rate limited even with spoofed X-Forwarded-For', async (t) => {
   if (rateLimitRelaxed) {
     return t.skip('RATE_LIMIT_RELAXED=true (default in development): limit is 1000/min/IP, not 10')

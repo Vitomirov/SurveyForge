@@ -129,6 +129,13 @@ function SaveStatus({ saveStatus, isDirty, className = '' }) {
       </span>
     )
   }
+  if (useApi && saveStatus === 'conflict') {
+    return (
+      <span className={`text-[11px] text-amber-700 font-medium shrink-0 px-1.5 py-0.5 rounded-md bg-amber-50 ${className}`}>
+        Updated elsewhere
+      </span>
+    )
+  }
   if (useApi && saveStatus === 'error') {
     return (
       <span className={`text-[11px] text-rose-600 font-medium shrink-0 px-1.5 py-0.5 rounded-md bg-rose-50 ${className}`}>

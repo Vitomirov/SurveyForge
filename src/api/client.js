@@ -24,23 +24,31 @@ function pathOnly(path) {
   return String(path || '').split('?')[0]
 }
 
+async function doRefreshFetch() {
+  const res = await fetch('/api/auth/refresh', {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: '{}',
+  })
+  if (!res.ok) {
+    const err = new Error('refresh failed')
+    err.status = res.status
+    throw err
+  }
+  return res.json().catch(() => ({}))
+}
+
 async function refreshAccessToken() {
   if (!refreshInFlight) {
-    refreshInFlight = fetch('/api/auth/refresh', {
-      method: 'POST',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: '{}',
-    }).then(async (res) => {
-      if (!res.ok) {
-        const err = new Error('refresh failed')
-        err.status = res.status
-        throw err
-      }
-      return res.json().catch(() => ({}))
-    }).finally(() => {
-      refreshInFlight = null
-    })
+    const run = typeof navigator !== 'undefined' && navigator.locks?.request
+      ? () => navigator.locks.request('rs-auth-refresh', doRefreshFetch)
+      : doRefreshFetch
+    refreshInFlight = Promise.resolve()
+      .then(run)
+      .finally(() => {
+        refreshInFlight = null
+      })
   }
   return refreshInFlight
 }

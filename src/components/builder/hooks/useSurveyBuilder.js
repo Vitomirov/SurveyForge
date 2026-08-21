@@ -42,6 +42,14 @@ export function useSurveyBuilder({ initialState, initialRevision = null }) {
         dispatch({ type: 'SET_SURVEY_FIELD', field: 'publicPath', value: result.publicPath })
       }
     },
+    onConflict: (remote) => {
+      if (!remote?.survey) return
+      dispatch({
+        type: 'HYDRATE_FROM_SERVER',
+        survey: remote.survey,
+        items: remote.items || [],
+      })
+    },
   })
 
   const handleActivateItem = useCallback((id) => {

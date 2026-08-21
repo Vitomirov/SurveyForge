@@ -9,9 +9,12 @@
 # published on loopback only. The nginx inside that container keeps serving
 # the React build and proxying /api/ to the api container — unchanged.
 #
+# Apex/www set X-Frame-Options so the dashboard cannot be iframed.
+# surveys.* stays embeddable (Professional+ iframe snippet).
+#
 # Full guide: docs/DEPLOY.md
 
-rescopesurveys.com, www.rescopesurveys.com, surveys.rescopesurveys.com {
+(proxy_to_web) {
 	# WEB_HOST_PORT from .env — keep both values in sync if you change it.
 	# Overwrite forwarded-for with the TCP peer so clients cannot spoof it.
 	reverse_proxy 127.0.0.1:8080 {
@@ -19,6 +22,23 @@ rescopesurveys.com, www.rescopesurveys.com, surveys.rescopesurveys.com {
 		header_up X-Real-IP {remote_host}
 		header_up X-Forwarded-Proto {scheme}
 	}
+}
+
+(browser_security) {
+	header X-Content-Type-Options nosniff
+	header Referrer-Policy strict-origin-when-cross-origin
+	header Permissions-Policy "camera=(), microphone=(), geolocation=()"
+}
+
+rescopesurveys.com, www.rescopesurveys.com {
+	import browser_security
+	header X-Frame-Options SAMEORIGIN
+	import proxy_to_web
+}
+
+surveys.rescopesurveys.com {
+	import browser_security
+	import proxy_to_web
 }
 
 # Optional: send www to the apex domain instead of serving both.

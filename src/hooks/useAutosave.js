@@ -1,11 +1,15 @@
 import { useEffect, useRef, useState } from 'react'
 import { upsertSurvey } from '@/utils/data/surveyLibrary'
-import { patchSurvey } from '@/api/survey/surveys'
+import { getSurvey, patchSurvey } from '@/api/survey/surveys'
 import { ApiError } from '@/api/client'
 import { useApi } from '@/config/api'
 import { clearNewSurveyDraft } from '@/utils/data/surveyDrafts'
 
 const DEFAULT_DELAY_MS = 400
+
+export function isRevisionConflict(err) {
+  return err instanceof ApiError && err.status === 409 && err.body?.revision != null
+}
 
 function snapshotPayload(survey, items) {
   return {
@@ -23,28 +27,26 @@ function buildPatch(survey, items, lastSaved) {
 }
 
 async function saveToApi(id, patch, revisionRef) {
-  try {
-    const result = await patchSurvey(id, {
-      ...patch,
-      revision: revisionRef.current,
-    })
-    revisionRef.current = result.revision
-    return result
-  } catch (err) {
-    if (err instanceof ApiError && err.status === 409 && err.body?.revision != null) {
-      revisionRef.current = err.body.revision
-      return patchSurvey(id, {
-        ...patch,
-        revision: revisionRef.current,
-      })
-    }
-    throw err
-  }
+  const result = await patchSurvey(id, {
+    ...patch,
+    revision: revisionRef.current,
+  })
+  revisionRef.current = result.revision
+  return result
+}
+
+async function reloadAfterConflict(id, revisionRef, lastSavedRef) {
+  const remote = await getSurvey(id)
+  if (remote?.revision != null) revisionRef.current = remote.revision
+  lastSavedRef.current = snapshotPayload(remote.survey, remote.items || [])
+  return remote
 }
 
 /**
  * Debounced autosave — localStorage or API PATCH when VITE_USE_API=true.
  * Saves are serialized to avoid revision conflicts from overlapping PATCHes.
+ * A 409 refetches the server copy and hydrates the builder; the stale local
+ * patch is never replayed against the new revision.
  */
 export function useAutosave({
   survey,
@@ -53,6 +55,7 @@ export function useAutosave({
   delayMs = DEFAULT_DELAY_MS,
   enabled = true,
   onSaved,
+  onConflict,
 }) {
   const timerRef = useRef(null)
   const latestRef = useRef({ survey, items })
@@ -60,10 +63,12 @@ export function useAutosave({
   const saveChainRef = useRef(Promise.resolve())
   const lastSavedRef = useRef(snapshotPayload(survey, items))
   const onSavedRef = useRef(onSaved)
+  const onConflictRef = useRef(onConflict)
   const [saveStatus, setSaveStatus] = useState('idle')
 
   latestRef.current = { survey, items }
   onSavedRef.current = onSaved
+  onConflictRef.current = onConflict
 
   useEffect(() => {
     if (initialRevision != null) revisionRef.current = initialRevision
@@ -108,7 +113,23 @@ export function useAutosave({
         setSaveStatus('saved')
         onSavedRef.current?.(result, payload)
       })
-      .catch(() => setSaveStatus('error'))
+      .catch(async (err) => {
+        if (!isRevisionConflict(err)) {
+          setSaveStatus('error')
+          return
+        }
+        try {
+          const remote = await reloadAfterConflict(
+            payload.survey.id,
+            revisionRef,
+            lastSavedRef,
+          )
+          setSaveStatus('conflict')
+          onConflictRef.current?.(remote)
+        } catch {
+          setSaveStatus('error')
+        }
+      })
   }
 
   useEffect(() => {

@@ -277,13 +277,10 @@ The package installs and starts a `caddy` systemd service.
 
 ### 6.2 Configure
 
-Use the template from this repository, [`docker/caddy/Caddyfile`](../docker/caddy/Caddyfile):
-
-```
-rescopesurveys.com, www.rescopesurveys.com, surveys.rescopesurveys.com {
-	reverse_proxy 127.0.0.1:8080
-}
-```
+Use the template from this repository, [`docker/caddy/Caddyfile`](../docker/caddy/Caddyfile).
+It terminates TLS, overwrites `X-Forwarded-For` with the TCP peer, and sets
+browser security headers. Apex and `www` also send `X-Frame-Options: SAMEORIGIN`
+so the dashboard cannot be iframed; `surveys.*` stays embeddable.
 
 Install it and reload:
 
@@ -361,7 +358,7 @@ nc -zv rescopesurveys.com 5432                       # must fail
 
 | # | Check | Expected |
 |---|-------|----------|
-| 1 | `curl -I https://rescopesurveys.com` | `200`, valid certificate, no TLS warning |
+| 1 | `curl -sI https://rescopesurveys.com` | `200`, valid certificate, `x-content-type-options: nosniff`, `x-frame-options: SAMEORIGIN` |
 | 2 | `curl https://rescopesurveys.com/health` | `{"status":"ok",...}` |
 | 3 | Open `https://rescopesurveys.com` in a browser | SPA loads, login screen |
 | 4 | Sign up the first account | Organization created, dashboard loads |

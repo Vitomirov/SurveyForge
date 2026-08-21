@@ -4,8 +4,12 @@
  */
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
+import { resolve, dirname } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { loadConfig, validateJwtSecret, durationToMs, parseCorsOrigin } from '../server/src/config.js'
 
+const __dirname = dirname(fileURLToPath(import.meta.url))
 const STRONG_SECRET = 'a'.repeat(32)
 
 test('development defaults enable seed, cookies, and bearer fallback', () => {
@@ -118,4 +122,19 @@ test('production rejects wildcard CORS_ORIGIN', () => {
     () => parseCorsOrigin('*', { isDev: false }),
     /explicit origin allowlist/,
   )
+})
+
+test('nginx and Caddy ship browser security headers', () => {
+  const nginx = readFileSync(resolve(__dirname, '../docker/nginx.conf'), 'utf8')
+  assert.match(nginx, /X-Content-Type-Options "nosniff"/)
+  assert.match(nginx, /Referrer-Policy "strict-origin-when-cross-origin"/)
+  assert.match(nginx, /Permissions-Policy "camera=\(\), microphone=\(\), geolocation=\(\)"/)
+  assert.match(nginx, /Content-Security-Policy/)
+  assert.match(nginx, /default-src 'self'/)
+  assert.doesNotMatch(nginx, /X-Frame-Options/)
+
+  const caddy = readFileSync(resolve(__dirname, '../docker/caddy/Caddyfile'), 'utf8')
+  assert.match(caddy, /X-Frame-Options SAMEORIGIN/)
+  assert.match(caddy, /rescopesurveys\.com, www\.rescopesurveys\.com/)
+  assert.match(caddy, /surveys\.rescopesurveys\.com/)
 })

@@ -158,6 +158,9 @@ export async function registerAuthRoutes(app) {
   })
 
   app.post('/api/auth/refresh', async (request, reply) => {
+    const limited = sendIfRateLimited(limits.refresh, request, reply, 'refresh')
+    if (limited) return limited
+
     const raw = readRefreshToken(request)
     if (!raw) {
       clearAuthCookies(reply)

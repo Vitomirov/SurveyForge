@@ -433,6 +433,18 @@ export function surveyReducer(state, action) {
     case 'MARK_SAVED':
       return { ...state, isDirty: false }
 
+    case 'HYDRATE_FROM_SERVER': {
+      const items = Array.isArray(action.items) ? action.items : state.items
+      const stillActive = items.some((item) => item.id === state.activeItemId)
+      return {
+        ...state,
+        survey: action.survey,
+        items,
+        activeItemId: stillActive ? state.activeItemId : null,
+        isDirty: false,
+      }
+    }
+
     default:
       return state
   }

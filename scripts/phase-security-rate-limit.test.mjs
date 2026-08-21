@@ -10,7 +10,7 @@ import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { randomUUID } from 'node:crypto'
 import { makeApi, provisionOrg, surveyId, createSurvey } from './lib/rbacFixtures.mjs'
-import { createRateLimiter, clientIp } from '../server/src/lib/survey/rateLimit.js'
+import { createRateLimiter, clientIp, pruneExpiredRateLimitBuckets } from '../server/src/lib/survey/rateLimit.js'
 import { publicErrorResponse } from '../server/src/lib/httpErrors.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -31,6 +31,18 @@ test('createRateLimiter rejects bursts over max', () => {
   assert.equal(limit('burst').allowed, true)
   assert.equal(limit('burst').allowed, true)
   assert.equal(limit('burst').allowed, false)
+})
+
+test('pruneExpiredRateLimitBuckets starts a new window after expiry', () => {
+  const key = `prune_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+  const limit = createRateLimiter({ windowMs: 60_000, max: 2 })
+  assert.equal(limit(key).allowed, true)
+  assert.equal(limit(key).allowed, true)
+  assert.equal(limit(key).allowed, false)
+  pruneExpiredRateLimitBuckets(Date.now() + 61_000)
+  const next = limit(key)
+  assert.equal(next.allowed, true)
+  assert.equal(next.remaining, 1)
 })
 
 test('clientIp uses request.ip and ignores X-Forwarded-For', () => {
