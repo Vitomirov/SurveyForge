@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import { X, ChevronLeft, ChevronRight, Check, Fingerprint } from 'lucide-react'
 import { buildVisiblePages } from '@/utils/survey/engines/visibilityEngine'
 import { resolvePipingTokens } from '@/utils/survey/questions/piping'
@@ -38,6 +38,7 @@ export function SurveyPreview({ survey, items, onClose, isPublic = false, isEmbe
   const bumpLockVisit = () => setLockVisitKey(k => k + 1)
   const [fingerprint, setFingerprint]   = useState(null)
   const [fpStatus, setFpStatus]         = useState('idle') // 'idle' | 'collecting' | 'done'
+  const responseIdRef = useRef(null)
 
   // ── Collect device/browser fingerprint once, on mount ──────────────────
   // Runs in the background regardless of cover page state, so by the time
@@ -146,6 +147,7 @@ export function SurveyPreview({ survey, items, onClose, isPublic = false, isEmbe
     setSubmitted(false); setTerminated(false); setTerminatedBy(null); setRedirectedTo(null)
     setShowCover(survey?.showCoverPage !== false)
     bumpLockVisit()
+    responseIdRef.current = null
     if (fpEnabled) {
       setFpStatus('collecting')
       collectFingerprint(fpSignals).then(fp => { setFingerprint(fp); setFpStatus('done') })
@@ -160,16 +162,19 @@ export function SurveyPreview({ survey, items, onClose, isPublic = false, isEmbe
   }
 
   // ── Build a response entry from current state ─────────────────────────
-  const buildEntry = (status, terminatedByArg = null) => ({
-    id:          newResponseId(),
-    timestamp:   new Date().toISOString(),
-    status,
-    pageReached: currentPage,
-    responses,
-    companions,
-    terminatedBy: terminatedByArg,
-    fingerprint: fpEnabled ? (fingerprint || {}) : null,
-  })
+  const buildEntry = (status, terminatedByArg = null) => {
+    if (!responseIdRef.current) responseIdRef.current = newResponseId()
+    return {
+      id:          responseIdRef.current,
+      timestamp:   new Date().toISOString(),
+      status,
+      pageReached: currentPage,
+      responses,
+      companions,
+      terminatedBy: terminatedByArg,
+      fingerprint: fpEnabled ? (fingerprint || {}) : null,
+    }
+  }
 
   // ── Auto-save to localStorage + optionally download CSV ───────────────
   const persistAndDownload = async (status, terminatedByArg = null, doDownload = false) => {

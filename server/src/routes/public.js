@@ -3,7 +3,7 @@
  * Serves live survey definitions by public path or ID, DNC email checks,
  * accepts response submissions, and applies embed CSP headers and branding.
  */
-import { upsertResponse } from './responses.js'
+import { upsertResponse, sendUpsertResult } from './responses.js'
 import { clientDomainFromRequest, findPublicSurvey } from '../lib/survey/surveyPublicPath.js'
 import { buildPublicBrandingPayload } from '../lib/branding/publicBranding.js'
 import { readEmbedAllowedOrigins } from '../lib/platform/orgSettings.js'
@@ -12,6 +12,7 @@ import { buildFrameAncestorsDirective } from '../../../shared/embedProtocol.js'
 import { createRouteLimiters, sendIfRateLimited } from '../lib/survey/rateLimit.js'
 import { loadConfig } from '../config.js'
 import { isEmailOnDncList, normalizeEmail } from '../lib/survey/dncCheck.js'
+import { assertOrgActive } from '../lib/billing/planEnforcement.js'
 
 const LIVE_SURVEY_SELECT = {
   id: true,
@@ -61,6 +62,13 @@ function publicSurveyPayload(row, branding) {
   }
 }
 
+async function ensurePublicOrgActive(app, organizationId, reply) {
+  const active = await assertOrgActive(app.prisma, organizationId, { provision: false })
+  if (active.ok) return true
+  reply.code(404).send({ error: 'Survey not found' })
+  return false
+}
+
 async function loadLivePublicSurvey(app, id, reply) {
   const cached = app.cache.getLiveSurvey(id)
   if (cached) {
@@ -68,6 +76,7 @@ async function loadLivePublicSurvey(app, id, reply) {
       reply.code(404).send({ error: 'Survey not found' })
       return null
     }
+    if (!(await ensurePublicOrgActive(app, cached.organizationId, reply))) return null
     return cached
   }
 
@@ -108,6 +117,7 @@ async function loadLivePublicSurvey(app, id, reply) {
     reply.code(404).send({ error: 'Survey not found' })
     return null
   }
+  if (!(await ensurePublicOrgActive(app, row.organizationId, reply))) return null
   return row
 }
 
@@ -131,6 +141,7 @@ export async function registerPublicRoutes(app) {
     const clientDomain = clientDomainFromRequest(request)
     const row = await findPublicSurvey(app.prisma, request.params.publicPath, clientDomain)
     if (!row) return reply.code(404).send({ error: 'Survey not found' })
+    if (!(await ensurePublicOrgActive(app, row.organizationId, reply))) return
 
     app.cache.setLiveSurvey(row.id, {
       id: row.id,
@@ -176,8 +187,8 @@ export async function registerPublicRoutes(app) {
     if (!row) return
 
     const entry = request.body
-    if (!entry?.id) {
-      return reply.code(400).send({ error: 'Response entry must include id' })
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) {
+      return reply.code(400).send({ error: 'Response entry is required' })
     }
 
     const result = await upsertResponse(app, {
@@ -186,15 +197,7 @@ export async function registerPublicRoutes(app) {
       entry,
       surveyItems: row.items || [],
     })
-    if (!result) {
-      return reply.code(400).send({ error: 'Response entry must include id and status' })
-    }
-    if (result.conflict) {
-      return reply.code(409).send({ error: 'Response id belongs to another survey' })
-    }
-    if (result.invalidStatus) {
-      return reply.code(400).send({ error: 'Invalid response status' })
-    }
+    if (sendUpsertResult(reply, result)) return
 
     return { ok: true, id: result.row.id }
   })

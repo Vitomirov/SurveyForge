@@ -30,6 +30,36 @@ export function durationToMs(value, fallbackMs) {
   return Number(match[1]) * UNIT_MS[match[2].toLowerCase()]
 }
 
+const CORS_WILDCARDS = new Set(['true', '*', 'reflect'])
+
+/**
+ * Explicit origin allowlist. Rejects missing values in production and never
+ * accepts a wildcard / reflect-any setting (unsafe with credentialed cookies).
+ */
+export function parseCorsOrigin(raw, { isDev } = {}) {
+  const value = String(raw ?? '').trim()
+  if (!value) {
+    if (isDev) return DEFAULT_DEV_CORS_ORIGIN
+    throw new Error(
+      'CORS_ORIGIN is required in production. Set a comma-separated allowlist '
+      + '(e.g. https://rescopesurveys.com,https://www.rescopesurveys.com).',
+    )
+  }
+
+  const parts = value.split(',').map(part => part.trim()).filter(Boolean)
+  if (!parts.length) {
+    throw new Error('CORS_ORIGIN must list at least one origin.')
+  }
+  for (const origin of parts) {
+    if (CORS_WILDCARDS.has(origin.toLowerCase())) {
+      throw new Error(
+        'CORS_ORIGIN must be an explicit origin allowlist, not a wildcard or "true".',
+      )
+    }
+  }
+  return parts.length === 1 ? parts[0] : parts
+}
+
 export function validateJwtSecret(secret, { minLength = MIN_JWT_SECRET_LENGTH } = {}) {
   if (!secret || typeof secret !== 'string' || !secret.trim()) {
     throw new Error(
@@ -73,7 +103,7 @@ export function loadConfig(env = process.env) {
   const refreshTokenExpiresIn = env.REFRESH_TOKEN_EXPIRES_IN || DEFAULT_REFRESH_TOKEN_EXPIRES_IN
   // Alias: access tokens used to be signed with jwtExpiresIn / JWT_EXPIRES_IN.
   const jwtExpiresIn = accessTokenExpiresIn
-  const corsOrigin = env.CORS_ORIGIN || (isDev ? DEFAULT_DEV_CORS_ORIGIN : true)
+  const corsOrigin = parseCorsOrigin(env.CORS_ORIGIN, { isDev })
 
   return {
     port,

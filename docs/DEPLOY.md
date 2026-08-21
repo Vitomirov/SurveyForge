@@ -133,6 +133,10 @@ POSTGRES_PASSWORD=<openssl rand -base64 24>
 # Auth — the API refuses to start in production with a weak or placeholder value
 JWT_SECRET=<openssl rand -base64 48>
 
+# Browser origins allowed to call the API with cookies. Required in production.
+# Same-origin deploys still need this — the API refuses to start with a wildcard.
+CORS_ORIGIN=https://rescopesurveys.com,https://www.rescopesurveys.com,https://surveys.rescopesurveys.com
+
 # Images to run — prefer an explicit version tag over `latest` so rollback is possible
 DOCKERHUB_USER=vitomirov
 IMAGE_TAG=v0.1.0
@@ -148,6 +152,7 @@ COMPOSE_FILE=docker-compose.yml:docker-compose.prod.yml
 |----------|----------------|
 | `POSTGRES_PASSWORD` | Required by Compose; interpolated into `DATABASE_URL`. Never reuse the local dev default (`rescopesurveys`). |
 | `JWT_SECRET` | Required, 32+ characters. `REQUIRE_STRONG_JWT` is on in production, so placeholders like `change-me-in-production` cause a startup failure. |
+| `CORS_ORIGIN` | Required. Comma-separated origin allowlist. Do not use `true` or `*`. Compose defaults to the three Rescope hostnames if unset. |
 | `DOCKERHUB_USER` | Docker Hub account holding `rescopesurveys-api` / `rescopesurveys-web`. |
 | `IMAGE_TAG` | The deployed version. Semver tags (`v0.1.0`) make rollback a one-line change; `latest` does not. |
 | `WEB_HOST_PORT` | Host port for nginx. Bound to `127.0.0.1` by `docker-compose.prod.yml` — not public. Keep it a bare port number. |

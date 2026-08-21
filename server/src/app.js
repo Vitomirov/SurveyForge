@@ -28,7 +28,10 @@ export async function buildApp() {
   const config = loadConfig()
 
   const app = Fastify({
-    logger: config.isDev,
+    logger: true,
+    // nginx is the only hop in front of this process (Caddy terminates TLS
+    // on the host). Do not trust client-supplied forwarded headers beyond that.
+    trustProxy: 1,
     bodyLimit: BODY_LIMIT_BYTES,
   })
 
@@ -52,11 +55,22 @@ export async function buildApp() {
     authAllowBearer: config.authAllowBearer,
   })
 
-  app.get('/health', async () => ({
-    ok: true,
-    service: 'rescopesurveys-api',
-    timestamp: new Date().toISOString(),
-  }))
+  app.get('/health', async (request, reply) => {
+    try {
+      await app.prisma.$queryRaw`SELECT 1`
+      return {
+        ok: true,
+        service: 'rescopesurveys-api',
+        timestamp: new Date().toISOString(),
+      }
+    } catch (err) {
+      request.log.error(err)
+      return reply.code(503).send({
+        ok: false,
+        service: 'rescopesurveys-api',
+      })
+    }
+  })
 
   await registerAuthRoutes(app)
   await registerPublicRoutes(app)

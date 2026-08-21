@@ -1,5 +1,4 @@
 // ─── Keys ──────────────────────────────────────────────────────────────────
-import { newPrefixedId } from '@/store/id'
 
 const responsesKey   = (surveyId) => `sf_responses_${surveyId}`
 const exportHistKey  = (surveyId) => `sf_exports_${surveyId}`
@@ -162,4 +161,4 @@ export function applyFilters(responses, filters = {}) {
 }
 
 // ─── Unique ID ─────────────────────────────────────────────────────────────
-export const newResponseId = () => newPrefixedId('r', 5)
+export const newResponseId = () => crypto.randomUUID()

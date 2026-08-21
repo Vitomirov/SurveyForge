@@ -270,7 +270,6 @@ export function respondent(data) {
   const submit = http.post(
     `${BASE}/api/public/surveys/${data.surveyId}/responses`,
     JSON.stringify({
-      id: `r_${__VU}_${__ITER}_${Date.now()}`,
       status,
       timestamp: new Date().toISOString(),
       pageReached: status === 'partial' ? 1 : 2,

@@ -8,8 +8,9 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { randomUUID } from 'node:crypto'
 import { makeApi, provisionOrg, surveyId, createSurvey } from './lib/rbacFixtures.mjs'
-import { createRateLimiter } from '../server/src/lib/survey/rateLimit.js'
+import { createRateLimiter, clientIp } from '../server/src/lib/survey/rateLimit.js'
 import { publicErrorResponse } from '../server/src/lib/httpErrors.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -30,6 +31,13 @@ test('createRateLimiter rejects bursts over max', () => {
   assert.equal(limit('burst').allowed, true)
   assert.equal(limit('burst').allowed, true)
   assert.equal(limit('burst').allowed, false)
+})
+
+test('clientIp uses request.ip and ignores X-Forwarded-For', () => {
+  assert.equal(
+    clientIp({ ip: '203.0.113.10', headers: { 'x-forwarded-for': '198.51.100.1, 10.0.0.1' } }),
+    '203.0.113.10',
+  )
 })
 
 test('production 500 responses are generic; oversized bodies map to 413', () => {
@@ -60,7 +68,7 @@ test('invalid response status returns 400; valid taker submit succeeds', async (
   const invalid = await api(`/api/public/surveys/${id}/responses`, {
     method: 'POST',
     body: {
-      id: `r_bad_${unique}`,
+      id: randomUUID(),
       status: 'hacked',
       timestamp: new Date().toISOString(),
       responses: {},
@@ -72,7 +80,6 @@ test('invalid response status returns 400; valid taker submit succeeds', async (
   const ok = await api(`/api/public/surveys/${id}/responses`, {
     method: 'POST',
     body: {
-      id: `r_ok_${unique}`,
       status: 'complete',
       timestamp: new Date().toISOString(),
       responses: {},
@@ -80,4 +87,26 @@ test('invalid response status returns 400; valid taker submit succeeds', async (
   })
   assert.equal(ok.status, 200, JSON.stringify(ok.data))
   assert.equal(ok.data.ok, true)
+  assert.match(ok.data.id, /^[0-9a-f-]{36}$/i)
+
+  const unknown = await api(`/api/public/surveys/${id}/responses`, {
+    method: 'POST',
+    body: {
+      status: 'complete',
+      responses: { q_not_in_survey: 'x' },
+    },
+  })
+  assert.equal(unknown.status, 400)
+  assert.match(unknown.data?.error || '', /unknown question/i)
+
+  const badId = await api(`/api/public/surveys/${id}/responses`, {
+    method: 'POST',
+    body: {
+      id: `r_not_a_uuid_${unique}`,
+      status: 'complete',
+      responses: {},
+    },
+  })
+  assert.equal(badId.status, 400)
+  assert.match(badId.data?.error || '', /UUID/i)
 })

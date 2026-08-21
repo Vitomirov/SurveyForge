@@ -32,6 +32,10 @@ import {
   resolveVerifiedSurveyDomain,
   normalizeDomainVerification,
 } from '../shared/domainVerification.js'
+import {
+  PLAN_CATALOG,
+  selfServiceTargetPlanIds,
+} from '../shared/planCatalog.js'
 
 test('plan feature matrix gates by tier', () => {
   assert.equal(canUseBrandKit('free_trial'), false)
@@ -47,6 +51,15 @@ test('plan feature matrix gates by tier', () => {
   assert.equal(embedOriginLimit('enterprise'), null)
   assert.equal(maxSurveys('free_trial'), 5)
   assert.equal(maxSurveys('starter'), null)
+})
+
+test('no paid plan is self-service until checkout exists', () => {
+  for (const plan of Object.values(PLAN_CATALOG)) {
+    if (plan.priceCents > 0) assert.equal(plan.selfService, false)
+  }
+  assert.deepEqual(selfServiceTargetPlanIds('free_trial'), [])
+  assert.deepEqual(selfServiceTargetPlanIds('starter'), [])
+  assert.deepEqual(selfServiceTargetPlanIds('enterprise'), [])
 })
 
 test('planFeatureSummary returns stable shape', () => {

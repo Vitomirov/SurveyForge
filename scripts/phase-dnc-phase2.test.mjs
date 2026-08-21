@@ -8,6 +8,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { randomUUID } from 'node:crypto'
 import { makeApi, provisionOrg, surveyId, createSurvey } from './lib/rbacFixtures.mjs'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -109,7 +110,7 @@ test('server overrides complete to dnc on public response submit', async () => {
     body: { emails: [DNC_EMAIL] },
   })
 
-  const responseId = `r_dnc_pub_${unique}`
+  const responseId = randomUUID()
   const submit = await api(`/api/public/surveys/${id}/responses`, {
     method: 'POST',
     body: responseEntry(responseId, { status: 'complete', email: DNC_EMAIL }),
@@ -138,7 +139,7 @@ test('server overrides complete to dnc on authenticated response submit', async 
     body: { emails: [DNC_EMAIL] },
   })
 
-  const responseId = `r_dnc_auth_${unique}`
+  const responseId = randomUUID()
   const submit = await api(`/api/surveys/${id}/responses`, {
     method: 'POST',
     token: adminToken,
@@ -161,7 +162,7 @@ test('unverified client dnc status is corrected to complete', async () => {
 
   await api(`/api/surveys/${id}/dnc`, { method: 'DELETE', token: adminToken })
 
-  const responseId = `r_dnc_fake_${unique}`
+  const responseId = randomUUID()
   const submit = await api(`/api/public/surveys/${id}/responses`, {
     method: 'POST',
     body: responseEntry(responseId, { status: 'dnc', email: CLEAN_EMAIL }),
@@ -185,7 +186,7 @@ test('partial responses are not DNC-overridden', async () => {
     body: { emails: [DNC_EMAIL] },
   })
 
-  const responseId = `r_dnc_partial_${unique}`
+  const responseId = randomUUID()
   await api(`/api/public/surveys/${id}/responses`, {
     method: 'POST',
     body: responseEntry(responseId, { status: 'partial', email: DNC_EMAIL }),

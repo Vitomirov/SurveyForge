@@ -56,6 +56,7 @@ services:
       REFRESH_TOKEN_EXPIRES_IN: '30d'
       COOKIE_SECURE: 'true'
       AUTH_ALLOW_BEARER: 'false'
+      CORS_ORIGIN: ${CORS_ORIGIN:-https://rescopesurveys.com,https://www.rescopesurveys.com,https://surveys.rescopesurveys.com}
       SEED_DEFAULT_ACCOUNTS: 'false'
       RUN_PLATFORM_LIST_MIGRATION: 'false'
     expose:

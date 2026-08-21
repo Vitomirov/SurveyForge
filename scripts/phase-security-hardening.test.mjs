@@ -41,19 +41,18 @@ test('signup limiter rejects 11th request per IP (production limits)', () => {
   assert.equal(signup(key).allowed, false, '11th signup should be rate limited')
 })
 
-test('signup spam from same IP returns 429 when rate limits are strict', async (t) => {
+test('signup spam from the same client is rate limited even with spoofed X-Forwarded-For', async (t) => {
   if (rateLimitRelaxed) {
     return t.skip('RATE_LIMIT_RELAXED=true (default in development): limit is 1000/min/IP, not 10')
   }
 
-  const testIp = `203.0.113.${Math.floor(Math.random() * 200) + 1}`
   let lastStatus = 201
   for (let i = 0; i < 11; i += 1) {
     const res = await fetch(`${BASE}/api/auth/signup`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-Forwarded-For': testIp,
+        'X-Forwarded-For': `203.0.113.${i + 1}`,
       },
       body: JSON.stringify({
         organizationName: `Spam Org ${unique}_${i}`,
@@ -89,6 +88,7 @@ test('forceVerified is blocked when not in development', () => {
     NODE_ENV: 'production',
     JWT_SECRET: 'x'.repeat(32),
     REQUIRE_STRONG_JWT: 'false',
+    CORS_ORIGIN: 'https://rescopesurveys.com',
   })
   assert.equal(prod.isDev, false)
 

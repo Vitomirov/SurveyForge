@@ -24,7 +24,8 @@ export const PLAN_CATALOG = {
     seats: 5,
     priceCents: 4900,
     tier: 1,
-    selfService: true,
+    // Paid self-service is off until a payment processor is wired.
+    selfService: false,
     highlights: [
       'Unlimited surveys',
       '5 seats',
@@ -37,7 +38,7 @@ export const PLAN_CATALOG = {
     seats: 25,
     priceCents: 14900,
     tier: 2,
-    selfService: true,
+    selfService: false,
     highlights: [
       'Unlimited surveys',
       '25 seats',
@@ -51,7 +52,7 @@ export const PLAN_CATALOG = {
     seats: 100,
     priceCents: 49900,
     tier: 3,
-    selfService: true,
+    selfService: false,
     highlights: [
       'Unlimited surveys',
       '100 seats',
@@ -83,16 +84,16 @@ export function isPlanDowngrade(fromPlanId, toPlanId) {
   return comparePlanTiers(fromPlanId, toPlanId) < 0
 }
 
-/** Plans customers can switch to from the billing dashboard. */
+/**
+ * Plans customers can switch to from the billing dashboard.
+ * Trial used to list every paid plan; that is closed until checkout exists.
+ * The vendor console still assigns plans via PATCH /api/vendor/.../subscription.
+ */
 export function selfServiceTargetPlanIds(currentPlanId) {
-  const current = catalogPlan(currentPlanId)
-  if (!current) return PLAN_CATALOG_IDS.filter(id => PLAN_CATALOG[id].selfService)
-
-  if (currentPlanId === 'free_trial') {
-    return PLAN_CATALOG_IDS.filter(id => id !== 'free_trial')
-  }
-
-  return PLAN_CATALOG_IDS.filter(id => PLAN_CATALOG[id].selfService)
+  const paidSelfService = PLAN_CATALOG_IDS.filter(
+    id => id !== currentPlanId && PLAN_CATALOG[id].selfService,
+  )
+  return paidSelfService
 }
 
 export function serializeCatalogPlan(planId) {

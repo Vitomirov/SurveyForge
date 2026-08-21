@@ -3,6 +3,7 @@
  * Lists, creates, and deletes response entries for surveys the caller can
  * access. Exports `upsertResponse()` shared by the public response endpoint.
  */
+import { randomUUID } from 'node:crypto'
 import { findAccessibleSurvey } from '../lib/auth/surveyAccess.js'
 import { resolveDncStatus } from '../lib/survey/dncCheck.js'
 import { normalizeResponseEntry } from '../lib/survey/responseNormalization.js'
@@ -10,6 +11,27 @@ import { normalizeResponseEntry } from '../lib/survey/responseNormalization.js'
 const DEFAULT_LIMIT = 50
 const MAX_LIMIT = 200
 const ALLOWED_RESPONSE_STATUSES = new Set(['partial', 'complete', 'terminated', 'dnc'])
+const TERMINAL_STATUSES = new Set(['complete', 'terminated', 'dnc'])
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+
+function knownQuestionIds(surveyItems) {
+  const ids = new Set()
+  for (const item of surveyItems || []) {
+    if (item?.itemType === 'question' && item.id) ids.add(item.id)
+  }
+  return ids
+}
+
+function hasUnknownQuestionIds(entry, surveyItems) {
+  const known = knownQuestionIds(surveyItems)
+  for (const bag of [entry?.responses, entry?.companions]) {
+    if (!bag || typeof bag !== 'object' || Array.isArray(bag)) continue
+    for (const key of Object.keys(bag)) {
+      if (!known.has(key)) return true
+    }
+  }
+  return false
+}
 
 function rowToEntry(row) {
   const payload = row.payload && typeof row.payload === 'object' ? row.payload : {}
@@ -49,6 +71,20 @@ function entryToDbFields(entry, surveyId, organizationId) {
 
 export async function upsertResponse(app, { surveyId, organizationId, entry, surveyItems = [] }) {
   const normalized = normalizeResponseEntry(entry, surveyItems)
+  if (!normalized || typeof normalized !== 'object') return null
+
+  if (hasUnknownQuestionIds(normalized, surveyItems)) {
+    return { unknownQuestions: true }
+  }
+
+  let id = typeof normalized.id === 'string' ? normalized.id.trim() : ''
+  if (!id) {
+    id = randomUUID()
+    normalized.id = id
+  } else if (!UUID_RE.test(id)) {
+    return { invalidId: true }
+  }
+
   const data = entryToDbFields(normalized, surveyId, organizationId)
   if (!data) return null
   if (!ALLOWED_RESPONSE_STATUSES.has(data.status)) {
@@ -57,10 +93,17 @@ export async function upsertResponse(app, { surveyId, organizationId, entry, sur
 
   const existing = await app.prisma.response.findUnique({
     where: { id: data.id },
-    select: { surveyId: true, organizationId: true },
+    select: { id: true, surveyId: true, organizationId: true, status: true },
   })
   if (existing && (existing.surveyId !== surveyId || existing.organizationId !== organizationId)) {
     return { conflict: true }
+  }
+
+  if (existing && TERMINAL_STATUSES.has(existing.status)) {
+    if (TERMINAL_STATUSES.has(data.status)) {
+      return { row: existing }
+    }
+    return { finalized: true }
   }
 
   data.status = await resolveDncStatus(app.prisma, {
@@ -80,6 +123,35 @@ export async function upsertResponse(app, { surveyId, organizationId, entry, sur
     },
   })
   return { row }
+}
+
+/** Map upsertResponse() outcomes to an HTTP reply. Returns true when sent. */
+export function sendUpsertResult(reply, result) {
+  if (!result) {
+    reply.code(400).send({ error: 'Response entry must include status' })
+    return true
+  }
+  if (result.invalidId) {
+    reply.code(400).send({ error: 'Response id must be a UUID' })
+    return true
+  }
+  if (result.unknownQuestions) {
+    reply.code(400).send({ error: 'Response contains unknown question ids' })
+    return true
+  }
+  if (result.conflict) {
+    reply.code(409).send({ error: 'Response id belongs to another survey' })
+    return true
+  }
+  if (result.invalidStatus) {
+    reply.code(400).send({ error: 'Invalid response status' })
+    return true
+  }
+  if (result.finalized) {
+    reply.code(409).send({ error: 'Response is finalized' })
+    return true
+  }
+  return false
 }
 
 export async function registerResponseRoutes(app) {
@@ -150,26 +222,13 @@ export async function registerResponseRoutes(app) {
     )
     if (!survey) return
 
-    const entry = request.body
-    if (!entry?.id) {
-      return reply.code(400).send({ error: 'Response entry must include id' })
-    }
-
     const result = await upsertResponse(app, {
       surveyId: survey.id,
       organizationId: request.organizationId,
-      entry,
+      entry: request.body,
       surveyItems: survey.items || [],
     })
-    if (!result) {
-      return reply.code(400).send({ error: 'Response entry must include id and status' })
-    }
-    if (result.conflict) {
-      return reply.code(409).send({ error: 'Response id belongs to another survey' })
-    }
-    if (result.invalidStatus) {
-      return reply.code(400).send({ error: 'Invalid response status' })
-    }
+    if (sendUpsertResult(reply, result)) return
 
     return { ok: true, id: result.row.id }
   })

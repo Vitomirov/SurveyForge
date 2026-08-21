@@ -13,7 +13,12 @@
 
 rescopesurveys.com, www.rescopesurveys.com, surveys.rescopesurveys.com {
 	# WEB_HOST_PORT from .env — keep both values in sync if you change it.
-	reverse_proxy 127.0.0.1:8080
+	# Overwrite forwarded-for with the TCP peer so clients cannot spoof it.
+	reverse_proxy 127.0.0.1:8080 {
+		header_up X-Forwarded-For {remote_host}
+		header_up X-Real-IP {remote_host}
+		header_up X-Forwarded-Proto {scheme}
+	}
 }
 
 # Optional: send www to the apex domain instead of serving both.

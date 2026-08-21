@@ -196,15 +196,15 @@ test('vendor org is isolated — admin cannot read another org billing via vendo
   assert.equal(detail.status, 403)
 })
 
-test('org admin lists self-service plan options', async () => {
+test('org admin lists current plan only until checkout exists', async () => {
   const res = await api('/api/billing/plans', { token: fixtures.adminToken })
   assert.equal(res.status, 200)
   assert.ok(Array.isArray(res.data.plans))
-  assert.ok(res.data.plans.some(p => p.direction === 'current'))
-  assert.ok(res.data.plans.some(p => p.direction === 'upgrade' || p.direction === 'downgrade'))
+  assert.equal(res.data.plans.length, 1)
+  assert.equal(res.data.plans[0].direction, 'current')
 })
 
-test('org admin upgrades subscription from billing dashboard', async () => {
+test('org admin cannot self-upgrade subscription', async () => {
   const trial = await api('/api/auth/signup', {
     method: 'POST',
     body: {
@@ -221,11 +221,8 @@ test('org admin upgrades subscription from billing dashboard', async () => {
     token: trial.data.token,
     body: { planId: 'starter' },
   })
-  assert.equal(upgrade.status, 200)
-  assert.equal(upgrade.data.subscription.planId, 'starter')
-  assert.equal(upgrade.data.subscription.status, 'active')
-  assert.equal(upgrade.data.direction, 'upgrade')
-  assert.ok(upgrade.data.invoice)
+  assert.equal(upgrade.status, 400)
+  assert.equal(upgrade.data.code, 'PLAN_NOT_AVAILABLE')
 })
 
 test('downgrade blocked when team exceeds target seat limit', async () => {
@@ -245,4 +242,58 @@ test('editor cannot change subscription plan', async () => {
     body: { planId: 'professional' },
   })
   assert.equal(res.status, 403)
+})
+
+test('expired trial cannot create surveys', async () => {
+  const { adminToken, adminSession } = await provisionOrg(api, `${unique}_exp`, { planId: 'free_trial' })
+  const past = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+  const patched = await api(`/api/vendor/organizations/${adminSession.organizationId}/subscription`, {
+    method: 'PATCH',
+    token: vendorToken,
+    body: { currentPeriodEnd: past },
+  })
+  assert.equal(patched.status, 200)
+
+  const blocked = await api(`/api/surveys/survey_exp_${unique}`, {
+    method: 'PATCH',
+    token: adminToken,
+    body: {
+      survey: { id: `survey_exp_${unique}`, title: 'Expired' },
+      items: [],
+    },
+  })
+  assert.equal(blocked.status, 403)
+  assert.equal(blocked.data.code, 'TRIAL_EXPIRED')
+})
+
+test('canceled subscription cannot create surveys and public live fetch 404s', async () => {
+  const { adminToken, adminSession } = await provisionOrg(api, `${unique}_cancel`, { planId: 'starter' })
+  const id = `survey_cancel_${unique}`
+  const created = await api(`/api/surveys/${id}`, {
+    method: 'PATCH',
+    token: adminToken,
+    body: { survey: { id, title: 'Will go dark', status: 'live' }, items: [] },
+  })
+  assert.equal(created.status, 201)
+
+  const live = await api(`/api/public/surveys/${id}`)
+  assert.equal(live.status, 200)
+
+  const canceled = await api(`/api/vendor/organizations/${adminSession.organizationId}/subscription`, {
+    method: 'PATCH',
+    token: vendorToken,
+    body: { status: 'canceled' },
+  })
+  assert.equal(canceled.status, 200)
+
+  const blocked = await api(`/api/surveys/${id}_2`, {
+    method: 'PATCH',
+    token: adminToken,
+    body: { survey: { id: `${id}_2`, title: 'Nope' }, items: [] },
+  })
+  assert.equal(blocked.status, 403)
+  assert.equal(blocked.data.code, 'SUBSCRIPTION_INACTIVE')
+
+  const dark = await api(`/api/public/surveys/${id}`)
+  assert.equal(dark.status, 404)
 })

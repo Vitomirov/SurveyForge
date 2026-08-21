@@ -8,6 +8,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { randomUUID } from 'node:crypto'
 import { makeApi, provisionOrg, surveyId, createSurvey } from './lib/rbacFixtures.mjs'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -60,7 +61,7 @@ test('cross-survey response replay returns 409; same-survey resume succeeds', as
   await setLive(adminToken, idA, 'Ownership A', createdA.revision)
   await setLive(adminToken, idB, 'Ownership B', createdB.revision)
 
-  const responseId = `r_own_${unique}`
+  const responseId = randomUUID()
 
   const first = await api(`/api/public/surveys/${idA}/responses`, {
     method: 'POST',
@@ -83,6 +84,20 @@ test('cross-survey response replay returns 409; same-survey resume succeeds', as
   })
   assert.equal(resume.status, 200, `public resume A: ${JSON.stringify(resume.data)}`)
   assert.equal(resume.data.id, responseId)
+
+  const reopen = await api(`/api/public/surveys/${idA}/responses`, {
+    method: 'POST',
+    body: responseEntry(responseId, 'partial'),
+  })
+  assert.equal(reopen.status, 409)
+  assert.match(reopen.data?.error || '', /finalized/i)
+
+  const idempotent = await api(`/api/public/surveys/${idA}/responses`, {
+    method: 'POST',
+    body: responseEntry(responseId, 'complete'),
+  })
+  assert.equal(idempotent.status, 200)
+  assert.equal(idempotent.data.id, responseId)
 
   const crossAuth = await api(`/api/surveys/${idB}/responses`, {
     method: 'POST',

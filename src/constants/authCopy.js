@@ -84,7 +84,7 @@ export const AUTH_BILLING = {
   surveys:             'Surveys',
   periodEnd:           'Renews / trial ends',
   freePrice:           'Free',
-  trialBanner:         'You are on a free trial. Upgrade anytime to unlock more surveys, seats, and features.',
+  trialBanner:         'You are on a free trial. Paid plans are activated by the vendor once billing is connected.',
   changePlan:            'Change plan',
   changePlanSubtitle:    'Upgrade or downgrade your subscription. Changes take effect immediately.',
   currentPlanBadge:      'Current plan',

@@ -22,9 +22,8 @@ export function createRateLimiter({ windowMs = 60_000, max = 60 } = {}) {
   }
 }
 
+/** Client IP from the socket / trusted proxy. Never read X-Forwarded-For here. */
 export function clientIp(request) {
-  const forwarded = request.headers['x-forwarded-for']
-  if (forwarded) return String(forwarded).split(',')[0].trim()
   return request.ip || 'unknown'
 }
 

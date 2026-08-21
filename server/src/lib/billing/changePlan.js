@@ -82,10 +82,10 @@ export async function evaluatePlanChange(prisma, organizationId, targetPlanId) {
   }
 
   const allowedTargets = selfServiceTargetPlanIds(currentPlanId)
-  if (!allowedTargets.includes(targetPlanId)) {
+  if (!allowedTargets.includes(targetPlanId) || (targetPlan.priceCents ?? 0) > 0) {
     return {
       ok: false,
-      error: 'This plan change is not available from your billing dashboard.',
+      error: 'Paid plan changes are handled by the vendor until billing is connected.',
       code: 'PLAN_NOT_AVAILABLE',
     }
   }

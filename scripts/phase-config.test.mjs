@@ -4,7 +4,7 @@
  */
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { loadConfig, validateJwtSecret, durationToMs } from '../server/src/config.js'
+import { loadConfig, validateJwtSecret, durationToMs, parseCorsOrigin } from '../server/src/config.js'
 
 const STRONG_SECRET = 'a'.repeat(32)
 
@@ -29,6 +29,7 @@ test('production defaults disable seed and platform migration', () => {
   const config = loadConfig({
     NODE_ENV: 'production',
     JWT_SECRET: STRONG_SECRET,
+    CORS_ORIGIN: 'https://rescopesurveys.com,https://www.rescopesurveys.com',
   })
   assert.equal(config.isDev, false)
   assert.equal(config.seedDefaultAccounts, false)
@@ -36,13 +37,17 @@ test('production defaults disable seed and platform migration', () => {
   assert.equal(config.requireStrongJwt, true)
   assert.equal(config.cookieSecure, true)
   assert.equal(config.authAllowBearer, false)
-  assert.equal(config.corsOrigin, true)
+  assert.deepEqual(config.corsOrigin, [
+    'https://rescopesurveys.com',
+    'https://www.rescopesurveys.com',
+  ])
 })
 
 test('explicit env flags override defaults', () => {
   const config = loadConfig({
     NODE_ENV: 'production',
     JWT_SECRET: STRONG_SECRET,
+    CORS_ORIGIN: 'https://app.example.com',
     SEED_DEFAULT_ACCOUNTS: 'true',
     RUN_PLATFORM_LIST_MIGRATION: 'true',
     REQUIRE_STRONG_JWT: 'false',
@@ -50,6 +55,7 @@ test('explicit env flags override defaults', () => {
   assert.equal(config.seedDefaultAccounts, true)
   assert.equal(config.runPlatformListMigration, true)
   assert.equal(config.requireStrongJwt, false)
+  assert.equal(config.corsOrigin, 'https://app.example.com')
 })
 
 test('production rejects missing JWT_SECRET', () => {
@@ -87,4 +93,29 @@ test('durationToMs parses token lifetimes', () => {
   assert.equal(durationToMs('15m', 0), 15 * 60 * 1000)
   assert.equal(durationToMs('30d', 0), 30 * 24 * 60 * 60 * 1000)
   assert.equal(durationToMs('bogus', 9), 9)
+})
+
+test('production requires CORS_ORIGIN allowlist', () => {
+  assert.throws(
+    () => loadConfig({
+      NODE_ENV: 'production',
+      JWT_SECRET: STRONG_SECRET,
+    }),
+    /CORS_ORIGIN is required/,
+  )
+})
+
+test('production rejects wildcard CORS_ORIGIN', () => {
+  assert.throws(
+    () => loadConfig({
+      NODE_ENV: 'production',
+      JWT_SECRET: STRONG_SECRET,
+      CORS_ORIGIN: 'true',
+    }),
+    /explicit origin allowlist/,
+  )
+  assert.throws(
+    () => parseCorsOrigin('*', { isDev: false }),
+    /explicit origin allowlist/,
+  )
 })

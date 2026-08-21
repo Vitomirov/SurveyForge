@@ -56,6 +56,15 @@ case "$postgres_password" in
     ;;
 esac
 
+cors_origin="$(env_value CORS_ORIGIN)"
+if [[ -n "$cors_origin" ]]; then
+  case "$cors_origin" in
+    true|TRUE|'*'|reflect)
+      fail "CORS_ORIGIN must be an explicit origin allowlist — not true, *, or reflect"
+      ;;
+  esac
+fi
+
 # WEB_HOST_PORT may carry a bind address (127.0.0.1:8080); keep the port only.
 web_host_port="$(env_value WEB_HOST_PORT)"
 health_port="${web_host_port:-8080}"
