@@ -120,7 +120,7 @@ export function LoginPage({ onLogin }) {
                 onChange={e => setEmail(e.target.value)}
                 autoFocus={!isSignup}
                 autoComplete="email"
-                placeholder={isSignup ? 'jane@company.com' : DEFAULT_CREDENTIALS.email}
+                placeholder={isSignup ? 'jane@company.com' : (import.meta.env.DEV ? DEFAULT_CREDENTIALS.email : 'you@company.com')}
                 className="input-base"
               />
             </div>
@@ -206,8 +206,8 @@ export function LoginPage({ onLogin }) {
           )}
         </p>
 
-        {/* Default credential hint — sign-in only */}
-        {!isSignup && (
+        {/* Default credential hint — local/dev only; never ship seed passwords in prod builds */}
+        {import.meta.env.DEV && !isSignup && (
           <p className="text-center text-xs text-ink-300 mt-2">
             Default: <span className="font-mono">{DEFAULT_CREDENTIALS.email}</span> / <span className="font-mono">{DEFAULT_CREDENTIALS.password}</span>
           </p>
