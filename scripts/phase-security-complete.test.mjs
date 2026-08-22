@@ -1,0 +1,212 @@
+/**
+ * F1/F2 — server complete validation (required answers + email required for DNC).
+ * Run with: node --test scripts/phase-security-complete.test.mjs
+ * Integration cases require API on PORT from .env (default 3003) and Postgres.
+ */
+import { test, before } from 'node:test'
+import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
+import { resolve, dirname } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { randomUUID } from 'node:crypto'
+import {
+  isAnswerEmpty,
+  validateCompleteAnswers,
+} from '../server/src/lib/survey/completeValidation.js'
+import { makeApi, provisionOrg, surveyId, createSurvey } from './lib/rbacFixtures.mjs'
+
+const __dirname = dirname(fileURLToPath(import.meta.url))
+const rootEnv = readFileSync(resolve(__dirname, '../.env'), 'utf8')
+const PORT = rootEnv.match(/^PORT=(\d+)/m)?.[1] || '3003'
+const BASE = `http://127.0.0.1:${PORT}`
+const api = makeApi(BASE)
+
+const unique = `cmp_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`
+const EMAIL_Q = 'q_email_cmp'
+const REQ_Q = 'q_required_cmp'
+const OPT_Q = 'q_optional_cmp'
+
+// ─── Unit ───────────────────────────────────────────────────────────────────
+
+test('isAnswerEmpty treats 0 and false as present', () => {
+  assert.equal(isAnswerEmpty(0), false)
+  assert.equal(isAnswerEmpty(false), false)
+  assert.equal(isAnswerEmpty(''), true)
+  assert.equal(isAnswerEmpty([]), true)
+  assert.equal(isAnswerEmpty({}), true)
+  assert.equal(isAnswerEmpty({ a: '' }), true)
+  assert.equal(isAnswerEmpty({ a: 'x' }), false)
+})
+
+test('validateCompleteAnswers allows empty surveys', () => {
+  assert.deepEqual(validateCompleteAnswers({ responses: {} }, []), { ok: true })
+})
+
+test('validateCompleteAnswers rejects empty complete when questions exist', () => {
+  const items = [{ id: OPT_Q, itemType: 'question', questionType: 'text', required: false }]
+  const result = validateCompleteAnswers({ responses: {} }, items)
+  assert.equal(result.ok, false)
+  assert.equal(result.code, 'INCOMPLETE_ANSWERS')
+})
+
+test('validateCompleteAnswers rejects missing required answers', () => {
+  const items = [
+    { id: REQ_Q, itemType: 'question', questionType: 'text', required: true },
+    { id: OPT_Q, itemType: 'question', questionType: 'text', required: false },
+  ]
+  const result = validateCompleteAnswers({ responses: { [OPT_Q]: 'only optional' } }, items)
+  assert.equal(result.ok, false)
+  assert.equal(result.code, 'INCOMPLETE_ANSWERS')
+})
+
+test('validateCompleteAnswers requires email when isEmailField is set', () => {
+  const items = [
+    { id: EMAIL_Q, itemType: 'question', questionType: 'text', isEmailField: true },
+    { id: REQ_Q, itemType: 'question', questionType: 'text', required: true },
+  ]
+  const missing = validateCompleteAnswers(
+    { responses: { [REQ_Q]: 'yes' } },
+    items,
+  )
+  assert.equal(missing.ok, false)
+  assert.equal(missing.code, 'EMAIL_REQUIRED')
+
+  const invalid = validateCompleteAnswers(
+    { responses: { [REQ_Q]: 'yes', [EMAIL_Q]: 'not-an-email' } },
+    items,
+  )
+  assert.equal(invalid.ok, false)
+  assert.equal(invalid.code, 'EMAIL_REQUIRED')
+
+  const ok = validateCompleteAnswers(
+    { responses: { [REQ_Q]: 'yes', [EMAIL_Q]: 'ok@example.com' } },
+    items,
+  )
+  assert.deepEqual(ok, { ok: true })
+})
+
+// ─── Integration ────────────────────────────────────────────────────────────
+
+before(async () => {
+  const res = await api('/health')
+  assert.ok(res.data?.ok, `API not reachable at ${BASE}`)
+})
+
+async function setLive(token, id, title, revision, items) {
+  const res = await api(`/api/surveys/${id}`, {
+    method: 'PATCH',
+    token,
+    body: {
+      survey: { id, title, status: 'live' },
+      items,
+      revision,
+    },
+  })
+  assert.equal(res.status, 200, `set live ${id}: ${JSON.stringify(res.data)}`)
+  return res.data
+}
+
+function entry(id, status, responses = {}) {
+  return {
+    id,
+    status,
+    timestamp: new Date().toISOString(),
+    pageReached: 1,
+    responses,
+    companions: {},
+    terminatedBy: null,
+    fingerprint: null,
+  }
+}
+
+test('F1: public complete with empty responses returns 400 when survey has questions', async () => {
+  const { adminToken } = await provisionOrg(api, `${unique}_f1`)
+  const id = surveyId('cmp_f1')
+  const created = await createSurvey(api, adminToken, id, 'Complete F1')
+  await setLive(adminToken, id, 'Complete F1', created.revision, [
+    { id: REQ_Q, itemType: 'question', questionType: 'text', text: 'Name', required: true },
+  ])
+
+  const res = await api(`/api/public/surveys/${id}/responses`, {
+    method: 'POST',
+    body: entry(randomUUID(), 'complete', {}),
+  })
+  assert.equal(res.status, 400)
+  assert.equal(res.data.code, 'INCOMPLETE_ANSWERS')
+})
+
+test('F1: public complete succeeds when required answers are present', async () => {
+  const { adminToken } = await provisionOrg(api, `${unique}_f1ok`)
+  const id = surveyId('cmp_f1ok')
+  const created = await createSurvey(api, adminToken, id, 'Complete F1 OK')
+  await setLive(adminToken, id, 'Complete F1 OK', created.revision, [
+    { id: REQ_Q, itemType: 'question', questionType: 'text', text: 'Name', required: true },
+  ])
+
+  const responseId = randomUUID()
+  const res = await api(`/api/public/surveys/${id}/responses`, {
+    method: 'POST',
+    body: entry(responseId, 'complete', { [REQ_Q]: 'Ada' }),
+  })
+  assert.equal(res.status, 200, JSON.stringify(res.data))
+  assert.equal(res.data.id, responseId)
+})
+
+test('F2: public complete without email answer returns EMAIL_REQUIRED', async () => {
+  const { adminToken } = await provisionOrg(api, `${unique}_f2`)
+  const id = surveyId('cmp_f2')
+  const created = await createSurvey(api, adminToken, id, 'Complete F2')
+  await setLive(adminToken, id, 'Complete F2', created.revision, [
+    { id: EMAIL_Q, itemType: 'question', questionType: 'text', text: 'Email', isEmailField: true },
+  ])
+
+  const res = await api(`/api/public/surveys/${id}/responses`, {
+    method: 'POST',
+    body: entry(randomUUID(), 'complete', {}),
+  })
+  assert.equal(res.status, 400)
+  assert.equal(res.data.code, 'EMAIL_REQUIRED')
+})
+
+test('F2: DNC still applies when email is present and listed', async () => {
+  const { adminToken } = await provisionOrg(api, `${unique}_f2dnc`)
+  const id = surveyId('cmp_f2dnc')
+  const created = await createSurvey(api, adminToken, id, 'Complete F2 DNC')
+  await setLive(adminToken, id, 'Complete F2 DNC', created.revision, [
+    { id: EMAIL_Q, itemType: 'question', questionType: 'text', text: 'Email', isEmailField: true },
+  ])
+
+  const blocked = `blocked_${unique}@example.com`
+  await api(`/api/surveys/${id}/dnc`, {
+    method: 'POST',
+    token: adminToken,
+    body: { emails: [blocked] },
+  })
+
+  const responseId = randomUUID()
+  const res = await api(`/api/public/surveys/${id}/responses`, {
+    method: 'POST',
+    body: entry(responseId, 'complete', { [EMAIL_Q]: blocked }),
+  })
+  assert.equal(res.status, 200, JSON.stringify(res.data))
+
+  const listed = await api(`/api/surveys/${id}/responses`, { token: adminToken })
+  const saved = listed.data.responses.find(r => r.id === responseId)
+  assert.equal(saved?.status, 'dnc')
+})
+
+test('partial responses remain allowed with empty answers', async () => {
+  const { adminToken } = await provisionOrg(api, `${unique}_partial`)
+  const id = surveyId('cmp_partial')
+  const created = await createSurvey(api, adminToken, id, 'Complete Partial')
+  await setLive(adminToken, id, 'Complete Partial', created.revision, [
+    { id: REQ_Q, itemType: 'question', questionType: 'text', text: 'Name', required: true },
+    { id: EMAIL_Q, itemType: 'question', questionType: 'text', text: 'Email', isEmailField: true },
+  ])
+
+  const res = await api(`/api/public/surveys/${id}/responses`, {
+    method: 'POST',
+    body: entry(randomUUID(), 'partial', {}),
+  })
+  assert.equal(res.status, 200, JSON.stringify(res.data))
+})

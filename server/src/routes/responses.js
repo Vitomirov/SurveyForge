@@ -7,6 +7,7 @@ import { randomUUID } from 'node:crypto'
 import { findAccessibleSurvey } from '../lib/auth/surveyAccess.js'
 import { resolveDncStatus } from '../lib/survey/dncCheck.js'
 import { normalizeResponseEntry } from '../lib/survey/responseNormalization.js'
+import { validateCompleteAnswers } from '../lib/survey/completeValidation.js'
 
 const DEFAULT_LIMIT = 50
 const MAX_LIMIT = 200
@@ -106,6 +107,13 @@ export async function upsertResponse(app, { surveyId, organizationId, entry, sur
     return { finalized: true }
   }
 
+  if (data.status === 'complete' || data.status === 'dnc') {
+    const completeness = validateCompleteAnswers(normalized, surveyItems)
+    if (!completeness.ok) {
+      return { incomplete: true, code: completeness.code }
+    }
+  }
+
   data.status = await resolveDncStatus(app.prisma, {
     surveyId,
     entry: normalized,
@@ -149,6 +157,16 @@ export function sendUpsertResult(reply, result) {
   }
   if (result.finalized) {
     reply.code(409).send({ error: 'Response is finalized' })
+    return true
+  }
+  if (result.incomplete) {
+    const emailRequired = result.code === 'EMAIL_REQUIRED'
+    reply.code(400).send({
+      error: emailRequired
+        ? 'Complete responses require a valid email answer'
+        : 'Complete responses require answers to required questions',
+      code: emailRequired ? 'EMAIL_REQUIRED' : 'INCOMPLETE_ANSWERS',
+    })
     return true
   }
   return false
