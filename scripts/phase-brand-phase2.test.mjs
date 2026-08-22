@@ -84,6 +84,15 @@ test('public survey embed request sets frame-ancestors CSP', async () => {
   assert.ok(data.branding)
 })
 
+test('public survey non-embed request sets frame-ancestors none', async () => {
+  const res = await fetch(`${BASE}/api/public/surveys/${liveSurveyId}`)
+  assert.equal(res.status, 200)
+  const csp = res.headers.get('content-security-policy')
+  assert.ok(csp, 'CSP header should be set for non-embed requests')
+  assert.match(csp, /frame-ancestors\s+'none'/)
+  assert.doesNotMatch(csp, /https:\/\/client\.example\.com/)
+})
+
 test('starter plan cannot save embed origins', async () => {
   const starterOrg = await provisionOrg(api, `${unique}_starter`)
   const result = await api('/api/billing/brand', {

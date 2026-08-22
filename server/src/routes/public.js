@@ -49,8 +49,8 @@ async function loadOrgBrandingContext(app, organizationId) {
 }
 
 function applyEmbedSecurityHeaders(reply, { isEmbed, embedOrigins }) {
-  if (!isEmbed) return
-  const directive = buildFrameAncestorsDirective(embedOrigins)
+  // Non-embed taker must not be iframed (clickjacking). Embed mode uses the org allowlist.
+  const directive = isEmbed ? buildFrameAncestorsDirective(embedOrigins) : "'none'"
   reply.header('Content-Security-Policy', `frame-ancestors ${directive}`)
 }
 
