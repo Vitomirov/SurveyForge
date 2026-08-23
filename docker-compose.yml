@@ -13,7 +13,7 @@
 #   open http://localhost:5173
 #
 # Publish images to Docker Hub (after `docker login`):
-#   ./scripts/publish-docker.sh
+#   ./scripts/deploy/publish-docker.sh
 #
 # Database only (local npm dev with `npm run dev:all`):
 #   npm run db:up

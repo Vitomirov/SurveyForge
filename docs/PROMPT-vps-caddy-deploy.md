@@ -81,7 +81,7 @@ Minimal production config:
 No hardcoded email addresses unless Caddy requires them for Let's Encrypt (global options block only if needed).
 Short comments in English inside the file.
 
-### 3. Create scripts/deploy.sh — safe redeploy script
+### 3. Create scripts/deploy/deploy.sh — safe redeploy script
 
 - set -euo pipefail
 - verify .env exists and JWT_SECRET / POSTGRES_PASSWORD are not empty or placeholders
@@ -137,7 +137,7 @@ Add comments for production VPS deploy:
 
     [Local]
       1. Generate secrets → .env on VPS
-      2. ./scripts/publish-docker.sh v0.1.0
+      2. ./scripts/deploy/publish-docker.sh v0.1.0
       3. Push code / copy compose + .env to VPS
 
     [VPS — first time]
@@ -150,7 +150,7 @@ Add comments for production VPS deploy:
       10. Verification (signup, health, surveys subdomain)
 
     [VPS — every update]
-      ./scripts/deploy.sh
+      ./scripts/deploy/deploy.sh
       # or: IMAGE_TAG=v0.1.1 in .env && docker compose pull && docker compose up -d
 
 Implement everything above, verify README links work, and at the end explain in English what you did, how deployment works, and what I must do manually on the VPS.
@@ -170,7 +170,7 @@ Implement everything above, verify README links work, and at the end explain in 
 
    ```bash
    docker login
-   ./scripts/publish-docker.sh v0.1.0
+   ./scripts/deploy/publish-docker.sh v0.1.0
    ```
 
 3. DNS must be live before Caddy requests a Let's Encrypt certificate.

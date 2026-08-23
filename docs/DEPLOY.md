@@ -70,7 +70,7 @@ treated as a survey `publicPath`, everywhere else the SPA dashboard loads.
 | Domain | `rescopesurveys.com` with editable DNS records |
 | Docker Engine | Installed in step 5 |
 | Docker Compose | **v2.24 or newer** — `docker-compose.prod.yml` uses the `!override` tag (see step 5 for the fallback) |
-| Docker Hub images | Published from your machine with `./scripts/publish-docker.sh v0.1.0` before the first deploy |
+| Docker Hub images | Published from your machine with `./scripts/deploy/publish-docker.sh v0.1.0` before the first deploy |
 
 Ports used: `22` (SSH), `80`/`443` (Caddy). Nothing else needs to be reachable
 from the internet.
@@ -211,7 +211,7 @@ Or copy just the required files from your machine:
 
 ```bash
 scp docker-compose.yml docker-compose.prod.yml user@203.0.113.10:/opt/rescopesurveys/
-scp scripts/deploy.sh user@203.0.113.10:/opt/rescopesurveys/scripts/
+scp scripts/deploy/deploy.sh user@203.0.113.10:/opt/rescopesurveys/scripts/deploy/
 scp docker/caddy/Caddyfile user@203.0.113.10:/opt/rescopesurveys/docker/caddy/
 ```
 
@@ -379,7 +379,7 @@ Publish new images from your machine:
 
 ```bash
 docker login
-./scripts/publish-docker.sh v0.1.1
+./scripts/deploy/publish-docker.sh v0.1.1
 ```
 
 Then on the VPS:
@@ -387,10 +387,10 @@ Then on the VPS:
 ```bash
 cd /opt/rescopesurveys
 # bump IMAGE_TAG=v0.1.1 in .env
-./scripts/deploy.sh
+./scripts/deploy/deploy.sh
 ```
 
-[`scripts/deploy.sh`](../scripts/deploy.sh) refuses to run with missing or
+[`scripts/deploy/deploy.sh`](../scripts/deploy/deploy.sh) refuses to run with missing or
 placeholder secrets, pulls the images, restarts the stack, waits up to 60
 seconds for `/health`, and prints container status. Equivalent manual commands:
 
@@ -526,7 +526,7 @@ Check the layers from the outside in: DNS (`dig`), firewall
 
 | Task | Command (on the VPS, in `/opt/rescopesurveys`) |
 |------|------------------------------------------------|
-| Deploy / update | `./scripts/deploy.sh` |
+| Deploy / update | `./scripts/deploy/deploy.sh` |
 | Status | `docker compose ps` |
 | Logs | `docker compose logs -f api` |
 | Restart app | `docker compose restart api web` |

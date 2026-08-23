@@ -1,6 +1,6 @@
 # Load-test overlay — cap the app stack at 2 CPU / 4 GB and run k6.
 #
-#   ./scripts/load-test.sh
+#   ./scripts/load/run-load-test.sh
 #   # or:
 #   docker compose -p survey-builder-load -f docker-compose.yml -f docker-compose.load.yml up -d --build
 #   docker compose -p survey-builder-load -f docker-compose.yml -f docker-compose.load.yml --profile k6 run --rm k6

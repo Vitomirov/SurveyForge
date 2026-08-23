@@ -113,7 +113,7 @@ survey-builder/
 │   │   └── lib/            Authz, seed, billing, survey public paths, normalization
 │   └── prisma/             Schema and migrations
 ├── shared/                 Cross-package utilities (surveyUrl, matrixAnswer)
-├── scripts/                Registry check + phase tests (logic + API integration)
+├── scripts/                Dev, deploy, load, check, and tests (unit + integration)
 ├── docker/                 nginx config for the web container + host Caddyfile template
 ├── k6/                     Load test script + Docker stats sidecar
 ├── docs/                   Module reference, smoke checklist, deploy guide
@@ -446,10 +446,10 @@ API integration tests expect a live server at `http://127.0.0.1:3003` with a mig
 
 ## Testing
 
-- **Frontend logic tests** — pure engine tests in `scripts/phase*.test.mjs` (visibility, conditions, piping, matrix, CSV, URLs). No browser required.
-- **API integration tests** — `scripts/phase-r*.test.mjs` hit real HTTP endpoints for auth, RBAC, ownership, permissions, employees, billing.
-- **Security tests** — `npm run test:security` (`scripts/phase-security-*.test.mjs`) requires a running API.
-- **Registry check** — `scripts/check-registries.js` ensures every question type has matching builder and taker handlers.
+- **Frontend logic tests** — pure engine tests in `scripts/tests/unit/` (visibility, conditions, piping, matrix, CSV, URLs). No browser required.
+- **API integration tests** — `scripts/tests/integration/` hits real HTTP endpoints for auth, RBAC, ownership, permissions, employees, billing.
+- **Security tests** — `npm run test:security` (`scripts/tests/integration/security/`) requires a running API.
+- **Registry check** — `scripts/check/question-registries.js` ensures every question type has matching builder and taker handlers.
 - **Manual QA** — [docs/SMOKE_CHECKLIST.md](docs/SMOKE_CHECKLIST.md).
 - **Load tests** — `npm run test:load` (k6 + Docker, 2 CPU / 4 GB). Use `npm run test:load:quick` for a ~1 minute smoke ramp.
 
@@ -461,7 +461,7 @@ The load stack is a separate Compose project (`survey-builder-load`) so it does 
 npm run test:load          # ramp to 200 respondent VUs (~8 min)
 npm run test:load:quick    # 20 VUs, ~1 min
 MAX_VUS=100 npm run test:load
-./scripts/load-test.sh --down
+./scripts/load/run-load-test.sh --down
 ```
 
 k6 simulates mixed traffic: public respondents (SPA shell, live survey fetch, DNC check, response submit) and authenticated authors (session, dashboard, builder GET, response stats). Concurrent users increase in stages until a threshold fails — that is the capacity ceiling on this hardware budget.
@@ -544,7 +544,7 @@ Two proxy layers, each with one job:
 
 ```bash
 # On the VPS, after the first deploy
-./scripts/deploy.sh    # validates .env secrets, pulls images, restarts, waits for /health
+./scripts/deploy/deploy.sh    # validates .env secrets, pulls images, restarts, waits for /health
 ```
 
 ### Security considerations
