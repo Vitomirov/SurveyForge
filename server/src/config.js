@@ -86,6 +86,7 @@ export function loadConfig(env = process.env) {
   const runPlatformListMigration = parseBool(env.RUN_PLATFORM_LIST_MIGRATION, isDev)
   const requireStrongJwt = parseBool(env.REQUIRE_STRONG_JWT, !isDev)
   const rateLimitRelaxed = parseBool(env.RATE_LIMIT_RELAXED, isDev)
+  const rateLimitDisabled = parseBool(env.RATE_LIMIT_DISABLED, false)
   const cookieSecure = parseBool(env.COOKIE_SECURE, !isDev)
   const authAllowBearer = parseBool(env.AUTH_ALLOW_BEARER, isDev)
 
@@ -120,5 +121,6 @@ export function loadConfig(env = process.env) {
     runPlatformListMigration,
     requireStrongJwt,
     rateLimitRelaxed,
+    rateLimitDisabled,
   }
 }

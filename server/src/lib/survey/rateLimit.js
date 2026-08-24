@@ -6,6 +6,8 @@
  * Expired keys are swept on a timer; the map is also capped so a unique-IP
  * flood cannot grow process memory without bound.
  */
+import { loadConfig } from '../../config.js'
+
 const buckets = new Map()
 const RELAXED_FACTOR = 100
 const MAX_BUCKETS = 20_000
@@ -75,6 +77,7 @@ export function createRouteLimiters({ relaxed = false } = {}) {
 }
 
 export function sendIfRateLimited(limiter, request, reply, key) {
+  if (loadConfig().rateLimitDisabled) return null
   const limit = limiter(`${key}:${clientIp(request)}`)
   if (!limit.allowed) {
     return reply.code(429).send({ error: 'Too many requests. Please try again later.' })

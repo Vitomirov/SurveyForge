@@ -28,6 +28,7 @@ services:
       SEED_DEFAULT_ACCOUNTS: 'true'
       RUN_PLATFORM_LIST_MIGRATION: 'true'
       RATE_LIMIT_RELAXED: 'true'
+      RATE_LIMIT_DISABLED: 'true'
       AUTH_ALLOW_BEARER: 'true'
       REQUIRE_STRONG_JWT: 'false'
       COOKIE_SECURE: 'false'
