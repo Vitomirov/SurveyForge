@@ -136,9 +136,12 @@ export async function registerAuthRoutes(app) {
       return reply.code(400).send({ error: 'Email and password are required.' })
     }
 
-    const normalized = normalizeEmail(email)
+    const identifier = email.trim()
+    const normalizedEmail = normalizeEmail(identifier)
     const user = await app.prisma.user.findFirst({
-      where: { email: { equals: normalized, mode: 'insensitive' } },
+      where: identifier.includes('@')
+        ? { email: { equals: normalizedEmail, mode: 'insensitive' } }
+        : { username: { equals: identifier, mode: 'insensitive' } },
       include: { organization: true },
     })
 

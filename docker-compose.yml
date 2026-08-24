@@ -4,6 +4,11 @@
 #   docker compose pull
 #   docker compose up -d
 #   open http://localhost:8080
+#   login: admin / admin123  (vendor / vendor123 for platform console)
+#
+# No .env required for a local demo — defaults below are partner-safe only.
+# Production VPS: use docker-compose.prod.yml (see docs/DEPLOY.md) and set
+# strong JWT_SECRET + POSTGRES_PASSWORD in .env — seed accounts are disabled there.
 #
 # Developer (rebuild locally):
 #   docker compose up --build -d
@@ -25,7 +30,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-rescopesurveys}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-rescopesurveys}
       POSTGRES_DB: ${POSTGRES_DB:-rescopesurveys}
     volumes:
       - pgdata:/var/lib/postgresql/data
@@ -47,18 +52,20 @@ services:
       postgres:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-rescopesurveys}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-rescopesurveys}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-rescopesurveys}:${POSTGRES_PASSWORD:-rescopesurveys}@postgres:5432/${POSTGRES_DB:-rescopesurveys}
       PORT: 3003
       NODE_ENV: production
-      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET to a strong random value (32+ characters)}
+      JWT_SECRET: ${JWT_SECRET:-partner-docker-local-only-not-for-production-use-32ch}
       JWT_EXPIRES_IN: '24h'
       ACCESS_TOKEN_EXPIRES_IN: '15m'
       REFRESH_TOKEN_EXPIRES_IN: '30d'
-      COOKIE_SECURE: 'true'
-      AUTH_ALLOW_BEARER: 'false'
-      CORS_ORIGIN: ${CORS_ORIGIN:-https://rescopesurveys.com,https://www.rescopesurveys.com,https://surveys.rescopesurveys.com}
-      SEED_DEFAULT_ACCOUNTS: 'false'
-      RUN_PLATFORM_LIST_MIGRATION: 'false'
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      AUTH_ALLOW_BEARER: ${AUTH_ALLOW_BEARER:-true}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:8080}
+      SEED_DEFAULT_ACCOUNTS: ${SEED_DEFAULT_ACCOUNTS:-true}
+      RUN_PLATFORM_LIST_MIGRATION: ${RUN_PLATFORM_LIST_MIGRATION:-true}
+      REQUIRE_STRONG_JWT: ${REQUIRE_STRONG_JWT:-false}
+      RATE_LIMIT_RELAXED: ${RATE_LIMIT_RELAXED:-true}
     expose:
       - '3003'
 

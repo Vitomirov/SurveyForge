@@ -18,6 +18,17 @@
 # Keep WEB_HOST_PORT a bare port number (e.g. 8080) when using this file.
 
 services:
+  api:
+    environment:
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET to a strong random value (32+ characters)}
+      COOKIE_SECURE: 'true'
+      AUTH_ALLOW_BEARER: 'false'
+      CORS_ORIGIN: ${CORS_ORIGIN:-https://rescopesurveys.com,https://www.rescopesurveys.com,https://surveys.rescopesurveys.com}
+      SEED_DEFAULT_ACCOUNTS: 'false'
+      RUN_PLATFORM_LIST_MIGRATION: 'false'
+      REQUIRE_STRONG_JWT: 'true'
+      RATE_LIMIT_RELAXED: 'false'
+
   web:
     ports: !override
       - '127.0.0.1:${WEB_HOST_PORT:-8080}:80'
