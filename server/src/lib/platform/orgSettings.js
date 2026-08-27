@@ -4,7 +4,7 @@
  * embed origins, and DNS domain verification state.
  */
 import { normalizeSurveyDomain } from '../../../../shared/surveyUrl.js'
-import { validateBrandTheme, DEFAULT_BRAND_THEME } from '../../../../shared/brandTheme.js'
+import { validateBrandTheme, cloneDefaultBrandTheme } from '../../../../shared/brandTheme.js'
 import { normalizeEmbedOrigin } from '../../../../shared/embedProtocol.js'
 import {
   normalizeDomainVerification,
@@ -80,5 +80,5 @@ export function patchOrgSettings(settings, {
 }
 
 export function defaultBrandKitPreview() {
-  return { ...DEFAULT_BRAND_THEME }
+  return cloneDefaultBrandTheme()
 }

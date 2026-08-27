@@ -1,13 +1,13 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { Palette } from 'lucide-react'
+import { Palette, RotateCcw } from 'lucide-react'
 import { useApi } from '@/config/api'
 import { fetchBrandKit, patchBrandKit } from '@/api/platform/billing'
 import { InlineLoader, useToast } from '@/components/ui'
+import { cloneDefaultBrandTheme } from '@/constants/branding'
 import {
   APPROVED_FONTS,
   BORDER_RADIUS_OPTIONS,
   BUTTON_VARIANTS,
-  DEFAULT_BRAND_THEME,
   validateBrandTheme,
 } from '@shared/brandTheme.js'
 import { BrandThemePreview } from '@/components/shared/branding/BrandThemePreview.jsx'
@@ -25,7 +25,7 @@ export function BrandKitPanel({ onClose, embedded = false }) {
   const [loading, setLoading] = useState(useApi)
   const [saving, setSaving] = useState(false)
   const [planFeatures, setPlanFeatures] = useState(null)
-  const [theme, setTheme] = useState({ ...DEFAULT_BRAND_THEME })
+  const [theme, setTheme] = useState(() => cloneDefaultBrandTheme())
   const [embedOrigins, setEmbedOrigins] = useState('')
   const [errors, setErrors] = useState([])
   const errorsRef = useRef(null)
@@ -39,7 +39,7 @@ export function BrandKitPanel({ onClose, embedded = false }) {
     try {
       const data = await fetchBrandKit()
       setPlanFeatures(data.planFeatures)
-      setTheme(data.brandKit || { ...DEFAULT_BRAND_THEME })
+      setTheme(data.brandKit ? { ...data.brandKit } : cloneDefaultBrandTheme())
       setEmbedOrigins((data.embedAllowedOrigins || []).join('\n'))
     } catch (err) {
       toast({ message: err.message || 'Failed to load Brand Kit', type: 'error' })
@@ -79,6 +79,29 @@ export function BrandKitPanel({ onClose, embedded = false }) {
       toast({ message: 'Brand Kit saved', type: 'success' })
     } catch (err) {
       toast({ message: err.message || 'Failed to save Brand Kit', type: 'error' })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const onReset = async () => {
+    if (!useApi) {
+      toast({ message: 'Brand Kit requires API mode', type: 'error' })
+      return
+    }
+    if (!window.confirm('Reset colors, font, and logo to platform defaults? This applies to all new surveys.')) {
+      return
+    }
+
+    const defaults = cloneDefaultBrandTheme()
+    setSaving(true)
+    setErrors([])
+    try {
+      await patchBrandKit({ brandKit: null })
+      setTheme(defaults)
+      toast({ message: 'Brand Kit reset to defaults', type: 'success' })
+    } catch (err) {
+      toast({ message: err.message || 'Failed to reset Brand Kit', type: 'error' })
     } finally {
       setSaving(false)
     }
@@ -227,9 +250,18 @@ export function BrandKitPanel({ onClose, embedded = false }) {
         </div>
       </div>
 
-      <div className="flex gap-2 mt-6">
+      <div className="flex flex-wrap gap-2 mt-6">
         <button type="button" onClick={onSave} disabled={saving} className="btn-primary">
           {saving ? 'Saving…' : 'Save Brand Kit'}
+        </button>
+        <button
+          type="button"
+          onClick={onReset}
+          disabled={saving}
+          className="btn-ghost inline-flex items-center gap-1.5"
+        >
+          <RotateCcw size={14} />
+          Reset to defaults
         </button>
         {!embedded && onClose && (
           <button type="button" onClick={onClose} className="btn-ghost">Close</button>

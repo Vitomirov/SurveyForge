@@ -38,10 +38,13 @@ export function enforceSurveyBranding(survey, planId) {
   return stripSurveyBrandingFields(survey, { allowLogo, allowThemeOverrides })
 }
 
-/** Validate and normalize org brand kit from PATCH body. */
+/** Validate and normalize org brand kit from PATCH body. Pass `null` to clear custom branding. */
 export function sanitizeOrgBrandKit(input, planId) {
   if (!canUseBrandKit(planId)) {
     return { brandKit: null, errors: ['Brand Kit requires a Professional or Enterprise plan.'] }
+  }
+  if (input === null) {
+    return { brandKit: null, errors: [] }
   }
   const { theme, errors } = validateBrandTheme(input)
   if (errors.length) return { brandKit: null, errors }

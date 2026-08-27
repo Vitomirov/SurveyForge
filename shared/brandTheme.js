@@ -34,6 +34,11 @@ export const DEFAULT_BRAND_THEME = {
   showPoweredBy: false,
 }
 
+/** Fresh copy of platform brand defaults (colors, font, radius, etc.). */
+export function cloneDefaultBrandTheme() {
+  return { ...DEFAULT_BRAND_THEME }
+}
+
 const FONT_BY_KEY = Object.fromEntries(APPROVED_FONTS.map(f => [f.key, f]))
 
 /** Google Fonts family query params for approved brand fonts. */

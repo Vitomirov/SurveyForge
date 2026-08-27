@@ -62,6 +62,12 @@ test('sanitizeOrgBrandKit accepts professional palette', () => {
   assert.equal(result.brandKit.primaryColor, '#1d4ed8')
 })
 
+test('sanitizeOrgBrandKit clears custom kit when input is null', () => {
+  const result = sanitizeOrgBrandKit(null, 'professional')
+  assert.equal(result.errors.length, 0)
+  assert.equal(result.brandKit, null)
+})
+
 test('buildPublicBrandingPayload merges org theme for professional', () => {
   const payload = buildPublicBrandingPayload(
     { brandKit: { primaryColor: '#111111', textColor: '#0f172a', backgroundColor: '#ffffff', buttonTextColor: '#ffffff' } },
