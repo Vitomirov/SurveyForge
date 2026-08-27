@@ -1,12 +1,14 @@
 import { SPECIFY_PLACEHOLDER } from '@/constants/placeholders'
+import { useOrderedChoiceOptions } from '@/hooks/useOrderedChoiceOptions'
 
 export function SingleSelectQ({ question, value, onChange, companions = {}, onCompanionChange }) {
-  if (!question.options?.length) {
+  const options = useOrderedChoiceOptions(question)
+  if (!options.length) {
     return <p className="text-sm text-ink-400 italic p-3 border border-dashed border-ink-200 rounded-xl">Options will appear here once the source question is answered.</p>
   }
   return (
     <div className="space-y-2">
-      {question.options.map(opt => {
+      {options.map(opt => {
         const selected = value === opt.id
         return (
           <div key={opt.id}>

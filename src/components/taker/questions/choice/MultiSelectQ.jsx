@@ -1,16 +1,18 @@
 import { Check } from 'lucide-react'
 import { SPECIFY_PLACEHOLDER } from '@/constants/placeholders'
+import { useOrderedChoiceOptions } from '@/hooks/useOrderedChoiceOptions'
 
 export function MultiSelectQ({ question, value = [], onChange, companions = {}, onCompanionChange }) {
+  const options = useOrderedChoiceOptions(question)
   const toggle = (optId, isExclusive) => {
     if (isExclusive) { onChange(value.includes(optId) ? [] : [optId]); return }
-    const exclusiveIds = question.options.filter(o => o.isExclusive).map(o => o.id)
+    const exclusiveIds = options.filter(o => o.isExclusive).map(o => o.id)
     const filtered = value.filter(id => !exclusiveIds.includes(id))
     onChange(filtered.includes(optId) ? filtered.filter(id => id !== optId) : [...filtered, optId])
   }
   return (
     <div className="space-y-2">
-      {question.options.map(opt => {
+      {options.map(opt => {
         const selected = value.includes(opt.id)
         return (
           <div key={opt.id}>
