@@ -11,7 +11,10 @@ import { fileURLToPath } from 'url'
 const __dirname = dirname(fileURLToPath(import.meta.url))
 loadEnv({ path: resolve(__dirname, '../../.env') })
 
+import { resolveDatabaseUrl } from './lib/env/databaseUrl.js'
 import { buildApp } from './app.js'
+
+process.env.DATABASE_URL = resolveDatabaseUrl(process.env)
 import { loadConfig } from './config.js'
 import { seedDefaultAdmin, seedPlatformOwner } from './lib/platform/seed.js'
 import { migratePlatformLists } from './lib/platform/migratePlatformLists.js'

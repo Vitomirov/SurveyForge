@@ -1,5 +1,7 @@
 # Production deployment — VPS with Caddy + Docker
 
+> **Other guides:** [Documentation index](README.md) · [Development](DEVELOPMENT.md) · [Docker Hub](DOCKER.md) · [CI/CD](CI.md)
+
 Step-by-step guide for deploying Rescope Surveys to a single Ubuntu VPS with
 HTTPS on `rescopesurveys.com`, `www.rescopesurveys.com`, and
 `surveys.rescopesurveys.com`.

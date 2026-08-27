@@ -334,6 +334,20 @@ npm install
 npm install --prefix server
 ```
 
+## Getting started
+
+Full workflow guides: **[docs/README.md](docs/README.md)** (dev, Docker Hub, production, CI/CD).
+
+### Quick start — development
+
+```bash
+npm install && npm install --prefix server
+cp .env.example .env
+npm run dev:docker          # Vite :5173 + API :3003 + Postgres :5433
+```
+
+See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for all dev modes.
+
 ### Option A — Local mode (no backend)
 
 ```bash
@@ -553,7 +567,7 @@ Production deployments must address:
 
 - **Set `JWT_SECRET`** to a strong random value (32+ characters) — production Compose requires it and the API refuses weak placeholders at startup.
 - **Set `POSTGRES_PASSWORD`** — production Compose interpolates it into Postgres and `DATABASE_URL`; do not ship the local default.
-- **No default seeded accounts in production** — `SEED_DEFAULT_ACCOUNTS=false` in `docker-compose.yml`; create the first org via signup.
+- **No default seeded accounts in production** — `docker-compose.prod.yml` sets `SEED_DEFAULT_ACCOUNTS=false`; create the first org via signup.
 - **HTTPS is required** — production Compose sets `COOKIE_SECURE=true`, so sessions only persist over TLS. Terminate TLS at the host Caddy ([docker/caddy/Caddyfile](docker/caddy/Caddyfile)).
 - **Do not publish 8080 publicly** — use `docker-compose.prod.yml`; ufw does not filter Docker-published ports.
 - **Rich text XSS** — survey description and text-block HTML are sanitized with DOMPurify on survey write.
@@ -579,9 +593,13 @@ Production deployments must address:
 
 | Document | Contents |
 |----------|----------|
+| [docs/README.md](docs/README.md) | Documentation index — dev, Docker, deploy, CI/CD |
+| [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) | Local development workflows |
+| [docs/DOCKER.md](docs/DOCKER.md) | Docker Hub publish and partner demo |
+| [docs/DEPLOY.md](docs/DEPLOY.md) | Production VPS deploy — Caddy, DNS, secrets, firewall, backups |
+| [docs/CI.md](docs/CI.md) | GitHub Actions CI/CD |
 | [docs/PUBLIC_API.md](docs/PUBLIC_API.md) | Module exports, store actions, engine reference |
 | [docs/SMOKE_CHECKLIST.md](docs/SMOKE_CHECKLIST.md) | Manual QA checklist |
-| [docs/DEPLOY.md](docs/DEPLOY.md) | Production VPS deploy — Caddy, DNS, secrets, firewall, backups |
 
 ---
 
