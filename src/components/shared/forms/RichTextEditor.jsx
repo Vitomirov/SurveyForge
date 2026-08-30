@@ -1,7 +1,7 @@
 import { useRef, useEffect, useState } from 'react'
 import {
   Bold, Italic, Underline, List, ListOrdered,
-  AlignLeft, AlignCenter, AlignRight, Eraser,
+  AlignLeft, AlignCenter, AlignRight, Eraser, AlignJustify,
 } from 'lucide-react'
 import { sanitizeHtml } from '@/utils/sanitizeHtml'
 
@@ -87,9 +87,10 @@ export function RichTextEditor({ value, onChange, placeholder = 'Start typing…
         <ToolBtn icon={List}        onClick={() => exec('insertUnorderedList')} title="Bullet list" />
         <ToolBtn icon={ListOrdered} onClick={() => exec('insertOrderedList')}  title="Numbered list" />
         <div className="w-px h-4 bg-ink-200 mx-1" />
-        <ToolBtn icon={AlignLeft}   onClick={() => exec('justifyLeft')}   title="Align left" />
-        <ToolBtn icon={AlignCenter} onClick={() => exec('justifyCenter')} title="Align center" />
-        <ToolBtn icon={AlignRight}  onClick={() => exec('justifyRight')}  title="Align right" />
+        <ToolBtn icon={AlignLeft}   onClick={() => exec('justifyLeft')}   title="Left align" />
+        <ToolBtn icon={AlignCenter} onClick={() => exec('justifyCenter')} title="Center align" />
+        <ToolBtn icon={AlignRight}  onClick={() => exec('justifyRight')}  title="Right align" />
+        <ToolBtn icon={AlignJustify} onClick={() => exec('justifyFull')}  title="Justify" />
         <div className="w-px h-4 bg-ink-200 mx-1" />
         <ToolBtn icon={Eraser} onClick={clearFormatting} title="Clear formatting" />
       </div>
