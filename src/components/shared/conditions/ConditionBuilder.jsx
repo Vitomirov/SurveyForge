@@ -15,10 +15,13 @@ import {
   getTextConditionTypesForQuestion,
   isDateQuestion,
   isNumericTextQuestion,
+  isSliderQuestion,
   sanitizeTextOperator,
 } from '@/utils/survey/conditions/conditionConstants'
 import { DateConditionFields } from '@/components/shared/conditions/DateConditionFields'
+import { SliderConditionFields } from '@/components/shared/conditions/SliderConditionFields'
 import { formatDateConditionPhrase } from '@/utils/survey/conditions/dateOperators'
+import { formatSliderConditionPhrase } from '@/utils/survey/conditions/sliderOperators'
 
 // ─── Theme tokens per variant ───────────────────────────────────────────────
 const THEMES = {
@@ -70,6 +73,11 @@ const THEMES = {
     summaryEm:        'text-rose-300',
     summaryEmpty:     'text-rose-300',
   },
+}
+
+function defaultTextOperatorForQuestion(question) {
+  if (isDateQuestion(question) || isSliderQuestion(question)) return 'is_answered'
+  return 'contains'
 }
 
 const JOIN_OR = 'bg-amber-500 text-white border-amber-400 hover:bg-amber-600'
@@ -132,7 +140,9 @@ export function ConditionSummaryInline({ cond, questions, variant = 'visibility'
       <em className={theme.summaryEm}>
         {isDateQuestion(q)
           ? formatDateConditionPhrase(cond.textOperator, cond.textValue, cond.textValue2)
-          : `${cond.textOperator?.replace(/_/g, ' ')} "${cond.textValue || '…'}"`}
+          : isSliderQuestion(q)
+            ? formatSliderConditionPhrase(cond.textOperator, cond.textValue, cond.textValue2)
+            : `${cond.textOperator?.replace(/_/g, ' ')} "${cond.textValue || '…'}"`}
       </em>
     </>
   )
@@ -158,6 +168,7 @@ function ConditionRow({
   const isChoice = isChoiceCondition(q)
   const isMatrix = q && isMatrixType(q.questionType)
   const isDate   = isDateQuestion(q)
+  const isSlider = isSliderQuestion(q)
   const opts     = resolveConditionOptions(q, contextItems)
   const rows     = q?.matrixConfig?.rows || []
 
@@ -177,7 +188,7 @@ function ConditionRow({
       matrixRowId: isM ? (newQ.matrixConfig?.rows?.[0]?.id || '') : '',
       matrixColumnIds: [],
       conditionType: isC ? 'any_of' : undefined,
-      textOperator: isC ? undefined : (isDateQuestion(newQ) ? 'is_answered' : 'contains'),
+      textOperator: isC ? undefined : defaultTextOperatorForQuestion(newQ),
       textValue: '',
       textValue2: '',
     })
@@ -333,7 +344,19 @@ function ConditionRow({
           />
         )}
 
-        {q && !isChoice && !isDate && (
+        {q && !isChoice && isSlider && (
+          <SliderConditionFields
+            operator={cond.textOperator}
+            textValue={cond.textValue}
+            textValue2={cond.textValue2}
+            question={q}
+            onChange={patch => onUpdate(cond.id, patch)}
+            inputClassName={fieldClass}
+            hintClassName={`text-xs mt-1 ${theme.hint}`}
+          />
+        )}
+
+        {q && !isChoice && !isDate && !isSlider && (
           <div>
             <label className={`text-xs mb-1 block ${theme.label}`}>Value</label>
             <input

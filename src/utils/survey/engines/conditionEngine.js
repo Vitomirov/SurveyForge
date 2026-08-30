@@ -8,8 +8,9 @@ import {
   isMatrixAnswerEmpty,
   evalMatrixSelection,
 } from '../conditions/matrixHelpers.js'
-import { isDateQuestion } from '../conditions/conditionConstants.js'
+import { isDateQuestion, isSliderQuestion } from '../conditions/conditionConstants.js'
 import { evalDateOperator } from '../conditions/dateOperators.js'
+import { evalSliderOperator } from '../conditions/sliderOperators.js'
 
 /**
  * Match a text/numeric answer against an operator.
@@ -76,6 +77,10 @@ function evalCondition(cond, responses, allItems) {
 
   if (isDateQuestion(q)) {
     return evalDateOperator(answer, cond.textOperator, cond.textValue, cond.textValue2)
+  }
+
+  if (isSliderQuestion(q)) {
+    return evalSliderOperator(answer, cond.textOperator, cond.textValue, cond.textValue2)
   }
 
   if (isAnswerEmpty(answer, q.questionType)) return false

@@ -4,8 +4,9 @@
 
 import { isChoiceType, isMatrixType } from '../questions/questionHelpers.js'
 import { resolveOptionLabel } from '../questions/questionOptions.js'
-import { getChoiceConditionLabel, isDateQuestion, TEXT_CONDITION_TYPES } from './conditionConstants.js'
+import { getChoiceConditionLabel, isDateQuestion, isSliderQuestion, TEXT_CONDITION_TYPES } from './conditionConstants.js'
 import { formatDateConditionPhrase } from './dateOperators.js'
+import { formatSliderConditionPhrase } from './sliderOperators.js'
 
 export function getMatrixRowLabel(matrixConfig, rowId, fallback = 'row') {
   return matrixConfig?.rows?.find(r => r.id === rowId)?.text || fallback
@@ -50,6 +51,10 @@ export function formatConditionPhraseBlockStyle(cond, question, contextItems, qL
     return `${qLabel} ${formatDateConditionPhrase(cond.textOperator, cond.textValue, cond.textValue2)}`
   }
 
+  if (isSliderQuestion(question)) {
+    return `${qLabel} ${formatSliderConditionPhrase(cond.textOperator, cond.textValue, cond.textValue2)}`
+  }
+
   const op = cond.textOperator?.replace(/_/g, ' ') || ''
   return `${qLabel} ${op} "${cond.textValue || ''}"`
 }
@@ -76,6 +81,10 @@ export function formatConditionPhraseLogicStyle(cond, question, contextItems, qL
 
   if (isDateQuestion(question)) {
     return `${qLabel} ${formatDateConditionPhrase(cond.textOperator, cond.textValue, cond.textValue2)}`
+  }
+
+  if (isSliderQuestion(question)) {
+    return `${qLabel} ${formatSliderConditionPhrase(cond.textOperator, cond.textValue, cond.textValue2)}`
   }
 
   const op = TEXT_CONDITION_TYPES.find(t => t.value === cond.textOperator)?.label || cond.textOperator

@@ -3,9 +3,11 @@ import {
   TEXT_OPERATORS,
   getTextOperatorsForQuestion,
   isDateQuestion,
+  isSliderQuestion,
   sanitizeTextOperator,
 } from '@/utils/survey/conditions/conditionConstants'
 import { getDateOperatorHint } from '@/components/shared/conditions/DateConditionFields'
+import { getSliderOperatorHint } from '@/components/shared/conditions/SliderConditionFields'
 
 /**
  * Text-operator dropdown scoped to the question type.
@@ -36,6 +38,7 @@ export function TextOperatorSelect({ value, onChange, question, className = 'inp
 
 export function getTextOperatorHint(operator, question) {
   if (isDateQuestion(question)) return getDateOperatorHint(operator)
+  if (isSliderQuestion(question)) return getSliderOperatorHint(operator)
   return TEXT_OPERATORS.find(o => o.value === operator)?.hint
 }
 

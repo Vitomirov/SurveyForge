@@ -1,6 +1,7 @@
 import { Plus, Trash2 } from 'lucide-react'
 import { SectionLabel, Divider, Toggle } from '@/components/ui'
 import { makeSliderLabel } from '@/store/surveyStore'
+import { QuestionLogicPanel } from '../logic/QuestionLogicPanel'
 
 // ─── Live slider preview (mirrors what respondent sees) ────────────────────
 function SliderPreview({ cfg }) {
@@ -67,7 +68,7 @@ function SliderPreview({ cfg }) {
 }
 
 // ─── Main SliderEditor ─────────────────────────────────────────────────────
-export function SliderEditor({ question, dispatch }) {
+export function SliderEditor({ question, dispatch, allItems = [], itemIndex = 0 }) {
   const cfg = question.sliderConfig
 
   const updateCfg = (patch) =>
@@ -296,6 +297,30 @@ export function SliderEditor({ question, dispatch }) {
         </p>
         <SliderPreview cfg={{ ...cfg, defaultValue: cfg.defaultValue ?? cfg.min }} />
       </div>
+
+      <QuestionLogicPanel
+        question={question}
+        dispatch={dispatch}
+        allItems={allItems}
+        itemIndex={itemIndex}
+        tips={
+          <>
+            <Divider label="Logic tips" />
+            <div className="rounded-lg border border-violet-200 bg-violet-50 p-3 space-y-2">
+              <p className="text-xs font-medium text-violet-900">Slider-based logic</p>
+              <p className="text-xs text-violet-800">
+                To screen out low satisfaction scores, add a rule like
+                <strong> is less than or equal to → 3</strong> (on a 1–7 scale).
+                Use <strong>is between</strong> for a middle range, or <strong>is answered</strong> to
+                require interaction before continuing.
+              </p>
+            </div>
+          </>
+        }
+        terminationHint="Terminate based on the slider value. Rules are checked when the respondent clicks Next."
+        branchHint="Jump respondents to a later page when their slider value matches a rule."
+        redirectHint="Send respondents to an external site when their slider value matches a rule (checked on Next)."
+      />
     </div>
   )
 }

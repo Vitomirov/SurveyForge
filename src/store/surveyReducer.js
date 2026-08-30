@@ -21,17 +21,39 @@ import {
   withItems,
   findItemIndex,
 } from './reducerHelpers'
-
-function defaultRuleType(item, requestedType) {
-  if (requestedType) return requestedType
-  if (item.questionType === 'matrix') return 'matrix'
-  if (item.questionType === 'open_text') return 'text'
-  if (item.questionType === 'date') return 'date'
-  return 'choice'
-}
+import { defaultRuleTypeForQuestion } from '@/utils/survey/conditions/ruleVariant'
 
 function defaultTextOperator(item) {
-  return item.questionType === 'date' ? 'is_answered' : 'contains'
+  if (item.questionType === 'date' || item.questionType === 'slider') return 'is_answered'
+  return 'contains'
+}
+
+function mutateQuestionRules(state, action, { op, rulesKey, extra }) {
+  return withItems(state, updateItemById(state.items, action.questionId, item => {
+    if (op === 'add') {
+      const newRule = {
+        id: newId(),
+        ruleType: defaultRuleTypeForQuestion(item, action.ruleType),
+        matchMode: 'any',
+        optionIds: [],
+        matrixRowId: action.matrixRowId || item.matrixConfig?.rows?.[0]?.id || '',
+        matrixColumnIds: [],
+        textOperator: defaultTextOperator(item),
+        textValue: '',
+        textValue2: '',
+        ...extra,
+      }
+      return { ...item, [rulesKey]: [...(item[rulesKey] || []), newRule] }
+    }
+    if (op === 'update') {
+      const next = mapById(item[rulesKey] || [], action.ruleId, r => patchItem(r, action.patch))
+      return next === item[rulesKey] ? item : { ...item, [rulesKey]: next }
+    }
+    return {
+      ...item,
+      [rulesKey]: (item[rulesKey] || []).filter(r => r.id !== action.ruleId),
+    }
+  }))
 }
 
 export function surveyReducer(state, action) {
@@ -326,104 +348,31 @@ export function surveyReducer(state, action) {
       return { ...state, focusOptionId: null }
 
     case 'ADD_TERMINATION_RULE':
-      return withItems(state, updateItemById(state.items, action.questionId, item => {
-        const ruleType = defaultRuleType(item, action.ruleType)
-        const newRule = {
-          id: newId(),
-          ruleType,
-          matchMode: 'any',
-          optionIds: [],
-          matrixRowId: action.matrixRowId || item.matrixConfig?.rows?.[0]?.id || '',
-          matrixColumnIds: [],
-          textOperator: defaultTextOperator(item),
-          textValue: '',
-          textValue2: '',
-          note: '',
-        }
-        return { ...item, terminationRules: [...(item.terminationRules || []), newRule] }
-      }))
+      return mutateQuestionRules(state, action, { op: 'add', rulesKey: 'terminationRules', extra: { note: '' } })
 
     case 'UPDATE_TERMINATION_RULE':
-      return withItems(state, updateItemById(state.items, action.questionId, item => {
-        const terminationRules = mapById(item.terminationRules || [], action.ruleId, r =>
-          patchItem(r, action.patch)
-        )
-        return terminationRules === item.terminationRules
-          ? item
-          : { ...item, terminationRules }
-      }))
+      return mutateQuestionRules(state, action, { op: 'update', rulesKey: 'terminationRules' })
 
     case 'DELETE_TERMINATION_RULE':
-      return withItems(state, updateItemById(state.items, action.questionId, item => ({
-        ...item,
-        terminationRules: (item.terminationRules || []).filter(r => r.id !== action.ruleId),
-      })))
+      return mutateQuestionRules(state, action, { op: 'delete', rulesKey: 'terminationRules' })
 
     case 'ADD_BRANCH_RULE':
-      return withItems(state, updateItemById(state.items, action.questionId, item => {
-        const ruleType = defaultRuleType(item, action.ruleType)
-        const newRule = {
-          id: newId(),
-          ruleType,
-          matchMode: 'any',
-          optionIds: [],
-          matrixRowId: action.matrixRowId || item.matrixConfig?.rows?.[0]?.id || '',
-          matrixColumnIds: [],
-          textOperator: defaultTextOperator(item),
-          textValue: '',
-          textValue2: '',
-          targetPageBreakId: '',
-        }
-        return { ...item, branchRules: [...(item.branchRules || []), newRule] }
-      }))
+      return mutateQuestionRules(state, action, { op: 'add', rulesKey: 'branchRules', extra: { targetPageBreakId: '' } })
 
     case 'UPDATE_BRANCH_RULE':
-      return withItems(state, updateItemById(state.items, action.questionId, item => {
-        const branchRules = mapById(item.branchRules || [], action.ruleId, r =>
-          patchItem(r, action.patch)
-        )
-        return branchRules === item.branchRules ? item : { ...item, branchRules }
-      }))
+      return mutateQuestionRules(state, action, { op: 'update', rulesKey: 'branchRules' })
 
     case 'DELETE_BRANCH_RULE':
-      return withItems(state, updateItemById(state.items, action.questionId, item => ({
-        ...item,
-        branchRules: (item.branchRules || []).filter(r => r.id !== action.ruleId),
-      })))
+      return mutateQuestionRules(state, action, { op: 'delete', rulesKey: 'branchRules' })
 
     case 'ADD_EXTERNAL_REDIRECT_RULE':
-      return withItems(state, updateItemById(state.items, action.questionId, item => {
-        const ruleType = defaultRuleType(item, action.ruleType)
-        const newRule = {
-          id: newId(),
-          ruleType,
-          matchMode: 'any',
-          optionIds: [],
-          matrixRowId: action.matrixRowId || item.matrixConfig?.rows?.[0]?.id || '',
-          matrixColumnIds: [],
-          textOperator: defaultTextOperator(item),
-          textValue: '',
-          textValue2: '',
-          externalUrl: '',
-        }
-        return { ...item, externalRedirectRules: [...(item.externalRedirectRules || []), newRule] }
-      }))
+      return mutateQuestionRules(state, action, { op: 'add', rulesKey: 'externalRedirectRules', extra: { externalUrl: '' } })
 
     case 'UPDATE_EXTERNAL_REDIRECT_RULE':
-      return withItems(state, updateItemById(state.items, action.questionId, item => {
-        const externalRedirectRules = mapById(item.externalRedirectRules || [], action.ruleId, r =>
-          patchItem(r, action.patch)
-        )
-        return externalRedirectRules === item.externalRedirectRules
-          ? item
-          : { ...item, externalRedirectRules }
-      }))
+      return mutateQuestionRules(state, action, { op: 'update', rulesKey: 'externalRedirectRules' })
 
     case 'DELETE_EXTERNAL_REDIRECT_RULE':
-      return withItems(state, updateItemById(state.items, action.questionId, item => ({
-        ...item,
-        externalRedirectRules: (item.externalRedirectRules || []).filter(r => r.id !== action.ruleId),
-      })))
+      return mutateQuestionRules(state, action, { op: 'delete', rulesKey: 'externalRedirectRules' })
 
     case 'SET_SURVEY_SETTING': {
       return {

@@ -1,8 +1,6 @@
 import { Divider, SectionLabel } from '@/components/ui'
 import { DEFAULT_DATE_FORMAT } from '@/constants/surveyDefaults'
-import { TerminationEditor } from '../logic/TerminationEditor'
-import { BranchEditor } from '../logic/BranchEditor'
-import { ExternalRedirectEditor } from '../logic/ExternalRedirectEditor'
+import { QuestionLogicPanel } from '../logic/QuestionLogicPanel'
 
 const DATE_FORMATS = [
   { value: 'MM/DD/YYYY', label: 'MM/DD/YYYY', example: '06/25/2025', region: 'US' },
@@ -119,37 +117,32 @@ export function DateEditor({ question, dispatch, surveyDateFormat, allItems = []
         )}
       </div>
 
-      <Divider label="Logic tips" />
-      <div className="rounded-lg border border-sky-200 bg-sky-50 p-3 space-y-2">
-        <p className="text-xs font-medium text-sky-900">Date of birth &amp; age screen-outs</p>
-        <p className="text-xs text-sky-800">
-          To terminate respondents <strong>under 18</strong>, add a screen-out rule with
-          <strong> person is younger than → 18 years</strong>. Age is calculated from the date of birth
-          at survey time — no manual cutoff date needed.
-        </p>
-        <p className="text-xs text-sky-700">
-          Visibility rules and termination blocks on other questions also support full date comparisons
-          (before/after, between, is answered, etc.) when referencing this date question.
-        </p>
-      </div>
-
-      <Divider label="Screen-out Rules" />
-      <p className="text-xs text-ink-400 mb-3">
-        Terminate based on the date the respondent selects. Rules are checked when they click Next.
-      </p>
-      <TerminationEditor question={question} dispatch={dispatch} />
-
-      <Divider label="Skip to Page" />
-      <p className="text-xs text-ink-400 mb-3">
-        Jump respondents to a later page when their date answer matches a rule.
-      </p>
-      <BranchEditor question={question} dispatch={dispatch} allItems={allItems} itemIndex={itemIndex} />
-
-      <Divider label="Skip to External URL" />
-      <p className="text-xs text-ink-400 mb-3">
-        Send respondents to an external site when their date answer matches a rule (checked on Next).
-      </p>
-      <ExternalRedirectEditor question={question} dispatch={dispatch} />
+      <QuestionLogicPanel
+        question={question}
+        dispatch={dispatch}
+        allItems={allItems}
+        itemIndex={itemIndex}
+        tips={
+          <>
+            <Divider label="Logic tips" />
+            <div className="rounded-lg border border-sky-200 bg-sky-50 p-3 space-y-2">
+              <p className="text-xs font-medium text-sky-900">Date of birth &amp; age screen-outs</p>
+              <p className="text-xs text-sky-800">
+                To terminate respondents <strong>under 18</strong>, add a screen-out rule with
+                <strong> person is younger than → 18 years</strong>. Age is calculated from the date of birth
+                at survey time — no manual cutoff date needed.
+              </p>
+              <p className="text-xs text-sky-700">
+                Visibility rules and termination blocks on other questions also support full date comparisons
+                (before/after, between, is answered, etc.) when referencing this date question.
+              </p>
+            </div>
+          </>
+        }
+        terminationHint="Terminate based on the date the respondent selects. Rules are checked when they click Next."
+        branchHint="Jump respondents to a later page when their date answer matches a rule."
+        redirectHint="Send respondents to an external site when their date answer matches a rule (checked on Next)."
+      />
     </div>
   )
 }

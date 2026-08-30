@@ -3,9 +3,7 @@ import { isPipeableSource, isMatrixPipeSource, getMatrixPipeModeLabel } from '@/
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
 import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable'
 import { ChoiceOptionRow } from './ChoiceOptionRow'
-import { TerminationEditor } from '../logic/TerminationEditor'
-import { BranchEditor } from '../logic/BranchEditor'
-import { ExternalRedirectEditor } from '../logic/ExternalRedirectEditor'
+import { QuestionLogicPanel } from '../logic/QuestionLogicPanel'
 import { Divider, SectionLabel, Toggle } from '@/components/ui'
 
 export function ChoiceEditor({ question, dispatch, focusOptionId, availableQuestions = [], contextItems = [], allItems = [], itemIndex = 0 }) {
@@ -189,33 +187,21 @@ export function ChoiceEditor({ question, dispatch, focusOptionId, availableQuest
 
       </div>{/* end piping-dimmed wrapper */}
 
-      {/* Screen-out rules — outside dimmed area so piped questions remain configurable */}
-      <Divider label="Screen-out Rules" />
-      {pipingEnabled && (
-        <p className="text-xs text-rose-600 bg-rose-50 border border-rose-100 rounded-lg px-2.5 py-2 mb-2">
-          Options are piped dynamically — rules below use the populated option list from the source question
-          {sourceQ ? ` (Q${availableQuestions.indexOf(sourceQ) + 1})` : ''}.
-        </p>
-      )}
-      <TerminationEditor question={question} dispatch={dispatch} contextItems={ruleContextItems} />
-
-      <Divider label="Skip to Page" />
-      <p className="text-xs text-ink-400 mb-3">
-        Jump respondents to a later page when their answer matches a rule. Otherwise they continue to the next page in order.
-      </p>
-      <BranchEditor
+      <QuestionLogicPanel
         question={question}
         dispatch={dispatch}
         allItems={allItems.length ? allItems : contextItems}
         itemIndex={itemIndex}
         contextItems={ruleContextItems}
+        beforeTermination={pipingEnabled && (
+          <p className="text-xs text-rose-600 bg-rose-50 border border-rose-100 rounded-lg px-2.5 py-2 mb-2">
+            Options are piped dynamically — rules below use the populated option list from the source question
+            {sourceQ ? ` (Q${availableQuestions.indexOf(sourceQ) + 1})` : ''}.
+          </p>
+        )}
+        branchHint="Jump respondents to a later page when their answer matches a rule. Otherwise they continue to the next page in order."
+        redirectHint="Send respondents to an external site when their answer matches a rule. They leave the survey immediately — no further pages are shown."
       />
-
-      <Divider label="Skip to External URL" />
-      <p className="text-xs text-ink-400 mb-3">
-        Send respondents to an external site when their answer matches a rule. They leave the survey immediately — no further pages are shown.
-      </p>
-      <ExternalRedirectEditor question={question} dispatch={dispatch} contextItems={ruleContextItems} />
 
       <Divider label="Display" />
       <div className="flex items-center justify-between p-2.5 bg-ink-50 rounded-lg">

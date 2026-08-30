@@ -1,8 +1,6 @@
 import { SectionLabel, Toggle, Divider } from '@/components/ui'
 import { sanitizeTextOperator } from '@/utils/survey/conditions/conditionConstants'
-import { TerminationEditor } from '../logic/TerminationEditor'
-import { BranchEditor } from '../logic/BranchEditor'
-import { ExternalRedirectEditor } from '../logic/ExternalRedirectEditor'
+import { QuestionLogicPanel } from '../logic/QuestionLogicPanel'
 
 const VALIDATION_TYPES = [
   { value: 'none',   label: 'None',   description: 'Accept any text' },
@@ -183,24 +181,15 @@ export function OpenTextEditor({ question, dispatch, allItems = [], itemIndex = 
         </div>
       </div>
 
-      {/* Screen-out rules for text answers */}
-      <Divider label="Screen-out Rules" />
-      <p className="text-xs text-ink-400 mb-3">
-        Terminate based on what the respondent types. Text rules are checked when the respondent clicks Next.
-      </p>
-      <TerminationEditor question={question} dispatch={dispatch} />
-
-      <Divider label="Skip to Page" />
-      <p className="text-xs text-ink-400 mb-3">
-        Jump respondents to a later page when their answer matches a text rule.
-      </p>
-      <BranchEditor question={question} dispatch={dispatch} allItems={allItems} itemIndex={itemIndex} />
-
-      <Divider label="Skip to External URL" />
-      <p className="text-xs text-ink-400 mb-3">
-        Send respondents to an external site when their text answer matches a rule (checked on Next).
-      </p>
-      <ExternalRedirectEditor question={question} dispatch={dispatch} />
+      <QuestionLogicPanel
+        question={question}
+        dispatch={dispatch}
+        allItems={allItems}
+        itemIndex={itemIndex}
+        terminationHint="Terminate based on what the respondent types. Text rules are checked when the respondent clicks Next."
+        branchHint="Jump respondents to a later page when their answer matches a text rule."
+        redirectHint="Send respondents to an external site when their text answer matches a rule (checked on Next)."
+      />
     </div>
   )
 }

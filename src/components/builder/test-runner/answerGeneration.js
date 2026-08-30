@@ -52,6 +52,38 @@ function dateTriggerValue(operator, textValue, textValue2) {
   }
 }
 
+function sliderTriggerValue(operator, textValue, textValue2, q) {
+  const cfg = q?.sliderConfig || {}
+  const min = cfg.min ?? 0
+  const max = cfg.max ?? 10
+  const threshold = parseFloat(textValue)
+  const end = parseFloat(textValue2)
+  const hasThreshold = Number.isFinite(threshold)
+
+  switch (operator) {
+    case 'is_answered':
+      return hasThreshold ? threshold : min
+    case 'is_not_answered':
+      return null
+    case 'equals':
+      return hasThreshold ? threshold : min
+    case 'not_equals':
+      return hasThreshold ? (threshold === min ? min + 1 : min) : min + 1
+    case 'less_than':
+      return hasThreshold ? Math.max(min, threshold - 1) : min
+    case 'less_or_equal':
+      return hasThreshold ? threshold : min
+    case 'greater_than':
+      return hasThreshold ? Math.min(max, threshold + 1) : max
+    case 'greater_or_equal':
+      return hasThreshold ? threshold : max
+    case 'between':
+      return hasThreshold ? threshold : (Number.isFinite(end) ? end : min)
+    default:
+      return hasThreshold ? threshold : min
+  }
+}
+
 function safeAnswer(q, items) {
   switch (q.questionType) {
     case 'single_select':
@@ -143,6 +175,9 @@ function triggerAnswer(q, branch, items) {
       if (rule.ruleType === 'date' || q.questionType === 'date') {
         return dateTriggerValue(rule.textOperator, rule.textValue, rule.textValue2)
       }
+      if (rule.ruleType === 'slider' || q.questionType === 'slider') {
+        return sliderTriggerValue(rule.textOperator, rule.textValue, rule.textValue2, q)
+      }
       if (rule.matchMode === 'all') {
         if (q.questionType === 'multi_select') return rule.optionIds
         return rule.optionIds[0] || safeAnswer(q, items)
@@ -179,6 +214,7 @@ function blockTriggerAnswers(block, items) {
     const isMulti  = q.questionType === 'multi_select'
     const isText   = q.questionType === 'open_text'
     const isDate   = q.questionType === 'date'
+    const isSlider = q.questionType === 'slider'
 
     if (isSingle || isMulti) {
       if (cond.conditionType === 'any_of') {
@@ -189,6 +225,8 @@ function blockTriggerAnswers(block, items) {
         const safe = q.options.find(o => !cond.optionIds.includes(o.id))
         overrides[q.id] = isMulti ? (safe ? [safe.id] : []) : safe?.id || null
       }
+    } else if (isSlider) {
+      overrides[q.id] = sliderTriggerValue(cond.textOperator, cond.textValue, cond.textValue2, q)
     } else if (isDate) {
       overrides[q.id] = dateTriggerValue(cond.textOperator, cond.textValue, cond.textValue2)
     } else if (isText) {

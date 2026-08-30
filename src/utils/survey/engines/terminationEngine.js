@@ -10,6 +10,11 @@ import {
   dateOperatorNeedsValue,
   evalDateOperator,
 } from '../conditions/dateOperators.js'
+import {
+  evalSliderOperator,
+  sliderOperatorNeedsEndValue,
+  sliderOperatorNeedsValue,
+} from '../conditions/sliderOperators.js'
 import { evalMatrixSelection } from '../conditions/matrixHelpers.js'
 import { getEffectiveOptions } from '../questions/questionOptions.js'
 import {
@@ -55,6 +60,7 @@ export function resolveQuestionRuleType(rule, question) {
   const qType = question.questionType
   if (qType === 'open_text') return 'text'
   if (qType === 'date') return 'date'
+  if (qType === 'slider') return 'slider'
   if (qType === 'matrix') return rule.ruleType === 'text' ? 'text' : 'matrix'
   return rule.ruleType || 'choice'
 }
@@ -82,6 +88,12 @@ export function evaluateQuestionRule(rule, question, answer, responses, allItems
 
   if (ruleType === 'matrix') {
     return evalMatrixSelection(rule, question, answer)
+  }
+
+  if (ruleType === 'slider') {
+    if (sliderOperatorNeedsValue(rule.textOperator) && !String(rule.textValue ?? '').trim()) return false
+    if (sliderOperatorNeedsEndValue(rule.textOperator) && !String(rule.textValue2 ?? '').trim()) return false
+    return evalSliderOperator(answer, rule.textOperator, rule.textValue, rule.textValue2)
   }
 
   if (ruleType === 'date') {
@@ -169,7 +181,9 @@ export function checkTermination(question, answer, responses = {}, allItems = []
         ? `Answer ${firedRule.textOperator?.replace(/_/g,' ')} "${firedRule.textValue}"`
         : firedType === 'date'
           ? `Date ${firedRule.textOperator?.replace(/_/g,' ')} ${firedRule.textValue || ''}`
-          : `Rule ${firedRuleIndex + 1} matched`
+          : firedType === 'slider'
+            ? `Slider ${firedRule.textOperator?.replace(/_/g,' ')} ${firedRule.textValue || ''}`
+            : `Rule ${firedRuleIndex + 1} matched`
     ),
   }
 }
