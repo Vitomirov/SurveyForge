@@ -51,6 +51,7 @@ export const makeVisibilityCondition = (isFirst = false) => ({
   matrixColumnIds: [],
   textOperator: 'contains',
   textValue: '',
+  textValue2: '',
 })
 
 export const makeVisibilityConfig = () => ({
@@ -286,6 +287,7 @@ export const makeTerminationCondition = (isFirst = false) => ({
   matrixColumnIds: [],
   textOperator: 'contains',
   textValue: '',
+  textValue2: '',
 })
 
 export const makeTerminationBlock = () => ({

@@ -3,6 +3,14 @@
 // per-question termination rules. Values must stay in sync with
 // conditionEngine evaluators.
 
+import {
+  DATE_OPERATORS,
+  isDateQuestion,
+  sanitizeDateOperator,
+} from './dateOperators.js'
+
+export { DATE_OPERATORS, isDateQuestion, sanitizeDateOperator } from './dateOperators.js'
+
 export const CHOICE_CONDITION_TYPES = [
   { value: 'any_of',  label: 'is any of',  hint: 'Answer includes at least one of' },
   { value: 'none_of', label: 'is none of', hint: 'Answer includes none of' },
@@ -37,17 +45,22 @@ export function isNumericTextQuestion(question) {
 }
 
 export function getTextOperatorsForQuestion(question) {
+  if (isDateQuestion(question)) return DATE_OPERATORS
   if (isNumericTextQuestion(question)) return TEXT_OPERATORS
   return TEXT_OPERATORS.filter(op => !NUMERIC_ONLY_OPERATORS.has(op.value))
 }
 
 export function getTextConditionTypesForQuestion(question) {
+  if (isDateQuestion(question)) {
+    return DATE_OPERATORS.map(({ value, label }) => ({ value, label }))
+  }
   if (isNumericTextQuestion(question)) return TEXT_CONDITION_TYPES
   return TEXT_CONDITION_TYPES.filter(t => !NUMERIC_ONLY_OPERATORS.has(t.value))
 }
 
 /** Reset stored operator when it is no longer valid for this question type. */
 export function sanitizeTextOperator(operator, question) {
+  if (isDateQuestion(question)) return sanitizeDateOperator(operator)
   const allowed = getTextOperatorsForQuestion(question)
   return allowed.some(op => op.value === operator) ? operator : 'contains'
 }

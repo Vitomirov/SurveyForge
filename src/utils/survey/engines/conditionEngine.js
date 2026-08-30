@@ -8,6 +8,8 @@ import {
   isMatrixAnswerEmpty,
   evalMatrixSelection,
 } from '../conditions/matrixHelpers.js'
+import { isDateQuestion } from '../conditions/conditionConstants.js'
+import { evalDateOperator } from '../conditions/dateOperators.js'
 
 /**
  * Match a text/numeric answer against an operator.
@@ -70,7 +72,13 @@ function evalChoiceCondition(cond, question, answer) {
 function evalCondition(cond, responses, allItems) {
   const q      = allItems.find(i => i.id === cond.questionId)
   const answer = responses[cond.questionId]
-  if (!q || isAnswerEmpty(answer, q.questionType)) return false
+  if (!q) return false
+
+  if (isDateQuestion(q)) {
+    return evalDateOperator(answer, cond.textOperator, cond.textValue, cond.textValue2)
+  }
+
+  if (isAnswerEmpty(answer, q.questionType)) return false
 
   if (isMatrixType(q.questionType)) {
     return evalMatrixCondition(cond, q, answer)

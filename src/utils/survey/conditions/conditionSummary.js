@@ -4,7 +4,8 @@
 
 import { isChoiceType, isMatrixType } from '../questions/questionHelpers.js'
 import { resolveOptionLabel } from '../questions/questionOptions.js'
-import { getChoiceConditionLabel, TEXT_CONDITION_TYPES } from './conditionConstants.js'
+import { getChoiceConditionLabel, isDateQuestion, TEXT_CONDITION_TYPES } from './conditionConstants.js'
+import { formatDateConditionPhrase } from './dateOperators.js'
 
 export function getMatrixRowLabel(matrixConfig, rowId, fallback = 'row') {
   return matrixConfig?.rows?.find(r => r.id === rowId)?.text || fallback
@@ -45,6 +46,10 @@ export function formatConditionPhraseBlockStyle(cond, question, contextItems, qL
     return `${qLabel} ${op} [${labels.join(', ')}]`
   }
 
+  if (isDateQuestion(question)) {
+    return `${qLabel} ${formatDateConditionPhrase(cond.textOperator, cond.textValue, cond.textValue2)}`
+  }
+
   const op = cond.textOperator?.replace(/_/g, ' ') || ''
   return `${qLabel} ${op} "${cond.textValue || ''}"`
 }
@@ -67,6 +72,10 @@ export function formatConditionPhraseLogicStyle(cond, question, contextItems, qL
     const ct = getChoiceConditionLabel(cond.conditionType)
     const opts = (cond.optionIds || []).map(id => resolveOptionLabel(question, id, contextItems))
     return `${qLabel} ${ct} [${opts.join(', ') || 'none'}]`
+  }
+
+  if (isDateQuestion(question)) {
+    return `${qLabel} ${formatDateConditionPhrase(cond.textOperator, cond.textValue, cond.textValue2)}`
   }
 
   const op = TEXT_CONDITION_TYPES.find(t => t.value === cond.textOperator)?.label || cond.textOperator

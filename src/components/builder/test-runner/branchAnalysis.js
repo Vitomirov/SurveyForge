@@ -3,14 +3,34 @@
 // Scans survey items and returns all detectable paths through the survey.
 // ═══════════════════════════════════════════════════════════════════════════
 
+import {
+  dateOperatorNeedsEndValue,
+  dateOperatorNeedsValue,
+  formatDateConditionPhrase,
+} from '@/utils/survey/conditions/dateOperators'
+
 export function clip(str, n = 40) {
   if (!str) return '(untitled)'
   return str.length > n ? str.slice(0, n) + '…' : str
 }
 
+function ruleIsConfigured(rule) {
+  if (rule.ruleType === 'choice') return Boolean(rule.optionIds?.length)
+  if (rule.ruleType === 'date') {
+    if (!dateOperatorNeedsValue(rule.textOperator)) return true
+    if (!String(rule.textValue ?? '').trim()) return false
+    if (dateOperatorNeedsEndValue(rule.textOperator) && !String(rule.textValue2 ?? '').trim()) return false
+    return true
+  }
+  return Boolean(rule.textValue)
+}
+
 function ruleDesc(rule, q) {
   if (rule.ruleType === 'text') {
     return `Answer ${rule.textOperator?.replace(/_/g, ' ')} "${rule.textValue}"`
+  }
+  if (rule.ruleType === 'date' || q.questionType === 'date') {
+    return `Date ${formatDateConditionPhrase(rule.textOperator, rule.textValue, rule.textValue2)}`
   }
   const labels = (rule.optionIds || []).map(id =>
     q.options?.find(o => o.id === id)?.text || '?'
@@ -53,9 +73,7 @@ export function analyzeBranches(items) {
   })
 
   questions.forEach(q => {
-    const rules = (q.terminationRules || []).filter(r =>
-      (r.ruleType === 'choice' ? r.optionIds?.length : r.textValue) && r
-    )
+    const rules = (q.terminationRules || []).filter(ruleIsConfigured)
     if (!rules.length || q.terminationLogic !== 'if_any') return
 
     const rule = rules[0]
@@ -72,7 +90,7 @@ export function analyzeBranches(items) {
   })
 
   questions.forEach(q => {
-    const rules = (q.terminationRules || []).filter(r => r.optionIds?.length || r.textValue)
+    const rules = (q.terminationRules || []).filter(ruleIsConfigured)
     if (!rules.length || q.terminationLogic !== 'if_none') return
 
     branches.push({

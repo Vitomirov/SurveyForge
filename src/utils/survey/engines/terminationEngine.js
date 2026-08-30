@@ -5,6 +5,11 @@
 
 import { isChoiceType } from '../questions/questionHelpers.js'
 import { evalConditionSet, evalTextOperator } from './conditionEngine.js'
+import {
+  dateOperatorNeedsEndValue,
+  dateOperatorNeedsValue,
+  evalDateOperator,
+} from '../conditions/dateOperators.js'
 import { evalMatrixSelection } from '../conditions/matrixHelpers.js'
 import { getEffectiveOptions } from '../questions/questionOptions.js'
 import {
@@ -49,6 +54,7 @@ function resolveOptions(question, answer, responses, allItems) {
 export function resolveQuestionRuleType(rule, question) {
   const qType = question.questionType
   if (qType === 'open_text') return 'text'
+  if (qType === 'date') return 'date'
   if (qType === 'matrix') return rule.ruleType === 'text' ? 'text' : 'matrix'
   return rule.ruleType || 'choice'
 }
@@ -76,6 +82,12 @@ export function evaluateQuestionRule(rule, question, answer, responses, allItems
 
   if (ruleType === 'matrix') {
     return evalMatrixSelection(rule, question, answer)
+  }
+
+  if (ruleType === 'date') {
+    if (dateOperatorNeedsValue(rule.textOperator) && !String(rule.textValue ?? '').trim()) return false
+    if (dateOperatorNeedsEndValue(rule.textOperator) && !String(rule.textValue2 ?? '').trim()) return false
+    return evalDateOperator(answer, rule.textOperator, rule.textValue, rule.textValue2)
   }
 
   if (ruleType === 'text') {
@@ -155,7 +167,9 @@ export function checkTermination(question, answer, responses = {}, allItems = []
     cause: firedRule.note || (
       firedType === 'text'
         ? `Answer ${firedRule.textOperator?.replace(/_/g,' ')} "${firedRule.textValue}"`
-        : `Rule ${firedRuleIndex + 1} matched`
+        : firedType === 'date'
+          ? `Date ${firedRule.textOperator?.replace(/_/g,' ')} ${firedRule.textValue || ''}`
+          : `Rule ${firedRuleIndex + 1} matched`
     ),
   }
 }

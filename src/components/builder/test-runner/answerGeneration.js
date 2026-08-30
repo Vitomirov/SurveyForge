@@ -3,6 +3,55 @@
 // Produces a response map for the entire question set for a given branch.
 // ═══════════════════════════════════════════════════════════════════════════
 
+function offsetISODate(iso, days) {
+  if (!iso) return new Date().toISOString().split('T')[0]
+  const d = new Date(`${iso}T00:00:00`)
+  d.setDate(d.getDate() + days)
+  return d.toISOString().slice(0, 10)
+}
+
+function dateTriggerValue(operator, textValue, textValue2) {
+  const today = new Date().toISOString().split('T')[0]
+  switch (operator) {
+    case 'is_answered':
+      return textValue || today
+    case 'is_not_answered':
+      return ''
+    case 'before':
+    case 'less_than':
+      return offsetISODate(textValue, -1)
+    case 'less_or_equal':
+      return textValue || today
+    case 'after':
+    case 'greater_than':
+      return offsetISODate(textValue, 1)
+    case 'greater_or_equal':
+      return textValue || today
+    case 'equals':
+      return textValue || today
+    case 'not_equals':
+      return offsetISODate(textValue, 1)
+    case 'between':
+      return textValue || textValue2 || today
+    case 'contains':
+      return textValue || today
+    case 'younger_than_years': {
+      const years = parseInt(textValue, 10) || 18
+      const d = new Date()
+      d.setFullYear(d.getFullYear() - years + 1)
+      return d.toISOString().slice(0, 10)
+    }
+    case 'older_than_years': {
+      const years = parseInt(textValue, 10) || 18
+      const d = new Date()
+      d.setFullYear(d.getFullYear() - years - 1)
+      return d.toISOString().slice(0, 10)
+    }
+    default:
+      return textValue || today
+  }
+}
+
 function safeAnswer(q, items) {
   switch (q.questionType) {
     case 'single_select':
@@ -91,6 +140,9 @@ function triggerAnswer(q, branch, items) {
           default: return rule.textValue
         }
       }
+      if (rule.ruleType === 'date' || q.questionType === 'date') {
+        return dateTriggerValue(rule.textOperator, rule.textValue, rule.textValue2)
+      }
       if (rule.matchMode === 'all') {
         if (q.questionType === 'multi_select') return rule.optionIds
         return rule.optionIds[0] || safeAnswer(q, items)
@@ -126,6 +178,7 @@ function blockTriggerAnswers(block, items) {
     const isSingle = ['single_select', 'dropdown'].includes(q.questionType)
     const isMulti  = q.questionType === 'multi_select'
     const isText   = q.questionType === 'open_text'
+    const isDate   = q.questionType === 'date'
 
     if (isSingle || isMulti) {
       if (cond.conditionType === 'any_of') {
@@ -136,6 +189,8 @@ function blockTriggerAnswers(block, items) {
         const safe = q.options.find(o => !cond.optionIds.includes(o.id))
         overrides[q.id] = isMulti ? (safe ? [safe.id] : []) : safe?.id || null
       }
+    } else if (isDate) {
+      overrides[q.id] = dateTriggerValue(cond.textOperator, cond.textValue, cond.textValue2)
     } else if (isText) {
       switch (cond.textOperator) {
         case 'contains':

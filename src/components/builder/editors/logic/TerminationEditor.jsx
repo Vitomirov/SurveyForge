@@ -5,6 +5,8 @@ import { isChoiceType } from '@/utils/survey/questions/questionHelpers'
 import { getBuilderConditionOptions } from '@/utils/survey/questions/questionOptions'
 import { TEXT_OPERATORS } from '@/utils/survey/conditions/conditionConstants'
 import { TextOperatorSelect, getTextOperatorHint, isNumericTextOperator } from '@/components/shared/conditions/TextOperatorSelect'
+import { DateConditionFields } from '@/components/shared/conditions/DateConditionFields'
+import { dateOperatorNeedsValue, formatDateConditionPhrase } from '@/utils/survey/conditions/dateOperators'
 import { RuleLogicSelector } from './RuleLogicSelector'
 import { normalizeQuestionRuleLogic, questionRuleLogicSummary } from '@/utils/survey/conditions/questionRuleLogic'
 
@@ -15,7 +17,9 @@ function OperatorSelect({ value, onChange, question }) {
 // ─── Single Rule card ──────────────────────────────────────────────────────
 function RuleCard({ rule, ruleIndex, question, dispatch, onDelete, showChoiceRules, contextItems = [] }) {
   const opts    = getBuilderConditionOptions(question, contextItems)
-  const isText  = rule.ruleType === 'text' || question.questionType === 'open_text'
+  const isDate  = question.questionType === 'date'
+  const isDateRule = rule.ruleType === 'date' || isDate
+  const isText  = (rule.ruleType === 'text' || question.questionType === 'open_text') && !isDateRule
 
   const update = (patch) =>
     dispatch({ type: 'UPDATE_TERMINATION_RULE', questionId: question.id, ruleId: rule.id, patch })
@@ -29,6 +33,9 @@ function RuleCard({ rule, ruleIndex, question, dispatch, onDelete, showChoiceRul
 
   // Human-readable summary for collapsed view
   const summary = () => {
+    if (isDateRule) {
+      return `Date ${formatDateConditionPhrase(rule.textOperator, rule.textValue, rule.textValue2)}`
+    }
     if (isText) {
       const op = TEXT_OPERATORS.find(o => o.value === rule.textOperator)?.label || rule.textOperator
       return `Answer ${op} "${rule.textValue || '…'}"`
@@ -72,7 +79,7 @@ function RuleCard({ rule, ruleIndex, question, dispatch, onDelete, showChoiceRul
       {/* Rule body */}
       <div className="px-3 py-3 space-y-2.5">
         {/* ── Choice rule ── */}
-        {!isText && (
+        {!isText && !isDateRule && (
           <>
             {/* Match mode */}
             <div className="flex items-center gap-2">
@@ -128,8 +135,36 @@ function RuleCard({ rule, ruleIndex, question, dispatch, onDelete, showChoiceRul
           </>
         )}
 
+        {/* ── Date rule ── */}
+        {isDateRule && (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-ink-500 shrink-0 w-16">Operator</span>
+              <OperatorSelect
+                value={rule.textOperator}
+                onChange={v => update({ textOperator: v, textValue: '', textValue2: '' })}
+                question={question}
+              />
+            </div>
+            <DateConditionFields
+              operator={rule.textOperator}
+              textValue={rule.textValue}
+              textValue2={rule.textValue2}
+              onChange={update}
+            />
+            {dateOperatorNeedsValue(rule.textOperator) && !String(rule.textValue ?? '').trim() && (
+              <p className="text-xs text-amber-600">Enter a value — this rule has no effect until you do.</p>
+            )}
+            {rule.textOperator && (
+              <p className="text-xs text-ink-400 bg-ink-50 rounded-lg px-2 py-1">
+                ℹ {getTextOperatorHint(rule.textOperator, question)}
+              </p>
+            )}
+          </div>
+        )}
+
         {/* ── Text rule ── */}
-        {isText && (
+        {isText && !isDateRule && (
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <span className="text-xs text-ink-500 shrink-0 w-16">Operator</span>
@@ -151,7 +186,7 @@ function RuleCard({ rule, ruleIndex, question, dispatch, onDelete, showChoiceRul
             {/* Hint */}
             {rule.textOperator && (
               <p className="text-xs text-ink-400 bg-ink-50 rounded-lg px-2 py-1">
-                ℹ {getTextOperatorHint(rule.textOperator)}
+                ℹ {getTextOperatorHint(rule.textOperator, question)}
                 {isNumericTextOperator(rule.textOperator) && (
                   <span className="ml-1 text-amber-600"> — answer must be numeric</span>
                 )}
@@ -179,6 +214,7 @@ export function TerminationEditor({ question, dispatch, contextItems = [] }) {
   const logic          = normalizeQuestionRuleLogic(question.terminationLogic)
   const isChoiceQ      = isChoiceType(question.questionType)
   const isPipedQ       = question.pipedOptionsConfig?.enabled
+  const isDateQ        = question.questionType === 'date'
   const showChoiceRule = isChoiceQ || isPipedQ
   const effectiveOpts  = getBuilderConditionOptions(question, contextItems)
   const perOptCount    = effectiveOpts.filter(o => o.terminates).length
@@ -253,10 +289,10 @@ export function TerminationEditor({ question, dispatch, contextItems = [] }) {
           </button>
         )}
         <button
-          onClick={() => addRule('text')}
+          onClick={() => addRule(isDateQ ? 'date' : 'text')}
           className="flex items-center gap-1.5 text-xs text-rose-600 hover:text-rose-700 font-medium px-3 py-1.5 border border-rose-200 hover:bg-rose-50 rounded-lg transition-all"
         >
-          <Plus size={12} /> Text rule
+          <Plus size={12} /> {isDateQ ? 'Date rule' : 'Text rule'}
         </button>
       </div>
 

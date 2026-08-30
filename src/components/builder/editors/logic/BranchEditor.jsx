@@ -4,6 +4,8 @@ import { getBuilderConditionOptions } from '@/utils/survey/questions/questionOpt
 import { buildPageTargets } from '@/utils/format/builderLayout'
 import { TEXT_OPERATORS } from '@/utils/survey/conditions/conditionConstants'
 import { TextOperatorSelect } from '@/components/shared/conditions/TextOperatorSelect'
+import { DateConditionFields } from '@/components/shared/conditions/DateConditionFields'
+import { dateOperatorNeedsValue, formatDateConditionPhrase } from '@/utils/survey/conditions/dateOperators'
 import { RuleLogicSelector } from './RuleLogicSelector'
 import { QUESTION_RULE_LOGIC, normalizeQuestionRuleLogic, questionRuleLogicSummary } from '@/utils/survey/conditions/questionRuleLogic'
 
@@ -27,7 +29,9 @@ function BranchRuleCard({
   showTargetPage = true,
 }) {
   const opts = getBuilderConditionOptions(question, contextItems)
-  const isText = rule.ruleType === 'text' || question.questionType === 'open_text'
+  const isDate = question.questionType === 'date'
+  const isDateRule = rule.ruleType === 'date' || isDate
+  const isText = (rule.ruleType === 'text' || question.questionType === 'open_text') && !isDateRule
   const isMatrix = rule.ruleType === 'matrix'
   const rows = question.matrixConfig?.rows || []
   const cols = question.matrixConfig?.columns || []
@@ -51,6 +55,9 @@ function BranchRuleCard({
       const row = rows.find(r => r.id === rule.matrixRowId)
       const colLabels = (rule.matrixColumnIds || []).map(id => cols.find(c => c.id === id)?.text || '?')
       return `${row?.text || 'Row'} → ${colLabels.length ? colLabels.join(', ') : 'no columns'}`
+    }
+    if (isDateRule) {
+      return `Date ${formatDateConditionPhrase(rule.textOperator, rule.textValue, rule.textValue2)}`
     }
     if (isText) {
       const op = TEXT_OPERATORS.find(o => o.value === rule.textOperator)?.label || rule.textOperator
@@ -147,7 +154,7 @@ function BranchRuleCard({
           </>
         )}
 
-        {!isText && !isMatrix && (
+        {!isText && !isDateRule && !isMatrix && (
           <>
             <div className="flex items-center gap-2">
               <span className="text-xs text-ink-500 shrink-0">When</span>
@@ -200,7 +207,29 @@ function BranchRuleCard({
           </>
         )}
 
-        {isText && (
+        {isDateRule && (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-ink-500 shrink-0 w-16">Operator</span>
+              <TextOperatorSelect
+                value={rule.textOperator}
+                onChange={v => update({ textOperator: v, textValue: '', textValue2: '' })}
+                question={question}
+              />
+            </div>
+            <DateConditionFields
+              operator={rule.textOperator}
+              textValue={rule.textValue}
+              textValue2={rule.textValue2}
+              onChange={update}
+            />
+            {dateOperatorNeedsValue(rule.textOperator) && !String(rule.textValue ?? '').trim() && (
+              <p className="text-xs text-amber-600">Enter a value — this rule has no effect until you do.</p>
+            )}
+          </div>
+        )}
+
+        {isText && !isDateRule && (
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <span className="text-xs text-ink-500 shrink-0 w-16">Operator</span>
@@ -237,6 +266,7 @@ export function BranchEditor({ question, dispatch, allItems = [], itemIndex = 0,
   const isChoiceQ = isChoiceType(question.questionType)
   const isPipedQ = question.pipedOptionsConfig?.enabled
   const isMatrixQ = isMatrixType(question.questionType)
+  const isDateQ = question.questionType === 'date'
   const showChoiceRule = isChoiceQ || isPipedQ
   const pageTargets = buildPageTargets(allItems, itemIndex)
   const ruleContextItems = contextItems.length ? contextItems : allItems
@@ -330,11 +360,11 @@ export function BranchEditor({ question, dispatch, allItems = [], itemIndex = 0,
         )}
         {!isMatrixQ && (
           <button
-            onClick={() => addRule('text')}
+            onClick={() => addRule(isDateQ ? 'date' : 'text')}
             disabled={pageTargets.length <= 1}
             className="flex items-center gap-1.5 text-xs text-sky-700 hover:text-sky-800 font-medium px-3 py-1.5 border border-sky-200 hover:bg-sky-50 rounded-lg transition-all disabled:opacity-30 disabled:cursor-not-allowed"
           >
-            <Plus size={12} /> Text rule
+            <Plus size={12} /> {isDateQ ? 'Date rule' : 'Text rule'}
           </button>
         )}
       </div>

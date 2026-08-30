@@ -13,9 +13,12 @@ import {
   CHOICE_CONDITION_TYPES,
   getChoiceConditionLabel,
   getTextConditionTypesForQuestion,
+  isDateQuestion,
   isNumericTextQuestion,
   sanitizeTextOperator,
 } from '@/utils/survey/conditions/conditionConstants'
+import { DateConditionFields } from '@/components/shared/conditions/DateConditionFields'
+import { formatDateConditionPhrase } from '@/utils/survey/conditions/dateOperators'
 
 // ─── Theme tokens per variant ───────────────────────────────────────────────
 const THEMES = {
@@ -126,8 +129,11 @@ export function ConditionSummaryInline({ cond, questions, variant = 'visibility'
   return (
     <>
       {qLabel}{' '}
-      <em className={theme.summaryEm}>{cond.textOperator?.replace(/_/g, ' ')}</em>{' '}
-      "{cond.textValue || '…'}"
+      <em className={theme.summaryEm}>
+        {isDateQuestion(q)
+          ? formatDateConditionPhrase(cond.textOperator, cond.textValue, cond.textValue2)
+          : `${cond.textOperator?.replace(/_/g, ' ')} "${cond.textValue || '…'}"`}
+      </em>
     </>
   )
 }
@@ -151,6 +157,7 @@ function ConditionRow({
   const q        = availableQuestions.find(q => q.id === cond.questionId)
   const isChoice = isChoiceCondition(q)
   const isMatrix = q && isMatrixType(q.questionType)
+  const isDate   = isDateQuestion(q)
   const opts     = resolveConditionOptions(q, contextItems)
   const rows     = q?.matrixConfig?.rows || []
 
@@ -170,8 +177,9 @@ function ConditionRow({
       matrixRowId: isM ? (newQ.matrixConfig?.rows?.[0]?.id || '') : '',
       matrixColumnIds: [],
       conditionType: isC ? 'any_of' : undefined,
-      textOperator: isC ? undefined : 'contains',
+      textOperator: isC ? undefined : (isDateQuestion(newQ) ? 'is_answered' : 'contains'),
       textValue: '',
+      textValue2: '',
     })
   }
 
@@ -246,9 +254,18 @@ function ConditionRow({
             <label className={`text-xs mb-1 block ${theme.label}`}>Condition</label>
             <select
               value={isChoice ? (cond.conditionType || 'any_of') : (cond.textOperator || 'contains')}
-              onChange={e => isChoice
-                ? onUpdate(cond.id, { conditionType: e.target.value })
-                : onUpdate(cond.id, { textOperator: e.target.value })}
+              onChange={e => {
+                const nextOp = e.target.value
+                if (isChoice) {
+                  onUpdate(cond.id, { conditionType: nextOp })
+                  return
+                }
+                onUpdate(cond.id, {
+                  textOperator: nextOp,
+                  textValue: '',
+                  textValue2: '',
+                })
+              }}
               className={fieldClass}
             >
               {(isChoice ? CHOICE_CONDITION_TYPES : getTextConditionTypesForQuestion(q)).map(t => (
@@ -305,7 +322,18 @@ function ConditionRow({
           </div>
         )}
 
-        {q && !isChoice && (
+        {q && !isChoice && isDate && (
+          <DateConditionFields
+            operator={cond.textOperator}
+            textValue={cond.textValue}
+            textValue2={cond.textValue2}
+            onChange={patch => onUpdate(cond.id, patch)}
+            inputClassName={fieldClass}
+            hintClassName={`text-xs mt-1 ${theme.hint}`}
+          />
+        )}
+
+        {q && !isChoice && !isDate && (
           <div>
             <label className={`text-xs mb-1 block ${theme.label}`}>Value</label>
             <input
