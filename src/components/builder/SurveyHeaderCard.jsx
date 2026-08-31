@@ -2,7 +2,7 @@ import { useState, useRef } from 'react'
 import { Settings2 } from 'lucide-react'
 import { RichTextEditor, NavigationLockEditor } from '@/components/shared'
 import {
-  CoverPageSettings, BrandingSettings,
+  CoverPageSettings, BrandingSettings, ProgressBarSettings,
   FingerprintSettings, DNCManager, SurveyMetadata,
 } from '@/components/builder'
 import { DEFAULT_SCREEN_MESSAGES } from '@/constants/surveyDefaults'
@@ -52,6 +52,7 @@ export function SurveyHeaderCard({ survey, dispatch, hasItems = false }) {
           <BrandingSettings survey={survey} dispatch={dispatch} />
           <SurveyMetadata survey={survey} dispatch={dispatch} />
           <CoverPageSettings survey={survey} dispatch={dispatch} />
+          <ProgressBarSettings survey={survey} dispatch={dispatch} />
 
           <div className="mt-3 border-t border-ink-100 pt-3">
             <NavigationLockEditor

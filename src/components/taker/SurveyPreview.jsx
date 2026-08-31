@@ -11,6 +11,7 @@ import { DEFAULT_DATE_FORMAT } from '@/constants/surveyDefaults'
 import { isOnDNCListAsync, loadDNCListAsync } from '@/utils/data/dncStore'
 import { checkTermination, evalBlock, buildBlockCause } from '@/utils/survey/engines/terminationEngine'
 import { resolveBranchTargetPage } from '@/utils/survey/engines/branchEngine'
+import { computeBranchAwareProgress, isLastPageOnPath } from '@/utils/survey/engines/progressEngine'
 import { resolvePageExternalRedirect, openExternalRedirect } from '@/utils/survey/engines/externalRedirectEngine'
 import { validateAnswer } from '@/utils/survey/engines/answerValidation'
 import { buildQuestionNumberById } from '@/utils/survey/questions/questionHelpers'
@@ -103,7 +104,6 @@ export function SurveyPreview({ survey, items, onClose, isPublic = false, isEmbe
 
   const currentItems     = pages[currentPage] || []
   const currentQuestions = currentItems.filter(i => i.itemType === 'question')
-  const totalPages       = pages.length
   const currentPageLockSeconds = navigationLockByPage[currentPage] || 0
   const isSurveyContentActive = !showCover && !submitted && !terminated && !redirectedTo
     && !(isPublic && survey?.status === 'closed')
@@ -285,7 +285,7 @@ export function SurveyPreview({ survey, items, onClose, isPublic = false, isEmbe
       return
     }
 
-    if (currentPage < totalPages - 1) {
+    if (!isLastPage) {
       const branchTarget = resolveBranchTargetPage(currentQuestions, responses, items, pages, currentPage)
       setCurrentPage(branchTarget ?? currentPage + 1)
       bumpLockVisit()
@@ -304,7 +304,12 @@ export function SurveyPreview({ survey, items, onClose, isPublic = false, isEmbe
     if (terminated && isEmbed) postTerminated()
   }, [terminated, isEmbed, postTerminated])
 
-  const progress = totalPages > 1 ? Math.round((currentPage / totalPages) * 100) : 0
+  const showProgressBar = survey?.settings?.showProgressBar !== false
+  const { progress, step: progressStep, totalSteps: progressTotal } = useMemo(
+    () => computeBranchAwareProgress(currentPage, pages, items, responses),
+    [currentPage, pages, items, responses],
+  )
+  const isLastPage = isLastPageOnPath(currentPage, pages, items, responses)
 
   return (
     <div
@@ -355,11 +360,11 @@ export function SurveyPreview({ survey, items, onClose, isPublic = false, isEmbe
       )}
 
       {/* Progress bar */}
-      {totalPages > 1 && !terminated && !submitted && !redirectedTo && !showCover && (
+      {showProgressBar && progressTotal > 1 && !terminated && !submitted && !redirectedTo && !showCover && (
         <div className="bg-white border-b border-ink-100 px-4 sm:px-6 py-2">
           <div className="max-w-2xl mx-auto">
             <div className="flex justify-between text-xs text-ink-400 mb-1.5">
-              <span>Page {currentPage + 1} of {totalPages}</span>
+              <span>Page {progressStep} of {progressTotal}</span>
               <span>{progress}% complete</span>
             </div>
             <div className="h-1.5 bg-ink-100 rounded-full overflow-hidden">
@@ -483,7 +488,7 @@ export function SurveyPreview({ survey, items, onClose, isPublic = false, isEmbe
                   disabled={isNavigationLocked}
                   className="btn-primary px-4 sm:px-8 shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {currentPage === totalPages - 1 ? (
+                  {isLastPage ? (
                     <><Check size={15} /> <span className="hidden sm:inline">Submit</span></>
                   ) : (
                     <>Next <ChevronRight size={15} /></>
