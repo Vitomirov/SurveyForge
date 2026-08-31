@@ -17,14 +17,15 @@ model Organization {
   settings  Json     @default("{}") @map("organization_settings")
   createdAt DateTime @default(now()) @map("organization_created_at")
 
-  users        User[]
-  surveys      Survey[]
-  responses    Response[]
-  clients      Client[]
-  topics       Topic[]
-  surveyTypes  SurveyType[]
-  subscription Subscription?
-  invoices     Invoice[]
+  users          User[]
+  surveys        Survey[]
+  responses      Response[]
+  surveyExports  SurveyExport[]
+  clients        Client[]
+  topics         Topic[]
+  surveyTypes    SurveyType[]
+  subscription   Subscription?
+  invoices       Invoice[]
 
   @@map("organizations")
 }
@@ -44,6 +45,7 @@ model User {
 
   organization     Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   surveys          Survey[]         @relation("SurveyCreator")
+  surveyExports    SurveyExport[]
   refreshTokens    RefreshToken[]
 
   @@unique([email])
@@ -82,6 +84,7 @@ model Survey {
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   createdBy    User?        @relation("SurveyCreator", fields: [createdById], references: [id], onDelete: SetNull)
   responses    Response[]
+  surveyExports SurveyExport[]
   dncEntries   DncEntry[]
 
   @@unique([publicPath])
@@ -109,6 +112,24 @@ model Response {
   @@index([surveyId, status])
   @@index([organizationId, surveyId])
   @@map("responses")
+}
+
+model SurveyExport {
+  id             String   @id @default(uuid())
+  surveyId       String   @map("survey_id")
+  organizationId String   @map("organization_id")
+  exportedById   String?  @map("exported_by_id")
+  exportedAt     DateTime @default(now()) @map("exported_at")
+  rowCount       Int      @map("row_count")
+  filters        Json?    @map("export_filters")
+
+  survey       Survey       @relation(fields: [surveyId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  exportedBy   User?        @relation(fields: [exportedById], references: [id], onDelete: SetNull)
+
+  @@index([surveyId, exportedAt(sort: Desc)])
+  @@index([organizationId])
+  @@map("survey_exports")
 }
 
 model Client {

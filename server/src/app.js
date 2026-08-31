@@ -12,6 +12,8 @@ import { registerAuth } from './plugins/auth.js'
 import { registerAuthRoutes } from './routes/auth.js'
 import { registerPublicRoutes } from './routes/public.js'
 import { registerSurveyRoutes } from './routes/surveys.js'
+import { registerExportRoutes } from './routes/exports.js'
+import { registerNotificationRoutes } from './routes/notifications.js'
 import { registerDashboardRoutes } from './routes/dashboard.js'
 import { registerResponseRoutes } from './routes/responses.js'
 import { registerMigrateRoutes } from './routes/migrate.js'
@@ -75,7 +77,9 @@ export async function buildApp() {
   await registerAuthRoutes(app)
   await registerPublicRoutes(app)
   await registerDashboardRoutes(app)
+  await registerNotificationRoutes(app)
   await registerSurveyRoutes(app)
+  await registerExportRoutes(app)
   await registerResponseRoutes(app)
   await registerPlatformRoutes(app)
   await registerAdminRoutes(app)

@@ -8,6 +8,7 @@ import { Prisma } from '@prisma/client'
 import { resolveClientRecord, resolveTopicRecord, resolveSurveyTypeRecord } from '../lib/platform/platformIds.js'
 import { ownerFromSurvey } from '../lib/auth/surveyOwner.js'
 import { isAdmin } from '../lib/auth/authz.js'
+import { countNewForSurveysDb } from '../lib/notifications/responseNotifications.js'
 
 function surveyMeta(row, questionCount = 0, { clients = [], topics = [], surveyTypes = [] } = {}) {
   const survey = row.survey
@@ -36,7 +37,7 @@ function surveyMeta(row, questionCount = 0, { clients = [], topics = [], surveyT
 }
 
 function emptyStats() {
-  return { total: 0, complete: 0, terminated: 0, partial: 0 }
+  return { total: 0, complete: 0, terminated: 0, partial: 0, newSinceExport: 0, latestNewAt: null }
 }
 
 function buildStatsMap(groups) {
@@ -123,7 +124,7 @@ export async function registerDashboardRoutes(app) {
     const rows = sqlRows.map(listingFromSql)
     const surveyIds = rows.map(r => r.id)
 
-    const [clients, topics, surveyTypes, groups] = await Promise.all([
+    const [clients, topics, surveyTypes, groups, newMap] = await Promise.all([
       app.prisma.client.findMany({
         where: { organizationId: orgId },
         select: { id: true, name: true },
@@ -143,6 +144,9 @@ export async function registerDashboardRoutes(app) {
           _count: { _all: true },
         })
         : Promise.resolve([]),
+      surveyIds.length
+        ? countNewForSurveysDb(app.prisma, { organizationId: orgId, surveyIds })
+        : Promise.resolve({}),
     ])
 
     const statsMap = buildStatsMap(groups.map(g => ({
@@ -152,10 +156,17 @@ export async function registerDashboardRoutes(app) {
     })))
 
     const payload = {
-      surveys: rows.map(row => ({
-        ...surveyMeta(row, row.questionCount ?? 0, { clients, topics, surveyTypes }),
-        stats: statsMap[row.id] || emptyStats(),
-      })),
+      surveys: rows.map(row => {
+        const neu = newMap[row.id] || { newCount: 0, latestAt: null }
+        return {
+          ...surveyMeta(row, row.questionCount ?? 0, { clients, topics, surveyTypes }),
+          stats: {
+            ...(statsMap[row.id] || emptyStats()),
+            newSinceExport: neu.newCount,
+            latestNewAt: neu.latestAt,
+          },
+        }
+      }),
     }
     app.cache.setDashboard(orgId, userId, payload)
     return payload

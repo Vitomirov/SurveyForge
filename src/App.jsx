@@ -110,7 +110,7 @@ export default function App() {
   const [session, setSession] = useState(() => (useApi ? null : getSession()))
   const [authChecking, setAuthChecking] = useState(() => useApi)
   const { toast }             = useToast()
-  const { view, id, byPath, clientDomain, isEmbed } = useRoute()
+  const { view, id, byPath, clientDomain, isEmbed, openExport } = useRoute()
   const isPublic              = view === 'take'
   const { status, entry }     = useSurveyEntry(view, isPublic || session ? id : null, { byPath, clientDomain, isEmbed })
 
@@ -187,6 +187,7 @@ export default function App() {
           initialState={builderState(id, entry)}
           initialRevision={entry?.revision ?? null}
           onBackToDashboard={back}
+          openExport={openExport}
         />
       </Page>
     )
@@ -213,7 +214,7 @@ export default function App() {
           markNewSurveyDraft(surveyId)
           nav('builder', surveyId)
         }}
-        onOpenSurvey={(surveyId) => nav('builder', surveyId)}
+        onOpenSurvey={(surveyId, opts) => nav('builder', surveyId, opts)}
         onPreviewSurvey={(surveyId) => nav('preview', surveyId)}
       />
     </Page>

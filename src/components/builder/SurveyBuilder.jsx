@@ -9,8 +9,8 @@ import { AppAlignedBody } from '@/components/shared/layout/AppBuilderShell.jsx'
 
 const SurveyPreview = lazy(() => import('@/components/taker/SurveyPreview.jsx'))
 
-export function SurveyBuilder({ initialState, initialRevision = null, onBackToDashboard }) {
-  const builder = useSurveyBuilder({ initialState, initialRevision })
+export function SurveyBuilder({ initialState, initialRevision = null, onBackToDashboard, openExport = false }) {
+  const builder = useSurveyBuilder({ initialState, initialRevision, openExport })
 
   if (builder.state.showPreview) {
     return (

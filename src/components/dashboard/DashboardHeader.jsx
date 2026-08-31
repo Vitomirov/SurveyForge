@@ -10,6 +10,7 @@ import { AUTH_PROFILE, AUTH_TEAM } from '@/constants/authCopy'
 import { roleLabel, canManagePlatform, canManageBilling } from '@/utils/platform/permissions'
 import { prefetchBuilder } from '@/utils/routing/routePrefetch'
 import { UserAvatar } from './UserAvatar.jsx'
+import { NotificationBell } from './NotificationBell.jsx'
 
 function UserMenu({
   session,
@@ -110,6 +111,7 @@ export function DashboardHeader({
   onOpenTeamMembers,
   onOpenTeamActivity,
   onOpenPlatform,
+  notifications,
 }) {
   return (
     <header className="bg-white/95 backdrop-blur-md border-b border-ink-200/80 sticky top-0 z-30 safe-top">
@@ -134,6 +136,16 @@ export function DashboardHeader({
               </button>
 
               <div className="flex items-center gap-1 sm:gap-2 pl-3 ml-0.5 border-l border-ink-200/80 shrink-0">
+                {session && (
+                  <NotificationBell
+                    payload={notifications?.payload}
+                    loading={notifications?.loading}
+                    error={notifications?.error}
+                    onRetry={notifications?.onRetry}
+                    onOpen={notifications?.onOpen}
+                    onSelect={notifications?.onSelect}
+                  />
+                )}
                 <UserMenu
                   session={session}
                   onOpenAccount={onOpenAccount}

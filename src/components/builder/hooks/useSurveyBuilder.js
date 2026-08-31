@@ -12,12 +12,12 @@ import { prefetchCommonEditors, prefetchModule } from '@/utils/routing/routePref
 import { isChoiceType } from '@/utils/survey/questions/questionHelpers'
 import { EDITOR_LOADERS, loadChoiceEditor } from '@/components/builder/editors/editorLoaders'
 
-export function useSurveyBuilder({ initialState, initialRevision = null }) {
+export function useSurveyBuilder({ initialState, initialRevision = null, openExport = false }) {
   const [state, dispatch] = useReducer(surveyReducer, initialState || INITIAL_STATE)
 
   const [dragActiveId, setDragActiveId] = useState(null)
   const [showTest, setShowTest] = useState(false)
-  const [showExport, setShowExport] = useState(false)
+  const [showExport, setShowExport] = useState(() => Boolean(openExport))
   const [showMobilePanel, setShowMobilePanel] = useState(false)
   const [showMobileMenu, setShowMobileMenu] = useState(false)
 
@@ -32,6 +32,10 @@ export function useSurveyBuilder({ initialState, initialRevision = null }) {
       if (loader) prefetchModule(loader)
     }
   }, [initialState])
+
+  useEffect(() => {
+    if (openExport) setShowExport(true)
+  }, [openExport])
 
   const { saveStatus } = useAutosave({
     survey: state.survey,

@@ -31,6 +31,7 @@ import {
   canManagePlatform, canSeeAllSurveys, filterSurveysForSession,
   canManageBilling,
 } from '@/utils/platform/permissions'
+import { useResponseNotifications } from '@/hooks/useResponseNotifications'
 
 const PlatformSettings = lazy(() => import('./PlatformSettings.jsx'))
 const TeamPanel        = lazy(() => import('./TeamPanel.jsx'))
@@ -66,6 +67,57 @@ function SortIcon({ field, sort }) {
   return sort.dir === 'asc'
     ? <ChevronUp size={12} className="text-brand-500" />
     : <ChevronDown size={12} className="text-brand-500" />
+}
+
+function ResponsesCount({ total, complete, newCount, compact, onOpenNew }) {
+  if (!(total > 0) && !(newCount > 0)) {
+    return <span className="text-xs text-ink-300">No data</span>
+  }
+
+  if (newCount > 0) {
+    if (compact) {
+      return (
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onOpenNew?.() }}
+          className="inline-flex items-center gap-1.5 bg-brand-50 border border-brand-200 rounded-lg px-2 py-1 text-xs text-ink-500 hover:bg-brand-100/80 focus-ring"
+        >
+          {total > 0 && (
+            <>
+              <strong className="text-ink-700">{total}</strong>
+              <span>responses ·</span>
+            </>
+          )}
+          <span className="text-brand-700 font-semibold">{newCount} New</span>
+        </button>
+      )
+    }
+    return (
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); onOpenNew?.() }}
+        className="inline-flex flex-col items-start bg-brand-50 border border-brand-200 rounded-lg px-2 py-1 hover:bg-brand-100/80 focus-ring"
+      >
+        <span className="text-sm font-bold text-ink-700">{total}</span>
+        <span className="text-xs text-brand-700 font-semibold">{newCount} New</span>
+      </button>
+    )
+  }
+
+  if (compact) {
+    return (
+      <span>
+        <strong className="text-ink-700">{total}</strong> responses
+      </span>
+    )
+  }
+
+  return (
+    <div>
+      <p className="text-sm font-bold text-ink-700">{total}</p>
+      <p className="text-xs text-ink-400">{complete} complete</p>
+    </div>
+  )
 }
 
 // ─── Context menu ──────────────────────────────────────────────────────────
@@ -261,6 +313,21 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
     const raw = useApi ? apiSurveys : loadLibrary()
     return useApi ? raw : filterSurveysForSession(raw, session)
   }, [useApi, apiSurveys, tick, session])
+
+  const notifications = useResponseNotifications(surveys)
+  const newCountBySurvey = useMemo(() => {
+    const map = {}
+    for (const row of notifications.payload?.bySurvey || []) {
+      map[row.surveyId] = row.newCount
+    }
+    if (useApi) {
+      for (const entry of surveys) {
+        const id = entry.survey?.id || entry.id
+        if (id && map[id] == null) map[id] = entry.stats?.newSinceExport ?? 0
+      }
+    }
+    return map
+  }, [notifications.payload, surveys, useApi])
   const clients = useMemo(
     () => (useApi ? apiClients : loadClients()),
     [useApi, apiClients, tick]
@@ -380,6 +447,7 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
 
   const handleOpenSurvey    = (entry) => onOpenSurvey(entry.id || entry.survey?.id)
   const handlePreviewSurvey = (entry) => onPreviewSurvey(entry.id || entry.survey?.id)
+  const handleOpenExport    = (entry) => onOpenSurvey(entry.id || entry.survey?.id, { export: true })
 
   const handleDuplicate = async (id) => {
     if (!useApi) {
@@ -437,8 +505,16 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
           onOpenAccount={() => setShowAccount(true)}
           onOpenTeamMembers={() => setShowTeamMembers(true)}
           onOpenTeamActivity={() => setShowTeamActivity(true)}
-          onOpenPlatform={() => setShowPlatform(true)}
-        />
+            onOpenPlatform={() => setShowPlatform(true)}
+            notifications={{
+              payload: notifications.payload,
+              loading: notifications.loading,
+              error: notifications.error,
+              onRetry: notifications.refresh,
+              onOpen: notifications.refresh,
+              onSelect: (surveyId) => onOpenSurvey(surveyId, { export: true }),
+            }}
+          />
       </Suspense>
 
       <AppContentShell className="flex-1 min-h-0 overflow-y-auto py-4 sm:py-6">
@@ -594,6 +670,7 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
                 const qCount = entry.questionCount ??
                   (entry.items || []).filter(i => i.itemType === 'question').length
                 const rc     = responseCounts[sv.id] || { total: 0, complete: 0 }
+                const newCount = newCountBySurvey[sv.id] || 0
                 return (
                   <div
                     key={sv.id}
@@ -631,11 +708,13 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
                         </div>
                         <div className="flex items-center justify-between mt-3 pt-3 border-t border-ink-100">
                           <div className="flex items-center gap-3 text-xs text-ink-500">
-                            {rc.total > 0 ? (
-                              <span><strong className="text-ink-700">{rc.total}</strong> responses</span>
-                            ) : (
-                              <span className="text-ink-300">No data</span>
-                            )}
+                            <ResponsesCount
+                              total={rc.total}
+                              complete={rc.complete}
+                              newCount={newCount}
+                              compact
+                              onOpenNew={() => handleOpenExport(entry)}
+                            />
                             <span className="flex items-center gap-1">
                               <Clock size={11} className="text-ink-300" />
                               {fmtDate(sv.updatedAt)}
@@ -689,6 +768,7 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
                   const qCount = entry.questionCount ??
                     (entry.items || []).filter(i => i.itemType === 'question').length
                   const rc     = responseCounts[sv.id] || { total: 0, complete: 0 }
+                  const newCount = newCountBySurvey[sv.id] || 0
                   return (
                     <tr
                       key={sv.id}
@@ -752,14 +832,12 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
 
                       {/* Responses */}
                       <td className="px-4 py-3">
-                        {rc.total > 0 ? (
-                          <div>
-                            <p className="text-sm font-bold text-ink-700">{rc.total}</p>
-                            <p className="text-xs text-ink-400">{rc.complete} complete</p>
-                          </div>
-                        ) : (
-                          <span className="text-xs text-ink-300">No data</span>
-                        )}
+                        <ResponsesCount
+                          total={rc.total}
+                          complete={rc.complete}
+                          newCount={newCount}
+                          onOpenNew={() => handleOpenExport(entry)}
+                        />
                       </td>
 
                       {/* Modified */}

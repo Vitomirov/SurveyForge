@@ -14,6 +14,7 @@ import {
   fetchAllResponses, fetchResponseStats, fetchResponsesPage,
   deleteResponseApi, clearResponsesApi,
 } from '@/api/survey/responses'
+import { fetchLastExport, recordExportApi } from '@/api/survey/exports'
 import { generateCSV, generateCSVFromApiPages, downloadCSV } from '@/utils/csvExport'
 
 const STATUS_META = {
@@ -392,6 +393,7 @@ export function ExportManager({ survey, items, onClose }) {
   const [tick, setTick] = useState(0)
   const [apiResponses, setApiResponses] = useState([])
   const [apiStats, setApiStats] = useState(null)
+  const [apiLastExport, setApiLastExport] = useState(null)
   const [responsesLoading, setResponsesLoading] = useState(useApi)
   const [showHistory, setShowHistory] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
@@ -403,12 +405,14 @@ export function ExportManager({ survey, items, onClose }) {
     if (!useApi || !surveyId) return
     setResponsesLoading(true)
     try {
-      const [stats, responses] = await Promise.all([
+      const [stats, responses, last] = await Promise.all([
         fetchResponseStats(surveyId),
         fetchAllResponses(surveyId),
+        fetchLastExport(surveyId),
       ])
       setApiStats(stats)
       setApiResponses(responses)
+      setApiLastExport(last?.timestamp ?? null)
     } catch (err) {
       console.error('Failed to load responses', err)
     } finally {
@@ -423,7 +427,8 @@ export function ExportManager({ survey, items, onClose }) {
   const localResponses = useMemo(() => loadResponses(surveyId), [surveyId, tick])
   const allResponses   = useApi ? apiResponses : localResponses
   const exportHistory = useMemo(() => loadExportHistory(surveyId),         [surveyId, tick])
-  const lastExport    = useMemo(() => lastExportTimestamp(surveyId),       [surveyId, tick])
+  const localLastExport = useMemo(() => lastExportTimestamp(surveyId),     [surveyId, tick])
+  const lastExport    = useApi ? apiLastExport : localLastExport
   const filtered      = useMemo(() => applyFilters(allResponses, filters), [allResponses, filters])
 
   const filterDescription = () => {
@@ -456,6 +461,22 @@ export function ExportManager({ survey, items, onClose }) {
         rowCount:          filtered.length,
         filterDescription: filterDescription(),
       })
+      if (useApi) {
+        try {
+          await recordExportApi(surveyId, {
+            rowCount: filtered.length,
+            filters: {
+              statuses: filters.statuses,
+              dateFrom: filters.dateFrom || null,
+              dateTo: filters.dateTo || null,
+              sinceLastExport: filters.sinceLastExport || null,
+              filterDescription: filterDescription(),
+            },
+          })
+        } catch (err) {
+          console.error('Failed to record export on server', err)
+        }
+      }
       refresh()
     } finally {
       setIsExporting(false)

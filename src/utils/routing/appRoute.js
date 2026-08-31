@@ -3,6 +3,7 @@
 // survives a refresh and browser back/forward works.
 //   #/                dashboard
 //   #/builder/:id     edit (unknown id = new draft)
+//   #/builder/:id?export=1  edit and open Export Manager (notification deep link)
 //   #/preview/:id     preview
 //   #/take/:id        public taker — no auth
 //   #/embed/:id       embedded taker — no auth, minimal chrome
@@ -11,7 +12,7 @@
 import { useMemo, useSyncExternalStore } from 'react'
 import { parseSurveyHost } from '@shared/surveyUrl.js'
 
-const DASHBOARD = { view: 'dashboard', id: null, byPath: false, clientDomain: null, isEmbed: false }
+const DASHBOARD = { view: 'dashboard', id: null, byPath: false, clientDomain: null, isEmbed: false, openExport: false }
 const VIEWS     = ['builder', 'preview', 'take', 'embed']
 
 function pathSlug(pathname = window.location.pathname) {
@@ -29,13 +30,23 @@ function hashPath(hash = '') {
   return String(hash).split('?')[0]
 }
 
+function hashQuery(hash = '') {
+  const q = String(hash).split('?')[1] || ''
+  return new URLSearchParams(q)
+}
+
+function wantsExport(hash = '') {
+  return hashQuery(hash).get('export') === '1'
+}
+
 export function parseRoute(hash = window.location.hash, pathname = window.location.pathname) {
+  const openExport = wantsExport(hash)
   const [, view, id] = hashPath(hash).match(/^#\/([a-z]+)\/([^/]+)$/) || []
   if (view === 'embed') {
-    return { view: 'take', id, byPath: false, clientDomain: null, isEmbed: true }
+    return { view: 'take', id, byPath: false, clientDomain: null, isEmbed: true, openExport: false }
   }
   if (VIEWS.includes(view)) {
-    return { view, id, byPath: false, clientDomain: null, isEmbed: false }
+    return { view, id, byPath: false, clientDomain: null, isEmbed: false, openExport: view === 'builder' && openExport }
   }
 
   const clientDomain = parseSurveyHost(window.location.hostname)
@@ -47,6 +58,7 @@ export function parseRoute(hash = window.location.hash, pathname = window.locati
       byPath: true,
       clientDomain,
       isEmbed: true,
+      openExport: false,
     }
   }
 
@@ -58,6 +70,7 @@ export function parseRoute(hash = window.location.hash, pathname = window.locati
       byPath: true,
       clientDomain,
       isEmbed: false,
+      openExport: false,
     }
   }
 
@@ -70,8 +83,9 @@ export function parseTakeHash() {
 }
 
 /** Navigate — pushes a history entry so back/forward moves between views. */
-export function nav(view, id) {
-  const hash = view === 'dashboard' ? '#/' : `#/${view}/${id}`
+export function nav(view, id, opts = {}) {
+  let hash = view === 'dashboard' ? '#/' : `#/${view}/${id}`
+  if (opts.export && view === 'builder') hash += '?export=1'
   if (window.location.hash !== hash) window.location.hash = hash
 }
 
