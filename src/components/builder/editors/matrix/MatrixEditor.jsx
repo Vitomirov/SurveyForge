@@ -1,6 +1,8 @@
+import { useRef } from 'react'
 import { Plus } from 'lucide-react'
 import { Toggle, SectionLabel, Divider } from '@/components/ui'
-import { DeletableTextInput } from '@/components/shared'
+import { EditableListRow } from '@/components/shared'
+import { makeMatrixRow, makeMatrixCol } from '@/store/surveyStore'
 import { MatrixTerminationEditor } from './MatrixTerminationEditor'
 import { BranchEditor } from '../logic/BranchEditor'
 import { ExternalRedirectEditor } from '../logic/ExternalRedirectEditor'
@@ -43,15 +45,11 @@ function MatrixPreview({ rows, columns, subType }) {
 
 export function MatrixEditor({ question, dispatch, allItems = [], itemIndex = 0 }) {
   const cfg = question.matrixConfig
+  const rowRefs = useRef({})
+  const colRefs = useRef({})
 
   const updateCfg = (patch) =>
     dispatch({ type: 'UPDATE_MATRIX_CONFIG', questionId: question.id, configKey: 'matrixConfig', patch })
-
-  const addRow = () =>
-    dispatch({ type: 'ADD_MATRIX_ROW', questionId: question.id, configKey: 'matrixConfig' })
-
-  const addCol = () =>
-    dispatch({ type: 'ADD_MATRIX_COL', questionId: question.id, configKey: 'matrixConfig' })
 
   const updateRow = (rowId, text) =>
     dispatch({ type: 'UPDATE_MATRIX_ROW', questionId: question.id, configKey: 'matrixConfig', rowId, text })
@@ -64,6 +62,35 @@ export function MatrixEditor({ question, dispatch, allItems = [], itemIndex = 0 
 
   const deleteCol = (colId) =>
     dispatch({ type: 'DELETE_MATRIX_COL', questionId: question.id, configKey: 'matrixConfig', colId })
+
+  const bulkReplaceRows = (rows) => updateCfg({ rows })
+  const bulkReplaceCols = (columns) => updateCfg({ columns })
+
+  const addRowAfter = (afterId) => {
+    const idx = cfg.rows.findIndex(r => r.id === afterId)
+    const next = makeMatrixRow()
+    updateCfg({ rows: [...cfg.rows.slice(0, idx + 1), next, ...cfg.rows.slice(idx + 1)] })
+    setTimeout(() => rowRefs.current[next.id]?.focus(), 30)
+  }
+
+  const addColAfter = (afterId) => {
+    const idx = cfg.columns.findIndex(c => c.id === afterId)
+    const next = makeMatrixCol()
+    updateCfg({ columns: [...cfg.columns.slice(0, idx + 1), next, ...cfg.columns.slice(idx + 1)] })
+    setTimeout(() => colRefs.current[next.id]?.focus(), 30)
+  }
+
+  const addRow = () => {
+    const next = makeMatrixRow()
+    updateCfg({ rows: [...cfg.rows, next] })
+    setTimeout(() => rowRefs.current[next.id]?.focus(), 30)
+  }
+
+  const addCol = () => {
+    const next = makeMatrixCol()
+    updateCfg({ columns: [...cfg.columns, next] })
+    setTimeout(() => colRefs.current[next.id]?.focus(), 30)
+  }
 
   return (
     <div className="space-y-4">
@@ -94,16 +121,22 @@ export function MatrixEditor({ question, dispatch, allItems = [], itemIndex = 0 
       {/* Rows */}
       <div>
         <SectionLabel>Rows (statements / items)</SectionLabel>
+        <p className="text-xs text-ink-400 mb-2"><strong>Enter</strong> to add next · <strong>Paste lines</strong> to bulk-add</p>
         <div className="space-y-1.5">
           {cfg.rows.map((row, i) => (
-            <DeletableTextInput
+            <EditableListRow
               key={row.id}
-              value={row.text}
-              onChange={text => updateRow(row.id, text)}
-              onDelete={() => deleteRow(row.id)}
+              item={row}
+              index={i}
+              items={cfg.rows}
+              onUpdate={updateRow}
+              onDelete={deleteRow}
+              onAddAfter={addRowAfter}
+              onBulkReplace={bulkReplaceRows}
+              makeItem={makeMatrixRow}
               canDelete={cfg.rows.length > 1}
+              inputRefs={rowRefs}
               placeholder={`Row ${i + 1}`}
-              blurOnEnter
             />
           ))}
         </div>
@@ -115,16 +148,22 @@ export function MatrixEditor({ question, dispatch, allItems = [], itemIndex = 0 
       {/* Columns */}
       <div>
         <SectionLabel>Columns (scale points)</SectionLabel>
+        <p className="text-xs text-ink-400 mb-2"><strong>Enter</strong> to add next · <strong>Paste lines</strong> to bulk-add</p>
         <div className="space-y-1.5">
           {cfg.columns.map((col, i) => (
-            <DeletableTextInput
+            <EditableListRow
               key={col.id}
-              value={col.text}
-              onChange={text => updateCol(col.id, text)}
-              onDelete={() => deleteCol(col.id)}
+              item={col}
+              index={i}
+              items={cfg.columns}
+              onUpdate={updateCol}
+              onDelete={deleteCol}
+              onAddAfter={addColAfter}
+              onBulkReplace={bulkReplaceCols}
+              makeItem={makeMatrixCol}
               canDelete={cfg.columns.length > 1}
+              inputRefs={colRefs}
               placeholder={`Column ${i + 1}`}
-              blurOnEnter
             />
           ))}
         </div>

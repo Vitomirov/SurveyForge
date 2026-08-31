@@ -1,6 +1,8 @@
+import { useRef } from 'react'
 import { Plus } from 'lucide-react'
 import { Toggle, SectionLabel, Divider } from '@/components/ui'
-import { DeletableTextInput } from '@/components/shared'
+import { EditableListRow } from '@/components/shared'
+import { makeMatrixRow, makeMatrixCol } from '@/store/surveyStore'
 
 // Preview grid for bipolar matrix
 function BipolarPreview({ cfg }) {
@@ -77,18 +79,12 @@ function BipolarPreview({ cfg }) {
 
 export function BipolarMatrixEditor({ question, dispatch }) {
   const cfg = question.bipolarConfig
+  const rowRefs = useRef({})
+  const leftColRefs = useRef({})
+  const rightColRefs = useRef({})
 
   const updateCfg = (patch) =>
     dispatch({ type: 'UPDATE_MATRIX_CONFIG', questionId: question.id, configKey: 'bipolarConfig', patch })
-
-  const addRow = () =>
-    dispatch({ type: 'ADD_MATRIX_ROW', questionId: question.id, configKey: 'bipolarConfig' })
-
-  const addLeftCol = () =>
-    dispatch({ type: 'ADD_MATRIX_COL', questionId: question.id, configKey: 'bipolarConfig', colKey: 'leftColumns' })
-
-  const addRightCol = () =>
-    dispatch({ type: 'ADD_MATRIX_COL', questionId: question.id, configKey: 'bipolarConfig', colKey: 'rightColumns' })
 
   const updateRow = (rowId, text) =>
     dispatch({ type: 'UPDATE_MATRIX_ROW', questionId: question.id, configKey: 'bipolarConfig', rowId, text })
@@ -107,6 +103,49 @@ export function BipolarMatrixEditor({ question, dispatch }) {
 
   const deleteRightCol = (colId) =>
     dispatch({ type: 'DELETE_MATRIX_COL', questionId: question.id, configKey: 'bipolarConfig', colKey: 'rightColumns', colId })
+
+  const bulkReplaceRows = (rows) => updateCfg({ rows })
+  const bulkReplaceLeftCols = (leftColumns) => updateCfg({ leftColumns })
+  const bulkReplaceRightCols = (rightColumns) => updateCfg({ rightColumns })
+
+  const addRowAfter = (afterId) => {
+    const idx = cfg.rows.findIndex(r => r.id === afterId)
+    const next = makeMatrixRow()
+    updateCfg({ rows: [...cfg.rows.slice(0, idx + 1), next, ...cfg.rows.slice(idx + 1)] })
+    setTimeout(() => rowRefs.current[next.id]?.focus(), 30)
+  }
+
+  const addLeftColAfter = (afterId) => {
+    const idx = cfg.leftColumns.findIndex(c => c.id === afterId)
+    const next = makeMatrixCol()
+    updateCfg({ leftColumns: [...cfg.leftColumns.slice(0, idx + 1), next, ...cfg.leftColumns.slice(idx + 1)] })
+    setTimeout(() => leftColRefs.current[next.id]?.focus(), 30)
+  }
+
+  const addRightColAfter = (afterId) => {
+    const idx = cfg.rightColumns.findIndex(c => c.id === afterId)
+    const next = makeMatrixCol()
+    updateCfg({ rightColumns: [...cfg.rightColumns.slice(0, idx + 1), next, ...cfg.rightColumns.slice(idx + 1)] })
+    setTimeout(() => rightColRefs.current[next.id]?.focus(), 30)
+  }
+
+  const addRow = () => {
+    const next = makeMatrixRow()
+    updateCfg({ rows: [...cfg.rows, next] })
+    setTimeout(() => rowRefs.current[next.id]?.focus(), 30)
+  }
+
+  const addLeftCol = () => {
+    const next = makeMatrixCol()
+    updateCfg({ leftColumns: [...cfg.leftColumns, next] })
+    setTimeout(() => leftColRefs.current[next.id]?.focus(), 30)
+  }
+
+  const addRightCol = () => {
+    const next = makeMatrixCol()
+    updateCfg({ rightColumns: [...cfg.rightColumns, next] })
+    setTimeout(() => rightColRefs.current[next.id]?.focus(), 30)
+  }
 
   const SelectTypeBtn = ({ side, value }) => (
     <div className="flex gap-1.5 mt-1">
@@ -171,14 +210,21 @@ export function BipolarMatrixEditor({ question, dispatch }) {
       {/* Rows */}
       <div>
         <SectionLabel>Rows</SectionLabel>
+        <p className="text-xs text-ink-400 mb-2"><strong>Enter</strong> to add next · <strong>Paste lines</strong> to bulk-add</p>
         <div className="space-y-1.5">
           {cfg.rows.map((row, i) => (
-            <DeletableTextInput
+            <EditableListRow
               key={row.id}
-              value={row.text}
-              onChange={t => updateRow(row.id, t)}
-              onDelete={() => deleteRow(row.id)}
+              item={row}
+              index={i}
+              items={cfg.rows}
+              onUpdate={updateRow}
+              onDelete={deleteRow}
+              onAddAfter={addRowAfter}
+              onBulkReplace={bulkReplaceRows}
+              makeItem={makeMatrixRow}
               canDelete={cfg.rows.length > 1}
+              inputRefs={rowRefs}
               placeholder={`Item ${i + 1}`}
             />
           ))}
@@ -193,16 +239,23 @@ export function BipolarMatrixEditor({ question, dispatch }) {
         {/* Left columns */}
         <div>
           <p className="text-xs font-semibold text-rose-500 uppercase tracking-wider mb-2">Left columns</p>
+          <p className="text-xs text-ink-400 mb-2"><strong>Enter</strong> to add · <strong>Paste lines</strong> to bulk-add</p>
           <div className="space-y-1.5">
             {cfg.leftColumns.map((col, i) => (
-              <DeletableTextInput
+              <EditableListRow
                 key={col.id}
-                value={col.text}
-                onChange={t => updateLeftCol(col.id, t)}
-                onDelete={() => deleteLeftCol(col.id)}
+                item={col}
+                index={i}
+                items={cfg.leftColumns}
+                onUpdate={updateLeftCol}
+                onDelete={deleteLeftCol}
+                onAddAfter={addLeftColAfter}
+                onBulkReplace={bulkReplaceLeftCols}
+                makeItem={makeMatrixCol}
                 canDelete={cfg.leftColumns.length > 1}
+                inputRefs={leftColRefs}
                 placeholder={`L${i + 1}`}
-                accent="left"
+                inputClassName="input-base py-1.5 text-sm flex-1 border-l-2 border-l-rose-300 pl-2"
               />
             ))}
           </div>
@@ -214,16 +267,23 @@ export function BipolarMatrixEditor({ question, dispatch }) {
         {/* Right columns */}
         <div>
           <p className="text-xs font-semibold text-brand-500 uppercase tracking-wider mb-2">Right columns</p>
+          <p className="text-xs text-ink-400 mb-2"><strong>Enter</strong> to add · <strong>Paste lines</strong> to bulk-add</p>
           <div className="space-y-1.5">
             {cfg.rightColumns.map((col, i) => (
-              <DeletableTextInput
+              <EditableListRow
                 key={col.id}
-                value={col.text}
-                onChange={t => updateRightCol(col.id, t)}
-                onDelete={() => deleteRightCol(col.id)}
+                item={col}
+                index={i}
+                items={cfg.rightColumns}
+                onUpdate={updateRightCol}
+                onDelete={deleteRightCol}
+                onAddAfter={addRightColAfter}
+                onBulkReplace={bulkReplaceRightCols}
+                makeItem={makeMatrixCol}
                 canDelete={cfg.rightColumns.length > 1}
+                inputRefs={rightColRefs}
                 placeholder={`R${i + 1}`}
-                accent="right"
+                inputClassName="input-base py-1.5 text-sm flex-1 border-l-2 border-l-brand-300 pl-2"
               />
             ))}
           </div>
