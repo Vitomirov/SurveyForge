@@ -1,10 +1,30 @@
 import { useState } from 'react'
-import { Plus, Trash2, ChevronRight, ChevronDown } from 'lucide-react'
+import { Plus, Trash2, ChevronRight, ChevronDown, ClipboardPaste } from 'lucide-react'
 import { SectionLabel } from '@/components/ui'
+import { PasteOptionsModal } from '@/components/shared'
 import { makeCascadeItem } from '@/store/surveyStore'
+import {
+  parsePasteLines,
+  parseTreePaste,
+  bulkAddLevelItems,
+  buildTreeFromRows,
+} from '@/utils/survey/questions/cascadeImport'
+
+function PasteButton({ onClick, label = 'Paste options', className = '' }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`inline-flex items-center gap-1 text-xs text-brand-600 hover:text-brand-700 font-medium hover:bg-brand-50 px-2 py-1 rounded-lg transition-all ${className}`.trim()}
+    >
+      <ClipboardPaste size={12} />
+      {label}
+    </button>
+  )
+}
 
 // ─── Level 3 items under a level 2 parent ─────────────────────────────────
-function Level3Items({ parentId, items, onAdd, onUpdate, onDelete }) {
+function Level3Items({ parentId, parentLabel, items, onAdd, onUpdate, onDelete, onPaste }) {
   const children = items.filter(i => i.level === 2 && i.parentId === parentId)
 
   return (
@@ -24,16 +44,19 @@ function Level3Items({ parentId, items, onAdd, onUpdate, onDelete }) {
           </button>
         </div>
       ))}
-      <button onClick={() => onAdd(parentId, 2)}
-        className="flex items-center gap-1.5 text-xs text-ink-400 hover:text-brand-600 px-2 py-1 transition-all">
-        <Plus size={11} /> Add option
-      </button>
+      <div className="flex items-center gap-2 ml-1">
+        <button onClick={() => onAdd(parentId, 2)}
+          className="flex items-center gap-1.5 text-xs text-ink-400 hover:text-brand-600 px-2 py-1 transition-all">
+          <Plus size={11} /> Add option
+        </button>
+        <PasteButton onClick={() => onPaste(parentId, parentLabel)} label="Paste options" />
+      </div>
     </div>
   )
 }
 
 // ─── Level 2 items under a level 1 parent ─────────────────────────────────
-function Level2Items({ parentId, items, onAdd, onUpdate, onDelete }) {
+function Level2Items({ parentId, parentLabel, levelLabels, items, onAdd, onUpdate, onDelete, onPasteL2, onPasteL3 }) {
   const children = items.filter(i => i.level === 1 && i.parentId === parentId)
   const [expanded, setExpanded] = useState({})
 
@@ -42,6 +65,10 @@ function Level2Items({ parentId, items, onAdd, onUpdate, onDelete }) {
 
   return (
     <div className="ml-5 mt-1.5 space-y-1">
+      <div className="flex items-center gap-2 ml-5 mb-1">
+        <span className="text-xs text-ink-400">{levelLabels[1]} under {parentLabel || 'this option'}</span>
+        <PasteButton onClick={() => onPasteL2(parentId, parentLabel)} label={`Paste ${levelLabels[1]}`} />
+      </div>
       {children.map(item => (
         <div key={item.id}>
           <div className="flex items-center gap-1.5 group">
@@ -61,13 +88,21 @@ function Level2Items({ parentId, items, onAdd, onUpdate, onDelete }) {
             </button>
           </div>
           {expanded[item.id] && (
-            <Level3Items parentId={item.id} items={items} onAdd={onAdd} onUpdate={onUpdate} onDelete={onDelete} />
+            <Level3Items
+              parentId={item.id}
+              parentLabel={item.label}
+              items={items}
+              onAdd={onAdd}
+              onUpdate={onUpdate}
+              onDelete={onDelete}
+              onPaste={onPasteL3}
+            />
           )}
         </div>
       ))}
       <button onClick={() => onAdd(parentId, 1)}
         className="flex items-center gap-1.5 text-xs text-ink-400 hover:text-brand-600 ml-5 px-2 py-1 transition-all">
-        <Plus size={11} /> Add {items.filter(i => i.level === 1 && i.parentId === parentId).length === 0 ? 'first ' : ''}option
+        <Plus size={11} /> Add {children.length === 0 ? 'first ' : ''}option
       </button>
     </div>
   )
@@ -77,6 +112,7 @@ function Level2Items({ parentId, items, onAdd, onUpdate, onDelete }) {
 export function CascadeEditor({ question, dispatch }) {
   const cfg = question.cascadeConfig
   const [expanded, setExpanded] = useState({})
+  const [pasteTarget, setPasteTarget] = useState(null)
 
   const updateCfg = (patch) =>
     dispatch({ type: 'UPDATE_ITEM', id: question.id, patch: { cascadeConfig: { ...cfg, ...patch } } })
@@ -84,7 +120,6 @@ export function CascadeEditor({ question, dispatch }) {
   const addItem = (parentId, level) => {
     const item = makeCascadeItem('', level, parentId)
     updateCfg({ items: [...cfg.items, item] })
-    // Auto-expand parent
     if (parentId) setExpanded(e => ({ ...e, [parentId]: true }))
   }
 
@@ -92,12 +127,11 @@ export function CascadeEditor({ question, dispatch }) {
     updateCfg({ items: cfg.items.map(i => i.id === id ? { ...i, label } : i) })
 
   const deleteItem = (id) => {
-    // Delete item and all its descendants
     const toDelete = new Set([id])
     const grow = () => {
       cfg.items.forEach(i => { if (toDelete.has(i.parentId)) toDelete.add(i.id) })
     }
-    grow(); grow() // 2 passes covers 3 levels
+    grow(); grow()
     updateCfg({ items: cfg.items.filter(i => !toDelete.has(i.id)) })
   }
 
@@ -106,6 +140,68 @@ export function CascadeEditor({ question, dispatch }) {
     next[levelIdx] = val
     updateCfg({ levelLabels: next })
   }
+
+  const openPaste = (target) => setPasteTarget(target)
+
+  const handlePasteApply = (text, replaceExisting) => {
+    if (!pasteTarget) return
+
+    let items
+    if (pasteTarget.kind === 'tree') {
+      items = buildTreeFromRows(parseTreePaste(text), makeCascadeItem, cfg.items, replaceExisting)
+      const l1Expanded = items.filter(i => i.level === 0).reduce((acc, i) => ({ ...acc, [i.id]: true }), {})
+      setExpanded(e => ({ ...e, ...l1Expanded }))
+    } else {
+      const level = pasteTarget.kind === 'l1' ? 0 : pasteTarget.kind === 'l2' ? 1 : 2
+      const parentId = pasteTarget.kind === 'l1' ? null : pasteTarget.parentId
+      items = bulkAddLevelItems(
+        cfg.items,
+        parsePasteLines(text),
+        level,
+        parentId,
+        replaceExisting,
+        makeCascadeItem,
+      )
+      if (parentId) setExpanded(e => ({ ...e, [parentId]: true }))
+    }
+
+    updateCfg({ items })
+  }
+
+  const pasteModalProps = (() => {
+    if (!pasteTarget) return null
+    if (pasteTarget.kind === 'tree') {
+      return {
+        title: 'Import option tree',
+        subtitle: 'Paste from a spreadsheet — one row per path',
+        placeholder: 'Country\tState\tCity\nUnited Kingdom\nUnited States\tCalifornia\tSan Francisco\nUnited States\tTexas\tHouston',
+        replaceLabel: 'Remove entire option tree',
+      }
+    }
+    if (pasteTarget.kind === 'l1') {
+      return {
+        title: `Paste ${cfg.levelLabels[0]} options`,
+        subtitle: 'One option per line',
+        placeholder: `United Kingdom\nUnited States\nCanada`,
+      }
+    }
+    if (pasteTarget.kind === 'l2') {
+      return {
+        title: `Paste ${cfg.levelLabels[1]} options`,
+        subtitle: pasteTarget.parentLabel
+          ? `Under “${pasteTarget.parentLabel}” — one per line`
+          : 'One option per line',
+        placeholder: 'California\nTexas\nNew York',
+      }
+    }
+    return {
+      title: `Paste ${cfg.levelLabels[2]} options`,
+      subtitle: pasteTarget.parentLabel
+        ? `Under “${pasteTarget.parentLabel}” — one per line`
+        : 'One option per line',
+      placeholder: 'San Francisco\nLos Angeles\nSan Diego',
+    }
+  })()
 
   const level1 = cfg.items.filter(i => i.level === 0)
   const l2Count = (id) => cfg.items.filter(i => i.level === 1 && i.parentId === id).length
@@ -144,13 +240,21 @@ export function CascadeEditor({ question, dispatch }) {
 
       {/* Tree editor */}
       <div>
-        <SectionLabel>Option tree</SectionLabel>
-        <div className="p-2 bg-ink-50 border border-ink-100 rounded-xl text-xs text-ink-400 mb-3 flex items-center gap-3">
+        <div className="flex items-center justify-between gap-2 mb-2">
+          <SectionLabel className="mb-0">Option tree</SectionLabel>
+          <div className="flex items-center gap-2">
+            <PasteButton onClick={() => openPaste({ kind: 'l1' })} label={`Paste ${cfg.levelLabels[0]}`} />
+            <PasteButton onClick={() => openPaste({ kind: 'tree' })} label="Import spreadsheet" />
+          </div>
+        </div>
+        <div className="p-2 bg-ink-50 border border-ink-100 rounded-xl text-xs text-ink-400 mb-3 flex items-center gap-3 flex-wrap">
           <span>L1 = {cfg.levelLabels[0]}</span>
           <ChevronRight size={11} />
           <span>L2 = {cfg.levelLabels[1]}</span>
           <ChevronRight size={11} />
           <span>L3 = {cfg.levelLabels[2]}</span>
+          <span className="text-ink-300">·</span>
+          <span>Paste one label per line, or import tab/comma-separated rows for the full tree</span>
         </div>
 
         <div className="space-y-2 border border-ink-200 rounded-xl p-3 bg-white">
@@ -175,8 +279,17 @@ export function CascadeEditor({ question, dispatch }) {
                 </button>
               </div>
               {expanded[item.id] && (
-                <Level2Items parentId={item.id} items={cfg.items}
-                  onAdd={addItem} onUpdate={updateItem} onDelete={deleteItem} />
+                <Level2Items
+                  parentId={item.id}
+                  parentLabel={item.label}
+                  levelLabels={cfg.levelLabels}
+                  items={cfg.items}
+                  onAdd={addItem}
+                  onUpdate={updateItem}
+                  onDelete={deleteItem}
+                  onPasteL2={(parentId, parentLabel) => openPaste({ kind: 'l2', parentId, parentLabel })}
+                  onPasteL3={(parentId, parentLabel) => openPaste({ kind: 'l3', parentId, parentLabel })}
+                />
               )}
             </div>
           ))}
@@ -192,10 +305,24 @@ export function CascadeEditor({ question, dispatch }) {
       <div className="p-3 bg-indigo-50 border border-indigo-100 rounded-xl text-xs text-indigo-700 space-y-0.5">
         <p className="font-semibold mb-1">Tree stats</p>
         <p>· {level1.length} {cfg.levelLabels[0]} options</p>
-        <p>· {cfg.items.filter(i=>i.level===1).length} {cfg.levelLabels[1]} options total</p>
-        <p>· {cfg.items.filter(i=>i.level===2).length} {cfg.levelLabels[2]} options total</p>
-        <p className="mt-1">CSV: {cfg.levelLabels[0]}: value | {cfg.levelLabels[1]}: value | {cfg.levelLabels[2]}: value</p>
+        <p>· {cfg.items.filter(i => i.level === 1).length} {cfg.levelLabels[1]} options total</p>
+        <p>· {cfg.items.filter(i => i.level === 2).length} {cfg.levelLabels[2]} options total</p>
+        <p className="mt-2 font-medium">Spreadsheet import format (tab or comma separated):</p>
+        <p className="font-mono text-[11px] bg-white/60 rounded px-2 py-1 mt-0.5">
+          {cfg.levelLabels[0]}, {cfg.levelLabels[1]}, {cfg.levelLabels[2]}
+        </p>
+        <p className="font-mono text-[11px] bg-white/60 rounded px-2 py-1">
+          United States, California, San Francisco
+        </p>
+        <p className="text-indigo-600/80 mt-1">Leave columns empty when a level has no value (e.g. “United Kingdom” alone).</p>
       </div>
+
+      <PasteOptionsModal
+        open={!!pasteTarget}
+        onClose={() => setPasteTarget(null)}
+        onApply={handlePasteApply}
+        {...pasteModalProps}
+      />
     </div>
   )
 }
