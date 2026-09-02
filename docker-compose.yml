@@ -1,8 +1,8 @@
 # Rescope Surveys — full stack (Postgres + API + web UI).
 #
 # Partner / fast start (pull pre-built images from Docker Hub):
-#   docker compose pull
-#   docker compose up -d
+#   docker compose pull && docker compose up -d
+# 
 #   open http://localhost:8080
 #   login: admin / admin123  (vendor / vendor123 for platform console)
 #
