@@ -41,17 +41,22 @@ export function EditableListRow({
   }
 
   const handlePaste = (e) => {
-    const lines = e.clipboardData.getData('text').split('\n').map(l => l.trim()).filter(Boolean)
+    const lines = e.clipboardData.getData('text').split(/\r?\n/).map(l => l.trim()).filter(Boolean)
     if (lines.length <= 1) return
 
     e.preventDefault()
-    onUpdate(item.id, lines[0])
-
-    const newItems = lines.slice(1).map(t => makeItem(t))
     const idx = items.findIndex(i => i.id === item.id)
-    onBulkReplace([...items.slice(0, idx + 1), ...newItems, ...items.slice(idx + 1)])
+    const newItems = lines.slice(1).map(t => makeItem(t))
+    const updatedCurrent = { ...item, [valueField]: lines[0] }
+    onBulkReplace([
+      ...items.slice(0, idx),
+      updatedCurrent,
+      ...newItems,
+      ...items.slice(idx + 1),
+    ])
 
-    setTimeout(() => inputRefs.current[newItems[newItems.length - 1].id]?.focus(), 30)
+    const focusId = newItems.length ? newItems[newItems.length - 1].id : item.id
+    setTimeout(() => inputRefs.current[focusId]?.focus(), 30)
   }
 
   return (
