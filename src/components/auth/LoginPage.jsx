@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Eye, EyeOff, AlertCircle } from 'lucide-react'
 import { AppLogo } from '@/components/shared/branding/AppLogo.jsx'
 import { login, signup, DEFAULT_CREDENTIALS } from '@/utils/data/authStore'
-import { prefetchDashboard, prefetchBuilder } from '@/utils/routing/routePrefetch'
+import { prefetchForRoute } from '@/utils/routing/routePrefetch'
 import { AUTH_COPY, AUTH_VALIDATION } from '@/constants/authCopy'
 import { APP_TAGLINE } from '@/constants/branding'
 
@@ -43,8 +43,7 @@ export function LoginPage({ onLogin }) {
       const result = await signup({ organizationName, name, email, password })
       setLoading(false)
       if (result.ok) {
-        prefetchDashboard()
-        prefetchBuilder()
+        prefetchForRoute({ session: result.session })
         onLogin(result.session)
       } else setError(result.error)
       return
@@ -55,8 +54,7 @@ export function LoginPage({ onLogin }) {
     const result = await login(email, password)
     setLoading(false)
     if (result.ok) {
-      prefetchDashboard()
-      prefetchBuilder()
+      prefetchForRoute({ session: result.session })
       onLogin(result.session)
     } else setError(result.error)
   }

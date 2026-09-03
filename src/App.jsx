@@ -13,11 +13,13 @@ import { isNewSurveyDraft, markNewSurveyDraft } from '@/utils/data/surveyDrafts'
 import { SURVEY_NOT_FOUND_MESSAGE, SURVEY_NOT_FOUND_TITLE } from '@/constants/errors'
 
 import { useSurveyBranding } from '@/hooks/useSurveyBranding'
+import { isPlatformOwner } from '@/utils/platform/permissions'
 
-const LoginPage     = lazy(() => import('@/components/auth/LoginPage.jsx'))
-const Dashboard     = lazy(() => import('@/components/dashboard/Dashboard.jsx'))
-const SurveyBuilder = lazy(() => import('@/components/builder/SurveyBuilder.jsx'))
-const SurveyPreview = lazy(() => import('@/components/taker/SurveyPreview.jsx'))
+const LoginPage        = lazy(() => import('@/components/auth/LoginPage.jsx'))
+const Dashboard        = lazy(() => import('@/components/dashboard/Dashboard.jsx'))
+const PlatformConsole  = lazy(() => import('@/components/dashboard/PlatformConsole.jsx'))
+const SurveyBuilder    = lazy(() => import('@/components/builder/SurveyBuilder.jsx'))
+const SurveyPreview    = lazy(() => import('@/components/taker/SurveyPreview.jsx'))
 
 /** Load the survey named by the route — public payload for the taker link. */
 async function fetchEntry(view, id, { byPath = false, clientDomain = null, isEmbed = false } = {}) {
@@ -112,7 +114,12 @@ export default function App() {
   const { toast }             = useToast()
   const { view, id, byPath, clientDomain, isEmbed, openExport } = useRoute()
   const isPublic              = view === 'take'
-  const { status, entry }     = useSurveyEntry(view, isPublic || session ? id : null, { byPath, clientDomain, isEmbed })
+  const ownerSession          = isPlatformOwner(session)
+  const { status, entry }     = useSurveyEntry(
+    view,
+    (isPublic || (session && !ownerSession)) ? id : null,
+    { byPath, clientDomain, isEmbed },
+  )
 
   useEffect(() => {
     if (!useApi || isPublic) {
@@ -146,6 +153,11 @@ export default function App() {
     prefetchForRoute({ session, publicSurveyId: isPublic ? id : null })
   }, [session, isPublic, id])
 
+  useEffect(() => {
+    if (!ownerSession) return
+    if (view === 'builder' || view === 'preview') nav('dashboard')
+  }, [ownerSession, view])
+
   const back = () => nav('dashboard')
 
   if (isPublic) {
@@ -173,6 +185,18 @@ export default function App() {
     return (
       <Page title="Sign-in error" label="Loading…">
         <LoginPage onLogin={(s) => { prefetchForRoute({ session: s }); setSession(s) }} />
+      </Page>
+    )
+  }
+
+  if (ownerSession) {
+    return (
+      <Page title="Platform console error" label="Loading platform console…" onReset={back}>
+        <PlatformConsole
+          session={session}
+          onSessionUpdate={setSession}
+          onLogout={() => { logout(); setSession(null); nav('dashboard') }}
+        />
       </Page>
     )
   }

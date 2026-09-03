@@ -97,7 +97,10 @@ export const AUTH_BILLING = {
   invoices:            'Invoices',
   noInvoices:          'No invoices yet.',
   platformHeading:     'Platform console',
-  platformSubtitle:    'Manage subscriptions and invoices across organizations',
+  platformSubtitle:    'Manage organizations, subscriptions, and invoices',
   organizations:       'Organizations',
-  selectOrg:           'Select an organization to manage billing',
+  selectOrg:           'Select an organization to manage its plan and invoices',
+  searchOrgs:          'Search organizations…',
+  noOrgs:              'No organizations yet',
+  platformEmptyHint:   'Customer organizations will appear here once they sign up.',
 }

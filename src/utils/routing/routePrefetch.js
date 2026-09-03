@@ -1,5 +1,6 @@
 import { getSession } from '../data/authStore.js'
 import { parseTakeHash } from './appRoute.js'
+import { isPlatformOwner } from '../platform/permissions.js'
 
 const started = new Set()
 
@@ -22,6 +23,10 @@ export function prefetchForRoute({ session, publicSurveyId } = {}) {
     return
   }
   if (sess) {
+    if (isPlatformOwner(sess)) {
+      prefetchModule(() => import('@/components/dashboard/PlatformConsole.jsx'))
+      return
+    }
     prefetchModule(() => import('@/components/dashboard/Dashboard.jsx'))
     prefetchModule(() => import('@/components/builder/SurveyBuilder.jsx'))
     prefetchCommonEditors()
@@ -32,6 +37,9 @@ export function prefetchForRoute({ session, publicSurveyId } = {}) {
 
 export const prefetchDashboard = () =>
   prefetchModule(() => import('@/components/dashboard/Dashboard.jsx'))
+
+export const prefetchPlatformConsole = () =>
+  prefetchModule(() => import('@/components/dashboard/PlatformConsole.jsx'))
 
 export const prefetchBuilder = () =>
   prefetchModule(() => import('@/components/builder/SurveyBuilder.jsx'))

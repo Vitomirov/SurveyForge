@@ -29,14 +29,12 @@ import { AppWorkspaceColumns } from '@/components/shared/layout/AppWorkspaceColu
 import { prefetchBuilder, prefetchPreview } from '@/utils/routing/routePrefetch'
 import {
   canManagePlatform, canSeeAllSurveys, filterSurveysForSession,
-  canManageBilling,
 } from '@/utils/platform/permissions'
 import { useResponseNotifications } from '@/hooks/useResponseNotifications'
 
 const PlatformSettings = lazy(() => import('./PlatformSettings.jsx'))
 const TeamPanel        = lazy(() => import('./TeamPanel.jsx'))
 const TeamMembersModal = lazy(() => import('./TeamMembersModal.jsx'))
-const PlatformConsole  = lazy(() => import('./PlatformConsole.jsx'))
 const DashboardHeader  = lazy(() => import('./DashboardHeader.jsx'))
 const AccountSettingsModal = lazy(() => import('./AccountSettingsModal.jsx'))
 
@@ -268,7 +266,6 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
   const [showAccount, setShowAccount]     = useState(false)
   const [showTeamMembers, setShowTeamMembers] = useState(false)
   const [showTeamActivity, setShowTeamActivity] = useState(false)
-  const [showPlatform, setShowPlatform] = useState(false)
   const [deleteId, setDeleteId]     = useState(null)
   const migrateAttemptedRef = useRef(false)
 
@@ -499,13 +496,11 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
             setShowSettings(false)
             setShowTeamMembers(false)
             setShowTeamActivity(false)
-            setShowPlatform(false)
           }}
           onLogout={onLogout}
           onOpenAccount={() => setShowAccount(true)}
           onOpenTeamMembers={() => setShowTeamMembers(true)}
           onOpenTeamActivity={() => setShowTeamActivity(true)}
-            onOpenPlatform={() => setShowPlatform(true)}
             notifications={{
               payload: notifications.payload,
               loading: notifications.loading,
@@ -926,16 +921,6 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
           </div>
         }>
           <TeamPanel onClose={() => setShowTeamActivity(false)} />
-        </Suspense>
-      )}
-
-      {showPlatform && canManageBilling(session) && (
-        <Suspense fallback={
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center">
-            <InlineLoader label="Loading platform console…" />
-          </div>
-        }>
-          <PlatformConsole onClose={() => setShowPlatform(false)} />
         </Suspense>
       )}
     </div>
