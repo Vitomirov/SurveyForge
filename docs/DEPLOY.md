@@ -2,16 +2,33 @@
 
 > **Other guides:** [Documentation index](README.md) · [Development](DEVELOPMENT.md) · [Docker Hub](DOCKER.md) · [CI/CD](CI.md)
 
-Step-by-step guide for deploying Rescope Surveys to a single Ubuntu VPS with
-HTTPS on `rescopesurveys.com`, `www.rescopesurveys.com`, and
-`surveys.rescopesurveys.com`.
+Deploy Rescope Surveys to a single Ubuntu VPS with HTTPS on
+`rescopesurveys.com`, `www.rescopesurveys.com`, and `surveys.rescopesurveys.com`.
 
-Written for a first deploy: every command is meant to be run in order. Anything
-marked **manual** is something you do once on the server.
+Run the commands **in the order written**. Two machines are involved:
+
+
+| Prompt looks like                    | You are on             | Run                                                                                   |
+| ------------------------------------ | ---------------------- | ------------------------------------------------------------------------------------- |
+| `devito@laptop:~/survey-builder$`    | **Laptop** (this repo) | `ssh`, `scp`, `./scripts/deploy/sync-to-vps.sh`, `./scripts/deploy/publish-docker.sh` |
+| `root@ubuntu:~#` or `rescope@ubuntu:~$` | **VPS** (after `ssh`)  | `bootstrap-vps.sh`, `init-env.sh`, `deploy.sh`, `nano`, `docker`, `systemctl`         |
+
+
+Leave the VPS with `exit` or `Ctrl+D`.
+
+**What stays manual** (registrar / cloud console):
+
+1. Buy the VPS and attach an SSH key (step 2).
+2. Point DNS A records at that IPv4 and delete parking records (step 3).
+3. After HTTPS works: sign up the first account in the browser (no seeded `admin/admin123` in production).
+
+**What the scripts do:** copy files, install Docker and Caddy, write `.env` with `openssl`, open the firewall, pull images, health-check, dump Postgres.
 
 ---
 
-## 1. Architecture overview
+
+
+## 1. Architecture
 
 ```
 Internet
@@ -43,64 +60,95 @@ Caddy — VPS host, ports 80/443                     ← TLS + domain routing
 └──────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### Why two proxy layers
+Caddy is **not** a Docker service. It runs on the Ubuntu host (`systemctl`). The nginx
+inside the web image is unchanged: SPA, `/api/` proxy, cache headers. Production
+settings that differ from the partner demo live in `docker-compose.prod.yml`:
 
-The nginx inside the web container is part of the application image: it serves
-the SPA build, rewrites unknown paths to `index.html` (needed for white-label
-survey URLs), sets cache headers for hashed assets, and proxies `/api/` to the
-API container over the Docker network. It ships with the image and is identical
-in local Docker, load tests, and production.
 
-Caddy on the host handles everything that is specific to *this* server: TLS
-certificates, the real domain names, and HTTP→HTTPS redirects. Keeping it
-outside Docker means certificates and domains are managed with `systemctl` and
-survive any `docker compose down`, and the application image stays
-environment-agnostic.
+| Setting              | `docker-compose.yml` (demo) | `docker-compose.prod.yml` (VPS)            |
+| -------------------- | --------------------------- | ------------------------------------------ |
+| Seed accounts        | yes (`admin` / `admin123`)  | **no** — first user signs up               |
+| `COOKIE_SECURE`      | `false`                     | `true` (HTTPS required or sessions vanish) |
+| Web bind             | `0.0.0.0:8080`              | `127.0.0.1:8080` (Caddy only)              |
+| `REQUIRE_STRONG_JWT` | off                         | on                                         |
 
-All three domains proxy to the same container. The app decides what to render
-from the hostname: on `surveys.rescopesurveys.com` the first path segment is
-treated as a survey `publicPath`, everywhere else the SPA dashboard loads.
+
+On `surveys.rescopesurveys.com` the first path segment is a survey `publicPath`.
+On the apex and `www` the dashboard SPA loads.
 
 ---
 
-## 2. Prerequisites
 
-| Requirement | Notes |
-|-------------|-------|
-| VPS | Ubuntu 22.04 or 24.04, 2 vCPU / 4 GB RAM recommended (matches the load-test budget) |
-| Root or sudo access | For Docker, Caddy, and ufw |
-| Domain | `rescopesurveys.com` with editable DNS records |
-| Docker Engine | Installed in step 5 |
-| Docker Compose | **v2.24 or newer** — `docker-compose.prod.yml` uses the `!override` tag (see step 5 for the fallback) |
-| Docker Hub images | Published from your machine with `./scripts/deploy/publish-docker.sh v0.1.0` before the first deploy |
 
-Ports used: `22` (SSH), `80`/`443` (Caddy). Nothing else needs to be reachable
-from the internet.
+## 2. Buy the VPS (Hetzner Cloud console)
+
+This is the only cloud-console step besides DNS.
+
+
+| Field          | Value                                                                            |
+| -------------- | -------------------------------------------------------------------------------- |
+| Location       | Falkenstein (`fsn1`) or Nuremberg (`nbg1`)                                       |
+| Image          | **Ubuntu 24.04** (22.04 is fine)                                                 |
+| Type           | **CX22** (2 vCPU / 4 GB) matches the load-test budget; CX32 if you want headroom |
+| IPv4           | **Must be enabled** — Let's Encrypt and A records need a public IPv4             |
+| SSH key        | Paste `~/.ssh/id_ed25519.pub` (or `id_rsa.pub`) **before** you create the server |
+| Cloud firewall | Allow TCP `22`, `80`, `443` only                                                 |
+| Backups        | Optional Hetzner disk snapshots — not a substitute for `backup.sh`               |
+
+
+Write down the IPv4. Below it is `VPS_IP`.
+
+First login, from the **laptop**:
+
+```bash
+ssh root@VPS_IP
+```
+
+If the key was attached at create time, there is no password. Optional but
+recommended: create a sudo user and use it from then on.
+
+```bash
+adduser rescope
+usermod -aG sudo rescope
+rsync --archive --chown=rescope:rescope /root/.ssh /home/rescope/
+exit
+```
+
+Then from the laptop: `ssh rescope@VPS_IP`. The scripts work as `root` or as a sudo user.
 
 ---
 
-## 3. DNS setup
 
-Create these records at your DNS provider, replacing `203.0.113.10` with your
-VPS IPv4 address. Do this **before** installing Caddy — Let's Encrypt validates
-over HTTP, so the names must already resolve to the server.
 
-| Type | Name | Value | TTL |
-|------|------|-------|-----|
-| `A` | `@` (apex → `rescopesurveys.com`) | `203.0.113.10` | 300 |
-| `A` | `www` | `203.0.113.10` | 300 |
-| `A` | `surveys` | `203.0.113.10` | 300 |
+## 3. DNS (Namecheap Advanced DNS) — do this before Caddy reloads
 
-`CNAME` records pointing `www` and `surveys` to the apex work equally well if
-your provider supports it (the apex itself must stay an `A` record):
+Let's Encrypt proves control of the names over **HTTP on port 80**. If DNS still
+points at a parking page, certificate issuance fails (and repeated failures hit
+rate limits).
 
-| Type | Name | Value |
-|------|------|-------|
-| `CNAME` | `www` | `rescopesurveys.com.` |
-| `CNAME` | `surveys` | `rescopesurveys.com.` |
+At the registrar, delete parking / URL-redirect records. A fresh Namecheap domain
+often has:
 
-If the VPS has IPv6, add matching `AAAA` records. Verify propagation before
-continuing:
+- apex `A` → `192.64.119.221` (parking)
+- `www` `CNAME` → `parkingpage.namecheap.com`
+
+Those must go. Create:
+
+
+| Type | Host      | Value    | TTL |
+| ---- | --------- | -------- | --- |
+| `A`  | `@`       | `VPS_IP` | 300 |
+| `A`  | `www`     | `VPS_IP` | 300 |
+| `A`  | `surveys` | `VPS_IP` | 300 |
+
+
+Leave Namecheap nameservers (`pdns1.registrar-servers.com` / `pdns2`) as they
+are unless you intentionally move DNS. MX/TXT for email forwarding can stay.
+
+`CNAME` of `www` / `surveys` to the apex is also valid; the apex itself must remain
+an `A` record. If the VPS has IPv6, add matching `AAAA` records.
+
+From the **laptop**:
 
 ```bash
 dig +short rescopesurveys.com
@@ -108,70 +156,408 @@ dig +short www.rescopesurveys.com
 dig +short surveys.rescopesurveys.com
 ```
 
-All three must print your VPS IP.
+All three must print `VPS_IP` — not a parking address, not empty. Propagation
+can take a few minutes at TTL 300.
+
+On the VPS, after the files are in place (step 5):
+
+```bash
+./scripts/deploy/check-dns.sh
+```
 
 ---
 
-## 4. Secrets — `.env` on the VPS
 
-`.env` lives only on the server. It is listed in `.gitignore` and must **never**
-be committed, pasted into issues, or copied into the Docker images.
 
-Generate the secrets:
+## 4. Publish images (laptop, once per release)
+
+Hub repositories: `vitomirov/rescopesurveys-api` and `vitomirov/rescopesurveys-web`.
+They are public — the VPS does not need `docker login`.
+
+Prefer a version tag so rollback is one command. From the **laptop**, in this repo:
 
 ```bash
-openssl rand -base64 24   # POSTGRES_PASSWORD
-openssl rand -base64 48   # JWT_SECRET (must be 32+ characters)
+docker login
+./scripts/deploy/publish-docker.sh v0.1.0
 ```
 
-Then create `/opt/rescopesurveys/.env`:
+GitHub Actions can also publish on `v*.*.*` tags — see [CI.md](CI.md). If you
+deploy `:latest` because no tag exists yet, set `IMAGE_TAG=latest` when you
+create `.env`. Rollback then is not a one-liner.
+
+---
+
+
+
+## 5. First deploy (terminal only from here)
+
+
+
+### 5.1 Copy files — laptop
+
+Do **not** copy your local `.env` (dev passwords). Do **not** clone the whole
+repo unless the VPS has GitHub SSH access; the VPS only needs compose files,
+scripts, and the Caddyfile. Images come from Docker Hub.
+
+From the repo root on the **laptop**:
 
 ```bash
-# Database
+./scripts/deploy/sync-to-vps.sh root@VPS_IP
+```
+
+Use `rescope@VPS_IP` if you created a sudo user. Default remote directory is
+`/opt/rescopesurveys`.
+
+This copies:
+
+- `docker-compose.yml`
+- `docker-compose.prod.yml`
+- `scripts/deploy/*.sh`
+- `docker/caddy/Caddyfile`
+
+
+
+### 5.2 SSH to the VPS
+
+```bash
+ssh root@VPS_IP
+cd /opt/rescopesurveys
+```
+
+Confirm the files landed:
+
+```bash
+ls -l docker-compose.yml docker-compose.prod.yml docker/caddy/Caddyfile scripts/deploy
+```
+
+
+
+### 5.3 Install Docker, Caddy, firewall — VPS
+
+```bash
+sudo ./scripts/deploy/bootstrap-vps.sh
+```
+
+Idempotent. It will:
+
+1. Install Docker Engine + Compose plugin (needs **Compose v2.24+** for `!override`).
+2. Add your user to the `docker` group (if you are not root).
+3. Install Caddy from the official apt repo.
+4. Copy `docker/caddy/Caddyfile` → `/etc/caddy/Caddyfile` and `caddy validate`.
+5. Reload Caddy **only if** `check-dns.sh` passes; otherwise it tells you to wait.
+6. Enable ufw: allow `22`, `80`, `443`; deny everything else.
+
+If you are not root and it added you to `docker`, either `exit` and SSH again or:
+
+```bash
+newgrp docker
+cd /opt/rescopesurveys
+```
+
+Flags: `--skip-caddyfile` (keep a hand-edited `/etc/caddy/Caddyfile`), `--skip-ufw`.
+
+### 5.4 Create `.env` — VPS (do not type secrets by hand)
+
+```bash
+cd /opt/rescopesurveys
+IMAGE_TAG=v0.1.0 ./scripts/deploy/init-env.sh
+```
+
+Omit `IMAGE_TAG=...` only if you must run `:latest`. The script:
+
+- writes `/opt/rescopesurveys/.env` with `openssl` secrets
+- sets `chmod 600`
+- sets `COMPOSE_FILE=docker-compose.yml:docker-compose.prod.yml` so every
+`docker compose` command includes the production override
+- **refuses to overwrite** an existing `.env` (Postgres keeps the password from
+the first start; changing `POSTGRES_PASSWORD` later does **not** update the
+role inside the volume)
+
+It prints key **names** and JWT length, never the secret values.
+
+Store `POSTGRES_PASSWORD` somewhere off the VPS. Do not commit `.env`. Do not
+paste it into chat or GitHub issues.
+
+To inspect keys without printing values:
+
+```bash
+grep -E '^[A-Z_]+=' /opt/rescopesurveys/.env | cut -d= -f1
+```
+
+Do not change `POSTGRES_USER` or `POSTGRES_DB` — the Compose healthcheck is
+hardcoded to `rescopesurveys`.
+
+
+| Variable            | Role                                                                 |
+| ------------------- | -------------------------------------------------------------------- |
+| `POSTGRES_PASSWORD` | Required. Interpolated into `DATABASE_URL`. Never `rescopesurveys`.  |
+| `JWT_SECRET`        | Required, 32+ characters. Production sets `REQUIRE_STRONG_JWT=true`. |
+| `CORS_ORIGIN`       | Required allowlist. Never `true` or `*`.                             |
+| `DOCKERHUB_USER`    | Hub account (`vitomirov`).                                           |
+| `IMAGE_TAG`         | Deployed version. Semver (`v0.1.0`) for rollback.                    |
+| `WEB_HOST_PORT`     | Bare port (`8080`). Must match `127.0.0.1:8080` in the Caddyfile.    |
+| `COMPOSE_FILE`      | VPS only. Makes `docker compose` load `docker-compose.prod.yml`.     |
+
+
+Caddy domains are **not** in `.env`. They live in `/etc/caddy/Caddyfile`.
+
+#### Editing `.env` later (`nano`)
+
+Only needed to change a value the scripts do not already take as an argument.
+`deploy.sh v0.1.1` updates `IMAGE_TAG` for you.
+
+```bash
+nano /opt/rescopesurveys/.env
+```
+
+- Save: `Ctrl+O`, then `Enter`
+- Quit: `Ctrl+X`
+- Paste in GNOME Terminal: `Ctrl+Shift+V`
+
+Rules: no spaces around `=`, no quotes, no spaces after commas in `CORS_ORIGIN`.
+
+### 5.5 Start the stack — VPS
+
+```bash
+cd /opt/rescopesurveys
+./scripts/deploy/deploy.sh
+```
+
+Validates secrets (no placeholders, JWT length), pulls Hub images, `up -d`,
+waits up to 60s for `http://127.0.0.1:8080/health`. Prisma migrations run on
+API startup; the first boot is slower.
+
+Then:
+
+```bash
+./scripts/deploy/verify.sh
+```
+
+`verify.sh` checks `.env`, Compose version, `/health`, that port 8080 is
+**127.0.0.1** (not `0.0.0.0`), Caddy active, and public HTTPS when DNS is ready.
+
+Port 8080 must never be public. ufw does **not** filter Docker-published ports
+(Docker inserts iptables rules that bypass ufw). The loopback bind in
+`docker-compose.prod.yml` is the real control. `COMPOSE_FILE` in `.env` is what
+makes `docker compose` apply that override.
+
+Do not log in over plain HTTP. `COOKIE_SECURE=true` in the prod override means
+browsers drop the session cookie without HTTPS.
+
+### 5.6 Nightly database dump — VPS
+
+```bash
+./scripts/deploy/backup.sh --install-cron
+```
+
+Writes `/opt/backups/rescopesurveys-YYYY-MM-DD-HHMM.sql.gz`, keeps 14 days,
+cron at 03:00. Copy dumps **off** the VPS (`scp` to the laptop or object
+storage). A file that exists only on the machine that died is not a backup.
+
+One-off dump: `./scripts/deploy/backup.sh`
+
+---
+
+
+
+## 6. Browser checks after TLS
+
+
+| #   | Check                                                            | Expected                                                                            |
+| --- | ---------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| 1   | `curl -sI https://rescopesurveys.com`                            | `200`, valid cert, `x-content-type-options: nosniff`, `x-frame-options: SAMEORIGIN` |
+| 2   | `curl https://rescopesurveys.com/health`                         | `{"status":"ok",...}`                                                               |
+| 3   | Open `https://rescopesurveys.com`                                | SPA, login / signup                                                                 |
+| 4   | Sign up the first account                                        | Org + dashboard. **No** `admin` / `admin123`                                        |
+| 5   | Reload after signup                                              | Still logged in — this is the HTTPS/cookie check                                    |
+| 6   | `curl -I https://www.rescopesurveys.com`                         | `200` (or `301` if you enabled the www→apex redirect in the Caddyfile)              |
+| 7   | `curl -I https://surveys.rescopesurveys.com/test-path`           | `200` SPA shell; in-app “survey not found” is OK                                    |
+| 8   | Publish a survey, open `surveys.rescopesurveys.com/<publicPath>` | Survey accepts a response                                                           |
+| 9   | `curl -I http://rescopesurveys.com`                              | `308` / `301` to HTTPS                                                              |
+| 10  | `docker compose ps` in `/opt/rescopesurveys`                     | All three `Up`; api and postgres `healthy`                                          |
+
+
+From the laptop, these must **fail**:
+
+```bash
+curl --max-time 5 http://rescopesurveys.com:8080/
+nc -zv rescopesurveys.com 5432
+```
+
+---
+
+
+
+## 7. Updates and rollback
+
+Laptop:
+
+```bash
+docker login
+./scripts/deploy/publish-docker.sh v0.1.1
+```
+
+If compose files or scripts changed, also:
+
+```bash
+./scripts/deploy/sync-to-vps.sh root@VPS_IP
+```
+
+VPS:
+
+```bash
+cd /opt/rescopesurveys
+./scripts/deploy/deploy.sh v0.1.1
+```
+
+(`v0.1.1` writes `IMAGE_TAG` then pulls/restarts. Caddy is not reloaded unless
+you changed domains.)
+
+Rollback:
+
+```bash
+./scripts/deploy/deploy.sh v0.1.0
+```
+
+Image rollback does **not** undo Prisma migrations. If a release had a
+destructive migration, restore a dump first (step 8) then start the old image.
+
+---
+
+
+
+## 8. Restore a dump
+
+```bash
+cd /opt/rescopesurveys
+gunzip -c /opt/backups/rescopesurveys-2026-01-31-0300.sql.gz \
+  | docker compose exec -T postgres psql -U rescopesurveys -d rescopesurveys
+```
+
+(`COMPOSE_FILE` in `.env` already includes the prod override.)
+
+---
+
+
+
+## 9. Troubleshooting
+
+**Certificate errors / Caddy cannot issue a certificate**
+
+```bash
+./scripts/deploy/check-dns.sh
+sudo journalctl -u caddy -n 100 --no-pager
+```
+
+Usual causes: parking DNS still in place, `surveys` has no A record, port 80
+held by nginx/apache (`ss -tlnp | grep :80`), Let's Encrypt rate limit after
+repeated failures (wait an hour, or staging CA:
+`acme_ca https://acme-staging-v02.api.letsencrypt.org/directory`).
+
+**502 Bad Gateway from Caddy**
+
+```bash
+docker compose ps
+curl http://127.0.0.1:8080/health
+sudo ss -tlnp | grep 8080
+docker compose logs --tail 50 web api
+```
+
+`WEB_HOST_PORT` in `.env` must match `127.0.0.1:8080` in `/etc/caddy/Caddyfile`.
+
+**Login works then session dies on reload**
+
+You are on HTTP or the cert is invalid. Production sets `COOKIE_SECURE=true`
+in `docker-compose.prod.yml`. Do not turn that off.
+
+**API restart loop**
+
+```bash
+docker compose logs --tail 100 api
+```
+
+Weak/placeholder `JWT_SECRET`, or `POSTGRES_PASSWORD` that does not match the
+password stored in `pgdata` from the first `up`.
+
+`docker compose up`**: port already allocated**
+
+Compose v2.24+ is required so `ports: !override` **replaces** the public bind.
+Older Compose **appends** and you get both `0.0.0.0:8080` and `127.0.0.1:8080`.
+`bootstrap-vps.sh` refuses Compose older than 2.24. Fallback if you cannot
+upgrade: remove `docker-compose.prod.yml`, drop `COMPOSE_FILE` from `.env`, set
+`WEB_HOST_PORT=127.0.0.1:8080`.
+
+`surveys.rescopesurveys.com/<path>` **shows the dashboard**
+
+Hostname must be exactly `surveys.rescopesurveys.com`, and the survey must be
+`live` with that `publicPath`.
+`curl https://surveys.rescopesurveys.com/api/public/surveys/<path>`
+
+`permission denied` **talking to Docker**
+
+After bootstrap as a non-root user: `newgrp docker` or SSH out and back in.
+
+**Site unreachable**
+
+Outside in: `./scripts/deploy/check-dns.sh` → `sudo ufw status` →
+`systemctl status caddy` → `docker compose ps` →
+`curl http://127.0.0.1:8080/health`.
+
+---
+
+
+
+## 10. Script index
+
+All paths relative to `/opt/rescopesurveys` on the VPS, except `sync-to-vps.sh`
+and `publish-docker.sh` (laptop, repo root).
+
+
+| Script                                      | Where  | What it does                                                  |
+| ------------------------------------------- | ------ | ------------------------------------------------------------- |
+| `scripts/deploy/publish-docker.sh v0.1.0`   | Laptop | Build and push API + web images                               |
+| `scripts/deploy/sync-to-vps.sh user@IP`     | Laptop | Copy compose files, scripts, Caddyfile. Never copies `.env`   |
+| `scripts/deploy/bootstrap-vps.sh`           | VPS    | Docker, Caddy, ufw, install Caddyfile, reload if DNS is ready |
+| `scripts/deploy/init-env.sh`                | VPS    | Generate production `.env` (no overwrite)                     |
+| `scripts/deploy/check-dns.sh`               | VPS    | Apex / www / surveys A records = this IPv4                    |
+| `scripts/deploy/deploy.sh [tag]`            | VPS    | Validate `.env`, pull, up, wait for `/health`                 |
+| `scripts/deploy/verify.sh`                  | VPS    | Loopback bind, health, Caddy, public HTTPS if DNS is ready    |
+| `scripts/deploy/backup.sh [--install-cron]` | VPS    | `pg_dump` to `/opt/backups`, optional nightly cron            |
+
+
+---
+
+
+
+## Appendix A — `.env` shape (generated; do not copy secrets from here)
+
+`init-env.sh` writes this shape. Shown so you can recognize a broken file.
+
+```
 POSTGRES_USER=rescopesurveys
 POSTGRES_DB=rescopesurveys
 POSTGRES_PASSWORD=<openssl rand -base64 24>
 
-# Auth — the API refuses to start in production with a weak or placeholder value
 JWT_SECRET=<openssl rand -base64 48>
 
-# Browser origins allowed to call the API with cookies. Required in production.
-# Same-origin deploys still need this — the API refuses to start with a wildcard.
 CORS_ORIGIN=https://rescopesurveys.com,https://www.rescopesurveys.com,https://surveys.rescopesurveys.com
 
-# Images to run — prefer an explicit version tag over `latest` so rollback is possible
 DOCKERHUB_USER=vitomirov
 IMAGE_TAG=v0.1.0
 
-# Host port for the web container — internal only, Caddy proxies to it
 WEB_HOST_PORT=8080
-
-# Always include the production override in bare `docker compose` commands
 COMPOSE_FILE=docker-compose.yml:docker-compose.prod.yml
 ```
 
-| Variable | Why it matters |
-|----------|----------------|
-| `POSTGRES_PASSWORD` | Required by Compose; interpolated into `DATABASE_URL`. Never reuse the local dev default (`rescopesurveys`). |
-| `JWT_SECRET` | Required, 32+ characters. `REQUIRE_STRONG_JWT` is on in production, so placeholders like `change-me-in-production` cause a startup failure. |
-| `CORS_ORIGIN` | Required. Comma-separated origin allowlist. Do not use `true` or `*`. Compose defaults to the three Rescope hostnames if unset. |
-| `DOCKERHUB_USER` | Docker Hub account holding `rescopesurveys-api` / `rescopesurveys-web`. |
-| `IMAGE_TAG` | The deployed version. Semver tags (`v0.1.0`) make rollback a one-line change; `latest` does not. |
-| `WEB_HOST_PORT` | Host port for nginx. Bound to `127.0.0.1` by `docker-compose.prod.yml` — not public. Keep it a bare port number. |
-| `COMPOSE_FILE` | Makes plain `docker compose pull` / `up -d` load `docker-compose.prod.yml` automatically. Set on the VPS only. |
-
-Nothing about Caddy belongs in `.env` — domains and TLS are configured on the
-host in `/etc/caddy/Caddyfile` (step 6).
-
-**No seeded accounts in production.** `docker-compose.yml` sets
-`SEED_DEFAULT_ACCOUNTS=false`, so there is no default `admin` / `admin123`. The
-first organization and admin are created through the signup form after deploy.
-
 ---
 
-## 5. First VPS deploy
 
-### 5.1 Install Docker
+
+## Appendix B — manual install if a script cannot run
+
+Use this only if `bootstrap-vps.sh` fails. Prefer fixing the script error.
+
+**Docker** (Compose must report v2.24+ via `docker compose version`):
 
 ```bash
 sudo apt update
@@ -186,84 +572,7 @@ sudo apt update
 sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 ```
 
-Confirm the Compose version — `docker-compose.prod.yml` needs v2.24+:
-
-```bash
-docker compose version
-```
-
-If it is older and you cannot upgrade: delete `docker-compose.prod.yml`, remove
-`COMPOSE_FILE` from `.env`, and set `WEB_HOST_PORT=127.0.0.1:8080` instead. That
-produces the same loopback binding.
-
-### 5.2 Copy the deployment files
-
-Only three things are needed on the server: the Compose files, the deploy
-script, and `.env`. Cloning the repository is the simplest way to keep them in
-sync:
-
-```bash
-sudo mkdir -p /opt/rescopesurveys
-sudo chown "$USER" /opt/rescopesurveys
-git clone <repository-url> /opt/rescopesurveys
-cd /opt/rescopesurveys
-```
-
-Or copy just the required files from your machine:
-
-```bash
-scp docker-compose.yml docker-compose.prod.yml user@203.0.113.10:/opt/rescopesurveys/
-scp scripts/deploy/deploy.sh user@203.0.113.10:/opt/rescopesurveys/scripts/deploy/
-scp docker/caddy/Caddyfile user@203.0.113.10:/opt/rescopesurveys/docker/caddy/
-```
-
-Then create `.env` on the server as described in step 4. Do **not** `scp` your
-local `.env` — it contains development values.
-
-### 5.3 Start the stack
-
-```bash
-cd /opt/rescopesurveys
-docker compose pull
-docker compose up -d
-docker compose ps
-```
-
-With `COMPOSE_FILE` set in `.env`, those commands already include
-`docker-compose.prod.yml`. Without it, spell both files out:
-
-```bash
-docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
-```
-
-The API applies Prisma migrations on startup, so the first boot takes a few
-extra seconds.
-
-### 5.4 Verify locally, before TLS
-
-```bash
-curl http://127.0.0.1:8080/health
-# {"status":"ok",...}
-
-curl -I http://127.0.0.1:8080/
-# HTTP/1.1 200 OK
-```
-
-Confirm the port is *not* published publicly:
-
-```bash
-sudo ss -tlnp | grep 8080
-# expected: 127.0.0.1:8080   (never 0.0.0.0:8080 or *:8080)
-```
-
-Do not open the app in a browser over plain HTTP yet — logging in requires
-HTTPS (step 6).
-
----
-
-## 6. Caddy on the host
-
-### 6.1 Install
+**Caddy:**
 
 ```bash
 sudo apt install -y debian-keyring debian-archive-keyring apt-transport-https curl
@@ -273,31 +582,12 @@ curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' \
   | sudo tee /etc/apt/sources.list.d/caddy-stable.list
 sudo apt update
 sudo apt install -y caddy
-```
-
-The package installs and starts a `caddy` systemd service.
-
-### 6.2 Configure
-
-Use the template from this repository, [`docker/caddy/Caddyfile`](../docker/caddy/Caddyfile).
-It terminates TLS, overwrites `X-Forwarded-For` with the TCP peer, and sets
-browser security headers. Apex and `www` also send `X-Frame-Options: SAMEORIGIN`
-so the dashboard cannot be iframed; `surveys.*` stays embeddable.
-
-Install it and reload:
-
-```bash
 sudo cp /opt/rescopesurveys/docker/caddy/Caddyfile /etc/caddy/Caddyfile
 sudo caddy validate --config /etc/caddy/Caddyfile
-sudo systemctl enable caddy
-sudo systemctl reload caddy      # use `restart` if the service is not running yet
-sudo systemctl status caddy
+sudo systemctl enable --now caddy
 ```
 
-That is the entire configuration. Caddy requests certificates for all three
-names on first request, renews them automatically, redirects HTTP to HTTPS, and
-sets `X-Forwarded-Proto: https` on proxied requests. No email address is needed
-for the ACME account; add one only if you want expiry notices:
+Optional ACME expiry email — add at the top of `/etc/caddy/Caddyfile`:
 
 ```
 {
@@ -305,233 +595,37 @@ for the ACME account; add one only if you want expiry notices:
 }
 ```
 
-Watch the first certificate issuance:
-
-```bash
-sudo journalctl -u caddy -f
-```
-
-### 6.3 HTTPS is not optional
-
-`docker-compose.yml` sets `COOKIE_SECURE=true`, so the API issues session
-cookies with the `Secure` attribute. Browsers refuse to store those over plain
-HTTP. **Without Caddy and a valid certificate, login and signup will appear to
-succeed but no session will persist.** Never work around this by disabling
-`COOKIE_SECURE` in production.
-
----
-
-## 7. Firewall (ufw)
+**ufw:**
 
 ```bash
 sudo ufw default deny incoming
 sudo ufw default allow outgoing
-sudo ufw allow 22/tcp        # SSH — do this before enabling
-sudo ufw allow 80/tcp        # HTTP (Let's Encrypt + redirect to HTTPS)
-sudo ufw allow 443/tcp       # HTTPS
+sudo ufw allow 22/tcp
+sudo ufw allow 80/tcp
+sudo ufw allow 443/tcp
 sudo ufw enable
-sudo ufw status verbose
 ```
 
-Port `8080` and Postgres `5432` are never allowed.
-
-**Important:** ufw alone does not protect Docker-published ports. Docker inserts
-its own iptables rules in the `DOCKER-USER` chain, which bypass ufw's filtering,
-so a container published on `0.0.0.0:8080` stays reachable from the internet
-even with `ufw deny 8080`. This is why the loopback bind is the real control:
-
-- `docker-compose.prod.yml` publishes the web container as
-  `127.0.0.1:${WEB_HOST_PORT}:80`, reachable only from the host — which is
-  exactly what Caddy needs.
-- `docker-compose.yml` never publishes Postgres. Only the dev override
-  (`docker-compose.dev.yml`, not used on the VPS) exposes `5433`. The API talks
-  to Postgres over the internal Docker network.
-
-Verify from your laptop, not from the server:
-
-```bash
-curl --max-time 5 http://rescopesurveys.com:8080/    # must time out or refuse
-nc -zv rescopesurveys.com 5432                       # must fail
-```
+Never allow 8080 or 5432.
 
 ---
 
-## 8. Post-deploy verification
 
-| # | Check | Expected |
-|---|-------|----------|
-| 1 | `curl -sI https://rescopesurveys.com` | `200`, valid certificate, `x-content-type-options: nosniff`, `x-frame-options: SAMEORIGIN` |
-| 2 | `curl https://rescopesurveys.com/health` | `{"status":"ok",...}` |
-| 3 | Open `https://rescopesurveys.com` in a browser | SPA loads, login screen |
-| 4 | Sign up the first account | Organization created, dashboard loads |
-| 5 | Reload the page after signup | Still logged in — proves `Secure` cookies work over HTTPS |
-| 6 | `curl -I https://www.rescopesurveys.com` | `200` (or `301` to the apex if you enabled the redirect) |
-| 7 | `curl -I https://surveys.rescopesurveys.com/test-path` | `200` with the SPA shell; the app then shows "survey not found" — that is fine, it proves the subdomain and TLS work |
-| 8 | Publish a survey, open its `surveys.rescopesurveys.com/<publicPath>` link | Survey renders and accepts a response |
-| 9 | `curl -I http://rescopesurveys.com` | `308`/`301` redirect to HTTPS |
-| 10 | `docker compose ps` | All three services `Up`, api and postgres `healthy` |
-
-Check 5 is the one people skip and then debug for an hour — do it.
-
----
-
-## 9. Updates (redeploy)
-
-Publish new images from your machine:
-
-```bash
-docker login
-./scripts/deploy/publish-docker.sh v0.1.1
-```
-
-Then on the VPS:
-
-```bash
-cd /opt/rescopesurveys
-# bump IMAGE_TAG=v0.1.1 in .env
-./scripts/deploy/deploy.sh
-```
-
-[`scripts/deploy/deploy.sh`](../scripts/deploy/deploy.sh) refuses to run with missing or
-placeholder secrets, pulls the images, restarts the stack, waits up to 60
-seconds for `/health`, and prints container status. Equivalent manual commands:
-
-```bash
-docker compose pull
-docker compose up -d
-curl http://127.0.0.1:8080/health
-```
-
-Only containers whose image changed are recreated. Postgres keeps its data in
-the `pgdata` volume, which is untouched by pulls and restarts. Caddy is not
-involved in an app update — no reload needed unless you change domains.
-
----
-
-## 10. Rollback
-
-Version tags exist for exactly this. On the VPS:
-
-```bash
-cd /opt/rescopesurveys
-# set IMAGE_TAG=v0.1.0 (the last known good tag) in .env
-docker compose pull
-docker compose up -d
-curl http://127.0.0.1:8080/health
-```
-
-Rolling back the images does **not** roll back database migrations. If a release
-contained a destructive migration, restore the database from a backup (step 11)
-before starting the older image.
-
----
-
-## 11. Postgres backup
-
-Dump to a gzipped file on the host:
-
-```bash
-cd /opt/rescopesurveys
-docker compose exec -T postgres \
-  pg_dump -U rescopesurveys rescopesurveys \
-  | gzip > "backup-$(date +%F-%H%M).sql.gz"
-```
-
-Restore into a running stack:
-
-```bash
-gunzip -c backup-2026-01-31-0300.sql.gz \
-  | docker compose exec -T postgres psql -U rescopesurveys -d rescopesurveys
-```
-
-A nightly cron entry (backups written to `/opt/backups`, kept 14 days):
-
-```bash
-0 3 * * * cd /opt/rescopesurveys && docker compose exec -T postgres pg_dump -U rescopesurveys rescopesurveys | gzip > /opt/backups/rescopesurveys-$(date +\%F).sql.gz && find /opt/backups -name '*.sql.gz' -mtime +14 -delete
-```
-
-Copy backups off the VPS — a snapshot stored only on the server that failed is
-not a backup. Adjust the user and database name if you changed `POSTGRES_USER`
-or `POSTGRES_DB`.
-
----
-
-## 12. Troubleshooting
-
-**Certificate errors / Caddy cannot issue a certificate**
-
-```bash
-sudo journalctl -u caddy -n 100 --no-pager
-```
-
-Usual causes: DNS not propagated yet (`dig +short <name>` returns nothing or an
-old IP), port 80 blocked by ufw or another web server (`sudo ss -tlnp | grep :80`
-— nginx or Apache installed by default will hold it), or Let's Encrypt rate
-limits after repeated failures (retry after an hour, or test against the staging
-CA with `acme_ca https://acme-staging-v02.api.letsencrypt.org/directory`).
-
-**502 Bad Gateway from Caddy**
-
-The container is not answering on the loopback port. Check in this order:
-
-```bash
-docker compose ps                        # is web Up?
-curl http://127.0.0.1:8080/health        # does the stack answer locally?
-sudo ss -tlnp | grep 8080                # is it bound to 127.0.0.1:8080?
-docker compose logs --tail 50 web api
-```
-
-A mismatch between `WEB_HOST_PORT` in `.env` and the port in
-`/etc/caddy/Caddyfile` produces exactly this. They must match.
-
-**Login works but the session is lost on reload**
-
-You are on plain HTTP, or the certificate is invalid. `COOKIE_SECURE=true`
-requires HTTPS. Confirm with `curl -I https://rescopesurveys.com` and check the
-browser console for rejected cookies.
-
-**API container restarts in a loop**
-
-```bash
-docker compose logs --tail 100 api
-```
-
-Most common: `JWT_SECRET` shorter than 32 characters or still a placeholder
-(production enforces `REQUIRE_STRONG_JWT`), or a `POSTGRES_PASSWORD` that does
-not match the one the `pgdata` volume was initialized with. Changing
-`POSTGRES_PASSWORD` after the first start does **not** change the existing
-database password — either use the original value or reset the role inside
-Postgres.
-
-**`docker compose up` fails with "port is already allocated"**
-
-Compose *appends* `ports` entries from override files unless the `!override` tag
-is honored, which needs Compose v2.24+. On older versions you get both
-`0.0.0.0:8080` and `127.0.0.1:8080`. Upgrade Compose, or use the fallback from
-step 5.1 (`WEB_HOST_PORT=127.0.0.1:8080`, no prod override file).
-
-**`surveys.rescopesurveys.com/<path>` shows the dashboard instead of a survey**
-
-The hostname must match `surveys.<domain>` exactly for path-based survey
-resolution, and the survey must be `live` with that `publicPath`. Verify the
-API directly: `curl https://surveys.rescopesurveys.com/api/public/surveys/<path>`.
-
-**Everything looks fine but the site is unreachable**
-
-Check the layers from the outside in: DNS (`dig`), firewall
-(`sudo ufw status`), Caddy (`systemctl status caddy`), the stack
-(`docker compose ps`), the app (`curl http://127.0.0.1:8080/health`).
-
----
 
 ## Quick reference
 
-| Task | Command (on the VPS, in `/opt/rescopesurveys`) |
-|------|------------------------------------------------|
-| Deploy / update | `./scripts/deploy/deploy.sh` |
-| Status | `docker compose ps` |
-| Logs | `docker compose logs -f api` |
-| Restart app | `docker compose restart api web` |
-| Stop everything | `docker compose down` (data survives in `pgdata`) |
-| Reload Caddy | `sudo systemctl reload caddy` |
-| Backup | see step 11 |
+
+| Task                | Command                                                                                                                         |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| First VPS setup     | `sudo ./scripts/deploy/bootstrap-vps.sh` then `IMAGE_TAG=v0.1.0 ./scripts/deploy/init-env.sh` then `./scripts/deploy/deploy.sh` |
+| Deploy / update     | `./scripts/deploy/deploy.sh v0.1.1`                                                                                             |
+| Status              | `docker compose ps`                                                                                                             |
+| Logs                | `docker compose logs -f api`                                                                                                    |
+| Health / bind / TLS | `./scripts/deploy/verify.sh`                                                                                                    |
+| DNS                 | `./scripts/deploy/check-dns.sh`                                                                                                 |
+| Restart app         | `docker compose restart api web`                                                                                                |
+| Stop stack          | `docker compose down` (data stays in `pgdata`)                                                                                  |
+| Reload Caddy        | `sudo systemctl reload caddy`                                                                                                   |
+| Backup now          | `./scripts/deploy/backup.sh`                                                                                                    |
+
+

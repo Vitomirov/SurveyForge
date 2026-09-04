@@ -1,8 +1,8 @@
 # Rescope Surveys — host Caddy (VPS), in front of the Docker stack.
 #
-# Install on the VPS:
-#   sudo cp docker/caddy/Caddyfile /etc/caddy/Caddyfile
-#   sudo systemctl reload caddy
+# Install on the VPS (prefer the bootstrap script):
+#   sudo ./scripts/deploy/bootstrap-vps.sh
+#   # or: sudo cp docker/caddy/Caddyfile /etc/caddy/Caddyfile && sudo systemctl reload caddy
 #
 # Caddy terminates TLS (Let's Encrypt certificates are issued and renewed
 # automatically) and forwards plain HTTP to the web container, which is

@@ -557,8 +557,14 @@ Two proxy layers, each with one job:
 `docker-compose.prod.yml` publishes the web container on `127.0.0.1:${WEB_HOST_PORT}:80` so port 8080 is reachable only by Caddy. Postgres is never published in production. Postgres data persists in the `pgdata` Docker volume.
 
 ```bash
-# On the VPS, after the first deploy
-./scripts/deploy/deploy.sh    # validates .env secrets, pulls images, restarts, waits for /health
+# Laptop: copy files, then SSH to the VPS
+./scripts/deploy/sync-to-vps.sh root@VPS_IP
+
+# VPS (/opt/rescopesurveys)
+sudo ./scripts/deploy/bootstrap-vps.sh
+IMAGE_TAG=v0.1.0 ./scripts/deploy/init-env.sh
+./scripts/deploy/deploy.sh
+./scripts/deploy/verify.sh
 ```
 
 ### Security considerations

@@ -78,7 +78,7 @@ You do **not** need a VPS to make progress. Do this first:
 4. **Demo the stack locally** — `docker compose up -d` on your machine (same images partners get)
 5. **Prepare production files** — generate secrets, read [DEPLOY.md](DEPLOY.md), buy domain DNS
 
-Buy the VPS when you are ready to point DNS and run `./scripts/deploy/deploy.sh`.
+Buy the VPS when you are ready to point DNS and run the first-deploy scripts in [DEPLOY.md](DEPLOY.md).
 
 ---
 
@@ -87,6 +87,12 @@ Buy the VPS when you are ready to point DNS and run `./scripts/deploy/deploy.sh`
 | Script | Purpose |
 |--------|---------|
 | `scripts/dev/start-postgres.sh` | Postgres for npm dev |
-| `scripts/deploy/publish-docker.sh` | Build + push API and web images |
-| `scripts/deploy/deploy.sh` | Production redeploy on the VPS |
+| `scripts/deploy/publish-docker.sh` | Build + push API and web images (laptop) |
+| `scripts/deploy/sync-to-vps.sh` | Copy compose files, deploy scripts, and Caddyfile to the VPS |
+| `scripts/deploy/bootstrap-vps.sh` | Install Docker, Caddy, ufw; install Caddyfile |
+| `scripts/deploy/init-env.sh` | Generate production `.env` with openssl (VPS) |
+| `scripts/deploy/check-dns.sh` | Confirm apex / www / surveys point at this VPS |
+| `scripts/deploy/deploy.sh` | Production pull + up + health check (optional image tag) |
+| `scripts/deploy/verify.sh` | Loopback bind, health, Caddy, public HTTPS |
+| `scripts/deploy/backup.sh` | Postgres dump; `--install-cron` for nightly |
 | `scripts/load/run-load-test.sh` | k6 load test stack |

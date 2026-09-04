@@ -27,10 +27,11 @@ You do not need a production server to ship quality releases.
 
 | Step | Where |
 |------|-------|
-| First `docker compose up` with prod override | VPS |
-| Caddy + Let's Encrypt | VPS host |
-| `./scripts/deploy/deploy.sh` on updates | VPS |
-| Off-site backups | VPS + object storage (optional) |
+| First bootstrap (Docker, Caddy, ufw) | VPS — `./scripts/deploy/bootstrap-vps.sh` |
+| Generate production `.env` | VPS — `./scripts/deploy/init-env.sh` |
+| First `deploy.sh` / later updates | VPS |
+| Let's Encrypt (after DNS) | Caddy on the VPS host |
+| Off-site backups | `./scripts/deploy/backup.sh` + copy dumps off the server |
 
 Automatic deploy **to** the VPS (SSH pull + restart) is not wired yet — deploy is manual or can be added later via SSH action / webhook.
 
