@@ -42,7 +42,7 @@ if [[ -f "$ENV_FILE" && "$FORCE" -eq 1 ]]; then
   echo "If pgdata already exists, the new POSTGRES_PASSWORD will not match it." >&2
 fi
 
-postgres_password="$(openssl rand -base64 24 | tr -d '\n')"
+postgres_password="$(openssl rand -base64 24 | tr -d '/+=')"
 jwt_secret="$(openssl rand -base64 48 | tr -d '\n')"
 dockerhub_user="${DOCKERHUB_USER:-$DEFAULT_DOCKERHUB_USER}"
 image_tag="${IMAGE_TAG:-latest}"

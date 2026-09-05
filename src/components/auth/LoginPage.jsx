@@ -205,12 +205,7 @@ export function LoginPage({ onLogin }) {
         </p>
 
         {/* Demo credentials — local dev and Docker partner pull (VITE_USE_API) */}
-        {!isSignup && (import.meta.env.DEV || import.meta.env.VITE_USE_API === 'true') && (
-          <p className="text-center text-xs text-ink-300 mt-2">
-            Demo: <span className="font-mono">admin</span> / <span className="font-mono">{DEFAULT_CREDENTIALS.password}</span>
-            {' '}(or <span className="font-mono">{DEFAULT_CREDENTIALS.email}</span>)
-          </p>
-        )}
+        {!isSignup && (import.meta.env.DEV || import.meta.env.VITE_USE_API === 'true')}
       </div>
     </div>
   )

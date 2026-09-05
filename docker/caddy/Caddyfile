@@ -13,6 +13,17 @@
 # surveys.* stays embeddable (Professional+ iframe snippet).
 #
 # Full guide: docs/DEPLOY.md
+#
+# Enterprise custom domains (surveys.client.com):
+# - Customer adds TXT + A records, then clicks "Check DNS" in the app.
+# - Caddy issues on-demand certificates for verified survey hosts only
+#   (see /api/internal/caddy-ask on the API).
+
+{
+	on_demand_tls {
+		ask http://127.0.0.1:8080/api/internal/caddy-ask
+	}
+}
 
 (proxy_to_web) {
 	# WEB_HOST_PORT from .env — keep both values in sync if you change it.
@@ -37,6 +48,15 @@ rescopesurveys.com, www.rescopesurveys.com {
 }
 
 surveys.rescopesurveys.com {
+	import browser_security
+	import proxy_to_web
+}
+
+# Verified enterprise survey hosts (on-demand TLS; no manual block per customer).
+:443 {
+	tls {
+		on_demand
+	}
 	import browser_security
 	import proxy_to_web
 }

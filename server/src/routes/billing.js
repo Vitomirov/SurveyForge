@@ -12,7 +12,15 @@ import {
   planById,
 } from '../lib/billing/billingPlans.js'
 import { ensureOrgBilling } from '../lib/billing/billingDefaults.js'
-import { readSurveyDomain, patchOrgSettings, readBrandKit, readEmbedAllowedOrigins, readDomainVerification } from '../lib/platform/orgSettings.js'
+import {
+  readSurveyDomain,
+  readEffectiveSurveyDomain,
+  patchOrgSettings,
+  readBrandKit,
+  readEmbedAllowedOrigins,
+  readDomainVerification,
+} from '../lib/platform/orgSettings.js'
+import { checkDomainVerificationDns } from '../lib/platform/checkDomainVerificationDns.js'
 import { sanitizeOrgBrandKit, sanitizeEmbedOrigins } from '../lib/branding/brandEnforcement.js'
 import { planFeatureSummary } from '../../../shared/planFeatures.js'
 import { normalizeDomainVerification, defaultDomainVerification } from '../../../shared/domainVerification.js'
@@ -54,7 +62,7 @@ export async function registerBillingRoutes(app) {
 
     return {
       subscription: serializeSubscription(subscription),
-      surveyDomain: readSurveyDomain(org?.settings),
+      surveyDomain: readEffectiveSurveyDomain(org?.settings, subscription.planId),
       brandKit: readBrandKit(org?.settings),
       embedAllowedOrigins: readEmbedAllowedOrigins(org?.settings),
       planFeatures: planFeatureSummary(subscription.planId),
@@ -177,14 +185,32 @@ export async function registerBillingRoutes(app) {
     if (request.body?.forceVerified === true && !loadConfig().isDev) {
       return reply.code(400).send({ error: 'forceVerified is not allowed in production.' })
     }
+
     const forceVerified = request.body?.forceVerified === true
     const now = new Date().toISOString()
+    let matched = false
+    let failureReason = 'DNS TXT record not found.'
+
+    if (forceVerified && loadConfig().isDev) {
+      matched = true
+      failureReason = null
+    } else {
+      try {
+        const dnsResult = await checkDomainVerificationDns(current)
+        matched = dnsResult.matched
+        failureReason = dnsResult.failureReason
+      } catch (err) {
+        request.log.error(err)
+        failureReason = 'DNS lookup failed. Try again in a few minutes.'
+      }
+    }
+
     const verification = normalizeDomainVerification({
       ...current,
-      status: forceVerified ? 'verified' : current.status,
-      verifiedAt: forceVerified ? now : current.verifiedAt,
+      status: matched ? 'verified' : 'pending',
+      verifiedAt: matched ? (current.verifiedAt || now) : null,
       lastCheckedAt: now,
-      failureReason: forceVerified ? null : current.failureReason || 'DNS TXT record not found.',
+      failureReason: matched ? null : failureReason,
     })
     const settings = patchOrgSettings(org.settings, { domainVerification: verification })
     await app.prisma.organization.update({ where: { id: orgId }, data: { settings } })

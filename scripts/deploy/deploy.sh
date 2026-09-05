@@ -53,6 +53,19 @@ done
 echo ""
 compose_cmd ps
 
+reload_caddy_if_changed() {
+  local src="$ROOT/docker/caddy/Caddyfile"
+  [[ -f "$src" ]] || return 0
+  if [[ -f /etc/caddy/Caddyfile ]] && cmp -s "$src" /etc/caddy/Caddyfile 2>/dev/null; then
+    return 0
+  fi
+  echo "==> Updating /etc/caddy/Caddyfile"
+  sudo_cmd cp "$src" /etc/caddy/Caddyfile
+  sudo_cmd caddy validate --config /etc/caddy/Caddyfile
+  sudo_cmd systemctl reload caddy || sudo_cmd systemctl restart caddy
+}
+reload_caddy_if_changed
+
 if (( healthy == 0 )); then
   echo ""
   echo "Recent api logs:" >&2

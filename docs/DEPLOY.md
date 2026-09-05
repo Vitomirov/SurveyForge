@@ -8,9 +8,9 @@ Deploy Rescope Surveys to a single Ubuntu VPS with HTTPS on
 Run the commands **in the order written**. Two machines are involved:
 
 
-| Prompt looks like                    | You are on             | Run                                                                                   |
-| ------------------------------------ | ---------------------- | ------------------------------------------------------------------------------------- |
-| `devito@laptop:~/survey-builder$`    | **Laptop** (this repo) | `ssh`, `scp`, `./scripts/deploy/sync-to-vps.sh`, `./scripts/deploy/publish-docker.sh` |
+| Prompt looks like                       | You are on             | Run                                                                                   |
+| --------------------------------------- | ---------------------- | ------------------------------------------------------------------------------------- |
+| `devito@laptop:~/survey-builder$`       | **Laptop** (this repo) | `ssh`, `scp`, `./scripts/deploy/sync-to-vps.sh`, `./scripts/deploy/publish-docker.sh` |
 | `root@ubuntu:~#` or `rescope@ubuntu:~$` | **VPS** (after `ssh`)  | `bootstrap-vps.sh`, `init-env.sh`, `deploy.sh`, `nano`, `docker`, `systemctl`         |
 
 

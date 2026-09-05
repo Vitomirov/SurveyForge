@@ -33,7 +33,7 @@ You do not need a production server to ship quality releases.
 | Let's Encrypt (after DNS) | Caddy on the VPS host |
 | Off-site backups | `./scripts/deploy/backup.sh` + copy dumps off the server |
 
-Automatic deploy **to** the VPS (SSH pull + restart) is not wired yet — deploy is manual or can be added later via SSH action / webhook.
+Automatic deploy **to** the VPS runs via [`.github/workflows/cd.yml`](../.github/workflows/cd.yml) after CI passes on `main` (build → Hub → SSH deploy). Tag releases with `v*.*.*` still use [`docker-publish.yml`](../.github/workflows/docker-publish.yml) for semver rollbacks.
 
 ---
 
@@ -117,15 +117,44 @@ docker build --build-arg VITE_USE_API=true -t rescopesurveys-web:test .
 
 ---
 
+## CD — deploy to VPS after CI on `main`
+
+Workflow: [`.github/workflows/cd.yml`](../.github/workflows/cd.yml)
+
+```
+push to main → CI passes → CD builds images → Docker Hub → SSH deploy on VPS
+```
+
+Image tag: `v0.1.0` by default (same as your VPS `.env`). Override with an `IMAGE_TAG` repository secret when you bump versions.
+
+### Repository secrets (Settings → Secrets → Actions)
+
+| Secret | Example | Purpose |
+|--------|---------|---------|
+| `DOCKERHUB_USERNAME` | `vitomirov` | Push API + web images |
+| `DOCKERHUB_TOKEN` | Hub access token | Push API + web images |
+| `VPS_HOST` | `49.13.12.162` | SSH target |
+| `VPS_USER` | `root` | SSH user |
+| `VPS_SSH_KEY` | contents of `~/.ssh/id_ed25519` | Private key (full PEM, including newlines) |
+| `IMAGE_TAG` | *(optional)* `v0.1.0` | Docker Hub + VPS deploy tag; defaults to `v0.1.0` |
+
+`VPS_SSH_KEY` must match a public key in `/root/.ssh/authorized_keys` on the VPS.
+
+CD also copies `docker-compose*.yml`, `scripts/deploy/*`, and `docker/caddy/Caddyfile`, then reloads Caddy when the Caddyfile changed.
+
+### Manual deploy (fallback)
+
+```bash
+./scripts/deploy/publish-docker.sh v0.1.1
+./scripts/deploy/sync-to-vps.sh root@VPS_IP
+ssh root@VPS_IP 'cd /opt/rescopesurveys && ./scripts/deploy/deploy.sh v0.1.1'
+```
+
+---
+
 ## Future: deploy to VPS from CI
 
-Not implemented yet. Options when you add a server:
-
-1. **SSH action** — CI runs `deploy.sh` over SSH (needs `VPS_HOST`, `SSH_KEY` secrets)
-2. **Watchtower / cron on VPS** — server pulls `:latest` on a schedule (simpler, less control)
-3. **Webhook** — VPS listens for GitHub release events
-
-For now, production deploy stays manual: `./scripts/deploy/deploy.sh` on the VPS after a successful Hub publish.
+Implemented — see **CD** section above. Optional later: deploy only on `v*.*.*` tags instead of every `main` push.
 
 ---
 

@@ -1,0 +1,74 @@
+name: CD
+
+# Runs after CI succeeds on main: publish images to Docker Hub and deploy to the VPS.
+on:
+  workflow_run:
+    workflows: [CI]
+    branches: [main]
+    types: [completed]
+
+jobs:
+  deploy:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    env:
+      VPS_HOST: ${{ secrets.VPS_HOST }}
+      VPS_USER: ${{ secrets.VPS_USER }}
+      REMOTE_DIR: /opt/rescopesurveys
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Resolve image tag
+        id: meta
+        run: |
+          # Re-use the production tag for small main-branch updates (overwrites Hub tag).
+          # Bump manually when you want a semver release: change IMAGE_TAG secret or tag v0.1.1.
+          TAG="${{ secrets.IMAGE_TAG }}"
+          if [[ -z "$TAG" ]]; then TAG="v0.1.0"; fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push images
+        env:
+          DOCKERHUB_USER: ${{ secrets.DOCKERHUB_USERNAME }}
+          TAG: ${{ steps.meta.outputs.tag }}
+        run: ./scripts/deploy/publish-docker.sh "$TAG"
+
+      - name: Pack deploy files
+        run: |
+          tar czf deploy-bundle.tgz \
+            docker-compose.yml \
+            docker-compose.prod.yml \
+            docker/caddy/Caddyfile \
+            scripts/deploy
+
+      - name: Copy bundle to VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          source: deploy-bundle.tgz
+          target: /tmp
+
+      - name: Deploy on VPS
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script_stop: true
+          script: |
+            set -euo pipefail
+            mkdir -p "${{ env.REMOTE_DIR }}/scripts/deploy" "${{ env.REMOTE_DIR }}/docker/caddy"
+            tar xzf /tmp/deploy-bundle.tgz -C "${{ env.REMOTE_DIR }}"
+            chmod +x "${{ env.REMOTE_DIR }}/scripts/deploy/"*.sh
+            rm -f /tmp/deploy-bundle.tgz
+            cd "${{ env.REMOTE_DIR }}"
+            ./scripts/deploy/deploy.sh ${{ steps.meta.outputs.tag }}

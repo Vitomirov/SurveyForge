@@ -33,6 +33,7 @@ jobs:
           npm run test:track-a
           npm run test:config
           npm run test:brand0
+          node --test scripts/tests/unit/domain-verification-dns.test.mjs
 
       - name: Validate Compose configs
         run: |

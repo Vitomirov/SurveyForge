@@ -21,6 +21,7 @@ import { registerPlatformRoutes } from './routes/platform.js'
 import { registerDncRoutes } from './routes/dnc.js'
 import { registerAdminRoutes } from './routes/admin.js'
 import { registerBillingRoutes, registerVendorRoutes } from './routes/billing.js'
+import { registerInternalRoutes } from './routes/internal.js'
 import { loadConfig } from './config.js'
 import { publicErrorResponse } from './lib/httpErrors.js'
 
@@ -85,6 +86,7 @@ export async function buildApp() {
   await registerAdminRoutes(app)
   await registerBillingRoutes(app)
   await registerVendorRoutes(app)
+  await registerInternalRoutes(app)
   await registerDncRoutes(app)
   await registerMigrateRoutes(app, { isDev: config.isDev })
 

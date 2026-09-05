@@ -13,7 +13,7 @@ const PUBLIC_EXACT = new Set([
   '/api/auth/logout',
   '/api/auth/refresh',
 ])
-const PUBLIC_PREFIXES = ['/api/public/']
+const PUBLIC_PREFIXES = ['/api/public/', '/api/internal/']
 
 function isPublicRoute(url) {
   const path = url.split('?')[0]
