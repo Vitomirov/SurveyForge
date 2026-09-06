@@ -7,6 +7,7 @@ ROOT="$(cd "$DEPLOY_SCRIPT_DIR/../.." && pwd)"
 ENV_FILE="${ENV_FILE:-$ROOT/.env}"
 
 PRODUCTION_DOMAINS=(
+  app.rescopesurveys.com
   rescopesurveys.com
   www.rescopesurveys.com
   surveys.rescopesurveys.com

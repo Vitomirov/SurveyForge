@@ -103,4 +103,12 @@ export const AUTH_BILLING = {
   searchOrgs:          'Search organizations…',
   noOrgs:              'No organizations yet',
   platformEmptyHint:   'Customer organizations will appear here once they sign up.',
+  dangerZone:          'Danger zone',
+  deleteOrg:           'Delete organization',
+  deleteOrgHint:       'Permanently remove this organization, all users, surveys, responses, and billing records. This cannot be undone.',
+  deleteOrgConfirmTitle: 'Delete this organization?',
+  deleteOrgConfirmBody:  'This permanently deletes the organization and every record inside it — users, surveys, responses, exports, and invoices.',
+  deleteOrgTypeName:     'Type the organization name to confirm',
+  deleteOrgSuccess:    'Organization deleted.',
+  deleteOrgForbidden:  'The platform owner organization cannot be deleted.',
 }

@@ -126,7 +126,7 @@ reload_caddy_if_dns_ready() {
   else
     echo ""
     echo "Caddyfile is installed but Caddy was NOT reloaded — DNS is not pointing here yet."
-    echo "After A records for rescopesurveys.com, www, and surveys all show this VPS IP:"
+    echo "After A records for app, rescopesurveys.com, www, and surveys all show this VPS IP:"
     echo "  ./scripts/deploy/check-dns.sh"
     echo "  sudo systemctl reload caddy"
   fi

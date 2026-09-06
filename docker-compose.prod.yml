@@ -23,7 +23,7 @@ services:
       JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET to a strong random value (32+ characters)}
       COOKIE_SECURE: 'true'
       AUTH_ALLOW_BEARER: 'false'
-      CORS_ORIGIN: ${CORS_ORIGIN:-https://rescopesurveys.com,https://www.rescopesurveys.com,https://surveys.rescopesurveys.com}
+      CORS_ORIGIN: ${CORS_ORIGIN:-https://app.rescopesurveys.com,https://rescopesurveys.com,https://www.rescopesurveys.com,https://surveys.rescopesurveys.com}
       SEED_DEFAULT_ACCOUNTS: 'false'
       RUN_PLATFORM_LIST_MIGRATION: 'false'
       REQUIRE_STRONG_JWT: 'true'

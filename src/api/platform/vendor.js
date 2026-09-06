@@ -29,3 +29,10 @@ export async function updateVendorInvoice(invoiceId, patch) {
     body: patch,
   })
 }
+
+export async function deleteVendorOrganization(orgId, { confirmName }) {
+  return apiFetch(`/api/vendor/organizations/${encodeURIComponent(orgId)}`, {
+    method: 'DELETE',
+    body: { confirmName },
+  })
+}

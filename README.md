@@ -539,7 +539,7 @@ Full VPS walkthrough (DNS, secrets, Caddy, firewall, backups, rollback): **[docs
 ```
 Internet
    ↓
-Caddy — VPS host :80/:443            TLS + domains (rescopesurveys.com, www, surveys)
+Caddy — VPS host :80/:443            TLS + domains (app, apex, www, surveys)
    ↓
 127.0.0.1:8080 (WEB_HOST_PORT)       loopback only, never published publicly
    ↓

@@ -9,8 +9,8 @@
 # published on loopback only. The nginx inside that container keeps serving
 # the React build and proxying /api/ to the api container — unchanged.
 #
-# Apex/www set X-Frame-Options so the dashboard cannot be iframed.
-# surveys.* stays embeddable (Professional+ iframe snippet).
+# app / apex / www → SaaS dashboard (canonical host: app.rescopesurveys.com).
+# surveys.* → public survey taker; stays embeddable (Professional+ iframe snippet).
 #
 # Full guide: docs/DEPLOY.md
 #
@@ -41,7 +41,7 @@
 	header Permissions-Policy "camera=(), microphone=(), geolocation=()"
 }
 
-rescopesurveys.com, www.rescopesurveys.com {
+app.rescopesurveys.com, rescopesurveys.com, www.rescopesurveys.com {
 	import browser_security
 	header X-Frame-Options SAMEORIGIN
 	import proxy_to_web

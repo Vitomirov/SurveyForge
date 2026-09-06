@@ -297,3 +297,91 @@ test('canceled subscription cannot create surveys and public live fetch 404s', a
   const dark = await api(`/api/public/surveys/${id}`)
   assert.equal(dark.status, 404)
 })
+
+test('vendor can permanently delete a customer organization', async () => {
+  const orgName = `Delete Org ${unique}`
+  const signup = await api('/api/auth/signup', {
+    method: 'POST',
+    body: {
+      organizationName: orgName,
+      name: 'Delete Admin',
+      email: `delorg_${unique}@test.com`,
+      password: 'testpass123',
+    },
+  })
+  assert.equal(signup.status, 201)
+  const orgId = signup.data.session.organizationId
+  const adminToken = signup.data.token
+
+  const surveyId = `survey_delorg_${unique}`
+  const created = await api(`/api/surveys/${surveyId}`, {
+    method: 'PATCH',
+    token: adminToken,
+    body: {
+      survey: { id: surveyId, title: 'Delete me', status: 'live' },
+      items: [],
+    },
+  })
+  assert.equal(created.status, 201)
+
+  const wrongName = await api(`/api/vendor/organizations/${orgId}`, {
+    method: 'DELETE',
+    token: vendorToken,
+    body: { confirmName: 'wrong name' },
+  })
+  assert.equal(wrongName.status, 400)
+  assert.equal(wrongName.data.code, 'CONFIRM_NAME_MISMATCH')
+
+  const deleted = await api(`/api/vendor/organizations/${orgId}`, {
+    method: 'DELETE',
+    token: vendorToken,
+    body: { confirmName: orgName },
+  })
+  assert.equal(deleted.status, 200)
+  assert.equal(deleted.data.deleted.organizationId, orgId)
+  assert.equal(deleted.data.deleted.name, orgName)
+  assert.ok(deleted.data.deleted.surveys >= 1)
+  assert.ok(deleted.data.deleted.users >= 1)
+
+  const list = await api('/api/vendor/organizations', { token: vendorToken })
+  assert.equal(list.status, 200)
+  assert.equal(list.data.organizations.some(o => o.id === orgId), false)
+
+  const detail = await api(`/api/vendor/organizations/${orgId}`, { token: vendorToken })
+  assert.equal(detail.status, 404)
+
+  const login = await api('/api/auth/login', {
+    method: 'POST',
+    body: { email: `delorg_${unique}@test.com`, password: 'testpass123' },
+  })
+  assert.equal(login.status, 401)
+
+  const publicSurvey = await api(`/api/public/surveys/${surveyId}`)
+  assert.equal(publicSurvey.status, 404)
+})
+
+test('vendor cannot delete the platform owner organization', async () => {
+  const vendorLogin = await api('/api/auth/login', {
+    method: 'POST',
+    body: { email: 'vendor@rescopesurveys.local', password: 'vendor123' },
+  })
+  assert.equal(vendorLogin.status, 200)
+  const vendorOrgId = vendorLogin.data.session.organizationId
+
+  const blocked = await api(`/api/vendor/organizations/${vendorOrgId}`, {
+    method: 'DELETE',
+    token: vendorToken,
+    body: { confirmName: vendorLogin.data.session.organizationName },
+  })
+  assert.equal(blocked.status, 403)
+  assert.equal(blocked.data.code, 'ORG_DELETE_FORBIDDEN')
+})
+
+test('org admin cannot delete organizations via vendor API', async () => {
+  const blocked = await api(`/api/vendor/organizations/${customerOrgId}`, {
+    method: 'DELETE',
+    token: fixtures.adminToken,
+    body: { confirmName: 'RBAC Org ' + unique },
+  })
+  assert.equal(blocked.status, 403)
+})

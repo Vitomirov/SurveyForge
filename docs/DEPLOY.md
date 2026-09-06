@@ -3,7 +3,8 @@
 > **Other guides:** [Documentation index](README.md) · [Development](DEVELOPMENT.md) · [Docker Hub](DOCKER.md) · [CI/CD](CI.md)
 
 Deploy Rescope Surveys to a single Ubuntu VPS with HTTPS on
-`rescopesurveys.com`, `www.rescopesurveys.com`, and `surveys.rescopesurveys.com`.
+`app.rescopesurveys.com` (SaaS), `rescopesurveys.com` / `www` (transitional — same app until marketing site exists),
+and `surveys.rescopesurveys.com` (public survey links).
 
 Run the commands **in the order written**. Two machines are involved:
 
@@ -35,9 +36,9 @@ Internet
   │
   ▼
 Caddy — VPS host, ports 80/443                     ← TLS + domain routing
-  │   rescopesurveys.com
-  │   www.rescopesurveys.com
-  │   surveys.rescopesurveys.com
+  │   app.rescopesurveys.com          ← canonical SaaS (login, dashboard)
+  │   rescopesurveys.com / www        ← same app until marketing site exists
+  │   surveys.rescopesurveys.com      ← public survey taker URLs
   │   automatic Let's Encrypt certificates
   ▼
 127.0.0.1:8080  (WEB_HOST_PORT — loopback only, never public)
@@ -74,7 +75,11 @@ settings that differ from the partner demo live in `docker-compose.prod.yml`:
 
 
 On `surveys.rescopesurveys.com` the first path segment is a survey `publicPath`.
-On the apex and `www` the dashboard SPA loads.
+On `app`, the apex, and `www` the dashboard SPA loads.
+
+**Marketing vs SaaS:** Put the product on `app.rescopesurveys.com`. Later, point
+the apex / `www` at a separate marketing site (another host or static files in Caddy).
+Do not move public surveys off `surveys.rescopesurveys.com`.
 
 ---
 
@@ -139,6 +144,7 @@ Those must go. Create:
 | ---- | --------- | -------- | --- |
 | `A`  | `@`       | `VPS_IP` | 300 |
 | `A`  | `www`     | `VPS_IP` | 300 |
+| `A`  | `app`     | `VPS_IP` | 300 |
 | `A`  | `surveys` | `VPS_IP` | 300 |
 
 
@@ -151,13 +157,20 @@ an `A` record. If the VPS has IPv6, add matching `AAAA` records.
 From the **laptop**:
 
 ```bash
+dig +short app.rescopesurveys.com
 dig +short rescopesurveys.com
 dig +short www.rescopesurveys.com
 dig +short surveys.rescopesurveys.com
 ```
 
-All three must print `VPS_IP` — not a parking address, not empty. Propagation
+All four must print `VPS_IP` — not a parking address, not empty. Propagation
 can take a few minutes at TTL 300.
+
+**Prepare the VPS before DNS is ready:** sync the repo, update `/etc/caddy/Caddyfile`
+and `.env` on the server, run `sudo caddy validate`, and `docker compose restart api`.
+Do **not** run `sudo systemctl reload caddy` until `check-dns.sh` passes — Caddy
+needs the `app` A record before it can issue that certificate. Existing apex / www /
+surveys traffic keeps working until you reload.
 
 On the VPS, after the files are in place (step 5):
 
@@ -316,6 +329,10 @@ nano /opt/rescopesurveys/.env
 
 Rules: no spaces around `=`, no quotes, no spaces after commas in `CORS_ORIGIN`.
 
+**Existing VPS `.env`:** if you created `.env` before `app.` was added, edit
+`CORS_ORIGIN` manually to include `https://app.rescopesurveys.com`, then
+`docker compose restart api`. `init-env.sh` does not overwrite an existing file.
+
 ### 5.5 Start the stack — VPS
 
 ```bash
@@ -365,15 +382,15 @@ One-off dump: `./scripts/deploy/backup.sh`
 
 | #   | Check                                                            | Expected                                                                            |
 | --- | ---------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| 1   | `curl -sI https://rescopesurveys.com`                            | `200`, valid cert, `x-content-type-options: nosniff`, `x-frame-options: SAMEORIGIN` |
-| 2   | `curl https://rescopesurveys.com/health`                         | `{"status":"ok",...}`                                                               |
-| 3   | Open `https://rescopesurveys.com`                                | SPA, login / signup                                                                 |
+| 1   | `curl -sI https://app.rescopesurveys.com`                          | `200`, valid cert, `x-content-type-options: nosniff`, `x-frame-options: SAMEORIGIN` |
+| 2   | `curl https://app.rescopesurveys.com/health`                       | `{"status":"ok",...}`                                                               |
+| 3   | Open `https://app.rescopesurveys.com`                              | SPA, login / signup                                                                 |
 | 4   | Sign up the first account                                        | Org + dashboard. **No** `admin` / `admin123`                                        |
 | 5   | Reload after signup                                              | Still logged in — this is the HTTPS/cookie check                                    |
 | 6   | `curl -I https://www.rescopesurveys.com`                         | `200` (or `301` if you enabled the www→apex redirect in the Caddyfile)              |
 | 7   | `curl -I https://surveys.rescopesurveys.com/test-path`           | `200` SPA shell; in-app “survey not found” is OK                                    |
 | 8   | Publish a survey, open `surveys.rescopesurveys.com/<publicPath>` | Survey accepts a response                                                           |
-| 9   | `curl -I http://rescopesurveys.com`                              | `308` / `301` to HTTPS                                                              |
+| 9   | `curl -I http://app.rescopesurveys.com`                            | `308` / `301` to HTTPS                                                              |
 | 10  | `docker compose ps` in `/opt/rescopesurveys`                     | All three `Up`; api and postgres `healthy`                                          |
 
 
@@ -540,7 +557,7 @@ POSTGRES_PASSWORD=<openssl rand -base64 24>
 
 JWT_SECRET=<openssl rand -base64 48>
 
-CORS_ORIGIN=https://rescopesurveys.com,https://www.rescopesurveys.com,https://surveys.rescopesurveys.com
+CORS_ORIGIN=https://app.rescopesurveys.com,https://rescopesurveys.com,https://www.rescopesurveys.com,https://surveys.rescopesurveys.com
 
 DOCKERHUB_USER=vitomirov
 IMAGE_TAG=v0.1.0

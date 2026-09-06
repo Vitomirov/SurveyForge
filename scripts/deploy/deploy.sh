@@ -62,7 +62,13 @@ reload_caddy_if_changed() {
   echo "==> Updating /etc/caddy/Caddyfile"
   sudo_cmd cp "$src" /etc/caddy/Caddyfile
   sudo_cmd caddy validate --config /etc/caddy/Caddyfile
-  sudo_cmd systemctl reload caddy || sudo_cmd systemctl restart caddy
+  if "$SCRIPT_DIR/check-dns.sh" >/dev/null 2>&1; then
+    sudo_cmd systemctl reload caddy || sudo_cmd systemctl restart caddy
+  else
+    echo "Caddyfile updated but Caddy NOT reloaded — DNS is not ready for all production names."
+    echo "  ./scripts/deploy/check-dns.sh"
+    echo "  sudo systemctl reload caddy"
+  fi
 }
 reload_caddy_if_changed
 
@@ -79,7 +85,7 @@ echo ""
 echo "Next steps:"
 echo "  1. ./scripts/deploy/verify.sh"
 echo "  2. Confirm Caddy:  sudo systemctl status caddy"
-echo "  3. Open https://rescopesurveys.com and sign up (no seeded admin in production)"
+echo "  3. Open https://app.rescopesurveys.com and sign up (no seeded admin in production)"
 echo "  4. Open a live survey on https://surveys.rescopesurveys.com/<publicPath>"
 echo ""
 echo "Troubleshooting: docs/DEPLOY.md"

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } from 'react'
 import {
-  Building2, ChevronLeft, Plus, Search, User,
+  Building2, ChevronLeft, Plus, Search, User, Trash2,
   Users, CheckCircle2, AlertTriangle, Clock, ChevronRight,
 } from 'lucide-react'
 import { useApi } from '@/config/api'
@@ -10,6 +10,7 @@ import {
   fetchVendorOrganization,
   updateVendorSubscription,
   createVendorInvoice,
+  deleteVendorOrganization,
 } from '@/api/platform/vendor'
 import { InlineLoader, StatusPill, useToast } from '@/components/ui'
 import { formatMoney, formatDate } from '@/utils/format/format'
@@ -41,7 +42,7 @@ function applyDetailToForm(detail, setters) {
   setters.setSurveyDomain(detail.organization.surveyDomain || '')
 }
 
-function OrgDetail({ orgId, cachedDetail, onCacheDetail, onOrgListPatch, onBack }) {
+function OrgDetail({ orgId, cachedDetail, onCacheDetail, onOrgListPatch, onBack, onDeleted }) {
   const { toast } = useToast()
   const [loading, setLoading] = useState(!cachedDetail)
   const [detail, setDetail] = useState(cachedDetail ?? null)
@@ -51,6 +52,9 @@ function OrgDetail({ orgId, cachedDetail, onCacheDetail, onOrgListPatch, onBack 
   const [saving, setSaving] = useState(false)
   const [invoiceAmount, setInvoiceAmount] = useState('')
   const [invoiceDesc, setInvoiceDesc] = useState('')
+  const [showDelete, setShowDelete] = useState(false)
+  const [confirmName, setConfirmName] = useState('')
+  const [deleting, setDeleting] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -130,6 +134,31 @@ function OrgDetail({ orgId, cachedDetail, onCacheDetail, onOrgListPatch, onBack 
     } catch (err) {
       toast({ message: err.message || AUTH_ERRORS.forbidden, type: 'error' })
     }
+  }
+
+  const handleDelete = async () => {
+    if (!organization || confirmName.trim() !== organization.name) return
+    setDeleting(true)
+    try {
+      await deleteVendorOrganization(orgId, { confirmName: confirmName.trim() })
+      toast({ message: AUTH_BILLING.deleteOrgSuccess, type: 'success' })
+      setShowDelete(false)
+      setConfirmName('')
+      onDeleted?.(orgId)
+    } catch (err) {
+      const message = err.body?.code === 'ORG_DELETE_FORBIDDEN'
+        ? AUTH_BILLING.deleteOrgForbidden
+        : (err.message || AUTH_ERRORS.forbidden)
+      toast({ message, type: 'error' })
+    } finally {
+      setDeleting(false)
+    }
+  }
+
+  const closeDeleteModal = () => {
+    if (deleting) return
+    setShowDelete(false)
+    setConfirmName('')
   }
 
   if (loading) return <InlineLoader label="Loading organization…" />
@@ -236,6 +265,70 @@ function OrgDetail({ orgId, cachedDetail, onCacheDetail, onOrgListPatch, onBack 
           </div>
         )}
       </div>
+
+      <div className="card border-rose-200 bg-rose-50/30 p-4 mt-6">
+        <h4 className="text-sm font-semibold text-rose-800">{AUTH_BILLING.dangerZone}</h4>
+        <p className="text-xs text-rose-700/80 mt-1 mb-4 leading-relaxed">
+          {AUTH_BILLING.deleteOrgHint}
+        </p>
+        <button
+          type="button"
+          onClick={() => setShowDelete(true)}
+          className="inline-flex items-center gap-2 bg-white border border-rose-200 text-rose-700 hover:bg-rose-50 hover:border-rose-300 text-sm font-semibold px-4 py-2 rounded-lg transition-all focus-ring"
+        >
+          <Trash2 size={14} />
+          {AUTH_BILLING.deleteOrg}
+        </button>
+      </div>
+
+      {showDelete && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full">
+            <div className="w-14 h-14 rounded-full bg-rose-100 flex items-center justify-center mx-auto mb-4">
+              <Trash2 size={24} className="text-rose-500" />
+            </div>
+            <h3 className="text-base font-bold text-ink-800 mb-2 text-center">
+              {AUTH_BILLING.deleteOrgConfirmTitle}
+            </h3>
+            <p className="text-sm text-ink-500 mb-4 text-center">
+              {AUTH_BILLING.deleteOrgConfirmBody}
+            </p>
+            <div className="rounded-lg bg-ink-50 border border-ink-100 px-3 py-2.5 mb-4 text-xs text-ink-600 space-y-1">
+              <p><strong className="text-ink-800">{organization.name}</strong></p>
+              <p>{organization.userCount} users · {organization.surveyCount} surveys</p>
+            </div>
+            <label className="block text-sm mb-4">
+              <span className="text-ink-500 text-xs block mb-1.5">{AUTH_BILLING.deleteOrgTypeName}</span>
+              <input
+                type="text"
+                value={confirmName}
+                onChange={e => setConfirmName(e.target.value)}
+                placeholder={organization.name}
+                autoFocus
+                className="input-base w-full text-sm"
+              />
+            </label>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={closeDeleteModal}
+                disabled={deleting}
+                className="flex-1 btn-ghost border border-ink-200"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDelete}
+                disabled={deleting || confirmName.trim() !== organization.name}
+                className="flex-1 bg-rose-600 hover:bg-rose-700 disabled:opacity-50 disabled:hover:bg-rose-600 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-all"
+              >
+                {deleting ? 'Deleting…' : AUTH_BILLING.deleteOrg}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -399,6 +492,12 @@ export function PlatformConsole({ session, onLogout, onSessionUpdate }) {
     setSelectedId(null)
   }, [])
 
+  const handleOrgDeleted = useCallback((orgId) => {
+    detailCache.current.delete(orgId)
+    setOrgs(prev => prev.filter(org => org.id !== orgId))
+    setSelectedId(null)
+  }, [])
+
   const displayed = useMemo(() => {
     if (!search.trim()) return orgs
     const q = search.trim().toLowerCase()
@@ -447,6 +546,7 @@ export function PlatformConsole({ session, onLogout, onSessionUpdate }) {
               onCacheDetail={cacheDetail}
               onOrgListPatch={patchOrgInList}
               onBack={handleBack}
+              onDeleted={handleOrgDeleted}
             />
           ) : (
             <>

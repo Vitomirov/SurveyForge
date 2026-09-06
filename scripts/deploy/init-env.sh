@@ -63,7 +63,7 @@ POSTGRES_PASSWORD=${postgres_password}
 
 JWT_SECRET=${jwt_secret}
 
-CORS_ORIGIN=https://rescopesurveys.com,https://www.rescopesurveys.com,https://surveys.rescopesurveys.com
+CORS_ORIGIN=https://app.rescopesurveys.com,https://rescopesurveys.com,https://www.rescopesurveys.com,https://surveys.rescopesurveys.com
 
 DOCKERHUB_USER=${dockerhub_user}
 IMAGE_TAG=${image_tag}

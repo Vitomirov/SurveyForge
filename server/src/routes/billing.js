@@ -29,6 +29,7 @@ import {
   markOrgBillingSeen,
 } from '../lib/billing/billingNotifications.js'
 import { buildPlanChangeOptions, applyPlanChange } from '../lib/billing/changePlan.js'
+import { deleteOrganization } from '../lib/platform/deleteOrganization.js'
 import { loadConfig } from '../config.js'
 
 const adminOnly = requireRole(ROLES.ADMIN)
@@ -411,5 +412,30 @@ export async function registerVendorRoutes(app) {
     })
 
     return { invoice: serializeInvoice(updated) }
+  })
+
+  app.delete('/api/vendor/organizations/:orgId', { preHandler: requirePlatformOwner }, async (request, reply) => {
+    const { confirmName } = request.body ?? {}
+    const result = await deleteOrganization(app.prisma, request.params.orgId, {
+      confirmName,
+      actorOrganizationId: request.organizationId,
+    })
+
+    if (!result.ok) {
+      return reply.code(result.status).send({
+        error: result.error,
+        code: result.code,
+      })
+    }
+
+    for (const surveyId of result.surveyIds) {
+      app.cache.invalidateSurvey(surveyId, result.deleted.organizationId)
+    }
+    for (const userId of result.userIds) {
+      app.cache.invalidateUser(userId)
+    }
+    app.cache.invalidateOrg(result.deleted.organizationId)
+
+    return { ok: true, deleted: result.deleted }
   })
 }

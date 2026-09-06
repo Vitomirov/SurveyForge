@@ -105,4 +105,4 @@ if [[ "$failed" -ne 0 ]]; then
 fi
 
 echo "Verification passed."
-echo "In a browser: open https://rescopesurveys.com, sign up, then reload — you must stay logged in."
+echo "In a browser: open https://app.rescopesurveys.com, sign up, then reload — you must stay logged in."
