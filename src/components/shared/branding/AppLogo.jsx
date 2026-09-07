@@ -1,4 +1,5 @@
-import logoUrl from '@/assets/brand/logo.svg'
+import logoLgUrl from '@/assets/brand/logo-lg.svg'
+import logoSmUrl from '@/assets/brand/logo-sm.svg'
 import { APP_NAME } from '@/constants/branding'
 
 const HEIGHT = {
@@ -13,16 +14,26 @@ export function AppLogo({
   className = '',
   title = `Back to ${APP_NAME}`,
 }) {
-  const img = (
-    <img
-      src={logoUrl}
-      alt={APP_NAME}
-      className={`${HEIGHT[size]} w-auto max-w-[7.5rem] sm:max-w-[10rem] md:max-w-none object-contain object-left ${className}`}
-      draggable={false}
-    />
+  const imgClass = `${HEIGHT[size]} w-auto object-contain object-left ${className}`
+
+  const logos = (
+    <span className="inline-flex items-center shrink-0">
+      <img
+        src={logoSmUrl}
+        alt={APP_NAME}
+        className={`${imgClass} md:hidden`}
+        draggable={false}
+      />
+      <img
+        src={logoLgUrl}
+        alt={APP_NAME}
+        className={`${imgClass} hidden md:block`}
+        draggable={false}
+      />
+    </span>
   )
 
-  if (!onClick) return img
+  if (!onClick) return logos
 
   return (
     <button
@@ -31,7 +42,7 @@ export function AppLogo({
       title={title}
       className="inline-flex items-center shrink-0 rounded-lg hover:opacity-90 active:opacity-80 transition-opacity focus-ring"
     >
-      {img}
+      {logos}
     </button>
   )
 }

@@ -15,7 +15,13 @@ import {
 import { InlineLoader, StatusPill, useToast } from '@/components/ui'
 import { formatMoney, formatDate } from '@/utils/format/format'
 import { normalizeSurveyDomain } from '@shared/surveyUrl.js'
-import { AppShell, APP_SHELL_GRID, APP_BUILDER_PANE } from '@/components/shared/layout/AppBuilderShell.jsx'
+import {
+  AppShell,
+  APP_SHELL_GRID,
+  APP_HEADER_PANE,
+  APP_HEADER_ACTIONS,
+  APP_HEADER_USER_CLUSTER,
+} from '@/components/shared/layout/AppBuilderShell.jsx'
 import { AppBackSlot } from '@/components/shared/layout/AppLeadingZone.jsx'
 import { AppLogo } from '@/components/shared/branding/AppLogo.jsx'
 import { HeaderLogoutButton } from '@/components/shared/layout/HeaderLogoutButton.jsx'
@@ -511,25 +517,25 @@ export function PlatformConsole({ session, onLogout, onSessionUpdate }) {
           <div className={`${APP_SHELL_GRID} items-center min-h-[4.25rem] py-3`}>
             <AppBackSlot />
 
-            <div className={`${APP_BUILDER_PANE} flex items-center gap-2 sm:gap-3 min-w-0`}>
-              <AppLogo onClick={handleBack} size="md" className="shrink-0" />
-              <span className="w-px h-5 bg-ink-200 shrink-0" aria-hidden />
-              <div className="min-w-0 flex items-center gap-2">
+            <div className={APP_HEADER_PANE}>
+              <AppLogo onClick={handleBack} size="md" className="shrink-0 min-w-0" />
+              <span className="w-px h-5 bg-ink-200 shrink-0 hidden sm:block" aria-hidden />
+              <div className="min-w-0 flex items-center gap-2 hidden sm:flex">
                 <p className="text-sm font-semibold text-ink-800 truncate">
                   {AUTH_BILLING.platformHeading}
                 </p>
-                <span className="hidden sm:inline-flex text-[10px] font-bold uppercase tracking-wider text-violet-700 bg-violet-50 border border-violet-100 px-2 py-0.5 rounded-full shrink-0">
+                <span className="inline-flex text-[10px] font-bold uppercase tracking-wider text-violet-700 bg-violet-50 border border-violet-100 px-2 py-0.5 rounded-full shrink-0">
                   Owner
                 </span>
               </div>
 
-              <div className="flex-1 flex items-center justify-end gap-3 min-w-0">
-                <div className="flex items-center gap-1 sm:gap-2 pl-3 ml-0.5 border-l border-ink-200/80 shrink-0">
+              <div className={APP_HEADER_ACTIONS}>
+                <div className={APP_HEADER_USER_CLUSTER}>
                   <ConsoleUserMenu
                     session={session}
                     onOpenAccount={() => setShowAccount(true)}
                   />
-                  <HeaderLogoutButton onLogout={onLogout} />
+                  <HeaderLogoutButton onLogout={onLogout} className="-mr-1 sm:mr-0" />
                 </div>
               </div>
             </div>

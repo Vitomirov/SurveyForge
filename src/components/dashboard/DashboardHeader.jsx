@@ -2,7 +2,13 @@ import { useState, useRef, useEffect } from 'react'
 import {
   Plus, Users, User, BarChart3,
 } from 'lucide-react'
-import { AppShell, APP_SHELL_GRID, APP_BUILDER_PANE } from '@/components/shared/layout/AppBuilderShell.jsx'
+import {
+  AppShell,
+  APP_SHELL_GRID,
+  APP_HEADER_PANE,
+  APP_HEADER_ACTIONS,
+  APP_HEADER_USER_CLUSTER,
+} from '@/components/shared/layout/AppBuilderShell.jsx'
 import { AppBackSlot } from '@/components/shared/layout/AppLeadingZone.jsx'
 import { AppLogo } from '@/components/shared/branding/AppLogo.jsx'
 import { HeaderLogoutButton } from '@/components/shared/layout/HeaderLogoutButton.jsx'
@@ -115,23 +121,24 @@ export function DashboardHeader({
         <div className={`${APP_SHELL_GRID} items-center min-h-[4.25rem] py-3`}>
           <AppBackSlot />
 
-          <div className={`${APP_BUILDER_PANE} flex items-center gap-2 sm:gap-3 min-w-0`}>
-            <AppLogo onClick={onGoHome} size="md" className="shrink-0" />
+          <div className={APP_HEADER_PANE}>
+            <AppLogo onClick={onGoHome} size="md" className="shrink-0 min-w-0" />
 
-            <div className="flex-1 flex items-center justify-end gap-3 min-w-0">
+            <div className={APP_HEADER_ACTIONS}>
               <button
                 type="button"
                 onClick={onNewSurvey}
                 onMouseEnter={prefetchBuilder}
                 onFocus={prefetchBuilder}
                 aria-label="New survey"
-                className="btn-primary h-10 rounded-xl px-3.5 sm:px-4 text-sm font-semibold shrink-0 shadow-sm shadow-brand-600/10 hover:shadow-md hover:shadow-brand-600/15 max-sm:w-10 max-sm:p-0 max-sm:justify-center"
+                className="btn-primary inline-flex items-center gap-1.5 h-9 sm:h-10 rounded-xl px-2.5 sm:px-4 text-sm font-semibold shrink-0 shadow-sm shadow-brand-600/10 hover:shadow-md hover:shadow-brand-600/15"
               >
-                <Plus size={16} className="shrink-0" />
+                <Plus size={16} className="shrink-0" aria-hidden />
+                <span className="sm:hidden">New</span>
                 <span className="hidden sm:inline">New survey</span>
               </button>
 
-              <div className="flex items-center gap-1 sm:gap-2 pl-3 ml-0.5 border-l border-ink-200/80 shrink-0">
+              <div className={APP_HEADER_USER_CLUSTER}>
                 {session && (
                   <NotificationBell
                     payload={notifications?.payload}
@@ -148,7 +155,7 @@ export function DashboardHeader({
                   onOpenTeamMembers={onOpenTeamMembers}
                   onOpenTeamActivity={onOpenTeamActivity}
                 />
-                <HeaderLogoutButton onLogout={onLogout} />
+                <HeaderLogoutButton onLogout={onLogout} className="-mr-1 sm:mr-0" />
               </div>
             </div>
           </div>

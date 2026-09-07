@@ -17,6 +17,20 @@ export const APP_MAIN_PANE =
 /** Builder main pane — no divider; content edge aligns with grid column. */
 export const APP_BUILDER_PANE = 'min-w-0'
 
+/** App header — logo left, primary actions + account cluster flush right. */
+export const APP_HEADER_ROW =
+  'flex items-center gap-2 sm:gap-3 min-w-0 w-full'
+
+/** App header pane — spans full grid width on phones (back slot is hidden until md). */
+export const APP_HEADER_PANE =
+  `${APP_BUILDER_PANE} col-span-2 md:col-span-1 ${APP_HEADER_ROW}`
+
+export const APP_HEADER_ACTIONS =
+  'ml-auto flex items-center justify-end gap-1.5 sm:gap-3 min-w-0 shrink-0'
+
+export const APP_HEADER_USER_CLUSTER =
+  'flex items-center gap-0.5 sm:gap-1.5 shrink-0 sm:border-l sm:border-ink-200/80 sm:pl-2 sm:ml-0.5'
+
 export function AppShell({ children, className = '' }) {
   return (
     <div
