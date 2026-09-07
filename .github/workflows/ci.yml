@@ -40,6 +40,7 @@ jobs:
           docker compose config > /dev/null
           JWT_SECRET=ci-test-secret-minimum-32-characters-long \
           POSTGRES_PASSWORD=ci-test-postgres-password \
+          INTERNAL_API_SECRET=ci-test-internal-api-secret \
           docker compose -f docker-compose.yml -f docker-compose.prod.yml config > /dev/null
 
       - name: Build API image
