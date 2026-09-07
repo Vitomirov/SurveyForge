@@ -35,6 +35,7 @@ test('production defaults disable seed and platform migration', () => {
   const config = loadConfig({
     NODE_ENV: 'production',
     JWT_SECRET: STRONG_SECRET,
+    INTERNAL_API_SECRET: 'prod-internal-secret',
     CORS_ORIGIN: 'https://rescopesurveys.com,https://www.rescopesurveys.com',
   })
   assert.equal(config.isDev, false)
@@ -68,6 +69,7 @@ test('strict production mode rejects unsafe runtime flags', () => {
   const base = {
     NODE_ENV: 'production',
     JWT_SECRET: STRONG_SECRET,
+    INTERNAL_API_SECRET: 'prod-internal-secret',
     CORS_ORIGIN: 'https://app.example.com',
   }
 
@@ -78,6 +80,7 @@ test('strict production mode rejects unsafe runtime flags', () => {
     ['RATE_LIMIT_DISABLED', 'true'],
     ['COOKIE_SECURE', 'false'],
     ['AUTH_ALLOW_BEARER', 'true'],
+    ['INTERNAL_API_SECRET', ''],
   ]) {
     assert.throws(
       () => loadConfig({ ...base, [key]: value }),
@@ -90,6 +93,7 @@ test('strict production mode accepts the hardened defaults', () => {
   assert.doesNotThrow(() => loadConfig({
     NODE_ENV: 'production',
     JWT_SECRET: STRONG_SECRET,
+    INTERNAL_API_SECRET: 'prod-internal-secret',
     CORS_ORIGIN: 'https://app.example.com',
   }))
 })
@@ -161,6 +165,7 @@ test('production requires CORS_ORIGIN allowlist', () => {
     () => loadConfig({
       NODE_ENV: 'production',
       JWT_SECRET: STRONG_SECRET,
+      INTERNAL_API_SECRET: 'prod-internal-secret',
     }),
     /CORS_ORIGIN is required/,
   )
@@ -171,6 +176,7 @@ test('production rejects wildcard CORS_ORIGIN', () => {
     () => loadConfig({
       NODE_ENV: 'production',
       JWT_SECRET: STRONG_SECRET,
+      INTERNAL_API_SECRET: 'prod-internal-secret',
       CORS_ORIGIN: 'true',
     }),
     /explicit origin allowlist/,
@@ -188,6 +194,8 @@ test('nginx and Caddy ship browser security headers', () => {
   assert.match(nginx, /Permissions-Policy "camera=\(\), microphone=\(\), geolocation=\(\)"/)
   assert.match(nginx, /Content-Security-Policy/)
   assert.match(nginx, /default-src 'self'/)
+  assert.match(nginx, /frame-ancestors 'none'/)
+  assert.match(nginx, /location \^~ \/embed\//)
   assert.doesNotMatch(nginx, /X-Frame-Options/)
 
   const caddy = readFileSync(resolve(__dirname, '../../../docker/caddy/Caddyfile'), 'utf8')

@@ -3,6 +3,7 @@
  * Assigns globally unique `publicPath` slugs, resolves surveys by path and
  * request host (custom domain routing), and extracts client domain from headers.
  */
+import { loadConfig } from '../../config.js'
 import {
   buildPublicPath,
   isPublicPathLocked,
@@ -75,13 +76,16 @@ export async function findPublicSurvey(prisma, publicPath, clientDomain = null) 
 }
 
 export function clientDomainFromRequest(request) {
-  const host = request.headers['x-forwarded-host'] || request.headers.host || ''
-  const hostname = host.split(':')[0].toLowerCase()
+  const { isDev } = loadConfig()
+  const hostname = String(request.hostname || request.headers.host || '')
+    .split(':')[0]
+    .toLowerCase()
   const fromSurveys = hostname.match(/^surveys\.(.+)$/i)
   if (fromSurveys) return fromSurveys[1].toLowerCase()
   if (/^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(hostname) && hostname !== 'localhost') {
     return hostname
   }
+  if (!isDev) return null
   const q = request.query?.client
   return q ? String(q).toLowerCase() : null
 }

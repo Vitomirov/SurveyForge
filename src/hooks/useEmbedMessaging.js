@@ -1,17 +1,18 @@
 import { useEffect, useRef, useCallback } from 'react'
-import { buildEmbedMessage, EMBED_EVENTS } from '@shared/embedProtocol.js'
+import { buildEmbedMessage, EMBED_EVENTS, resolveParentOrigin } from '@shared/embedProtocol.js'
 
-export function useEmbedMessaging({ enabled, surveyId }) {
+export function useEmbedMessaging({ enabled, surveyId, allowedOrigins = [] }) {
   const rootRef = useRef(null)
   const lastHeight = useRef(0)
+  const parentOrigin = resolveParentOrigin(allowedOrigins)
 
   const post = useCallback((type, payload = {}) => {
-    if (!enabled || window.parent === window) return
+    if (!enabled || window.parent === window || !parentOrigin) return
     window.parent.postMessage(
       buildEmbedMessage(type, { surveyId, ...payload }),
-      '*',
+      parentOrigin,
     )
-  }, [enabled, surveyId])
+  }, [enabled, surveyId, parentOrigin])
 
   useEffect(() => {
     if (!enabled) return

@@ -102,6 +102,7 @@ function validateStrictProductionFlags({
   rateLimitDisabled,
   cookieSecure,
   authAllowBearer,
+  internalApiSecret,
 }) {
   if (isDev || !requireStrongJwt) return
 
@@ -112,6 +113,7 @@ function validateStrictProductionFlags({
     rateLimitDisabled && 'RATE_LIMIT_DISABLED',
     !cookieSecure && 'COOKIE_SECURE',
     authAllowBearer && 'AUTH_ALLOW_BEARER',
+    !internalApiSecret && 'INTERNAL_API_SECRET',
   ].filter(Boolean)
 
   if (unsafe.length) {
@@ -135,6 +137,7 @@ export function loadConfig(env = process.env) {
   const cookieSecure = parseBool(env.COOKIE_SECURE, !isDev)
   const authAllowBearer = parseBool(env.AUTH_ALLOW_BEARER, isDev)
   const redisUrl = parseRedisUrl(env.REDIS_URL)
+  const internalApiSecret = String(env.INTERNAL_API_SECRET || '').trim()
 
   if (rateLimitRedisRequired && !redisUrl) {
     throw new Error('REDIS_URL is required when RATE_LIMIT_REDIS_REQUIRED=true.')
@@ -158,6 +161,7 @@ export function loadConfig(env = process.env) {
     rateLimitDisabled,
     cookieSecure,
     authAllowBearer,
+    internalApiSecret,
   })
 
   const port = Number(env.PORT) || DEFAULT_PORT
@@ -185,5 +189,6 @@ export function loadConfig(env = process.env) {
     rateLimitDisabled,
     rateLimitRedisRequired,
     redisUrl,
+    internalApiSecret,
   }
 }

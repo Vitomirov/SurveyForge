@@ -155,6 +155,7 @@ export function createRouteLimiters({
     surveyDnc: create({ windowMs: MINUTE_MS, max: 120 * factor }),
     responses: create({ windowMs: MINUTE_MS, max: 30 * factor }),
     surveyResponses: create({ windowMs: MINUTE_MS, max: 300 * factor }),
+    caddyAsk: create({ windowMs: MINUTE_MS, max: 60 * factor }),
   }
 }
 

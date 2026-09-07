@@ -53,11 +53,14 @@ function applyEmbedSecurityHeaders(reply, { isEmbed, embedOrigins }) {
   reply.header('Content-Security-Policy', `frame-ancestors ${directive}`)
 }
 
-function publicSurveyPayload(row, branding) {
+function publicSurveyPayload(row, branding, { embedOrigins = [] } = {}) {
   return {
     survey: row.survey,
     items:  row.items,
-    branding,
+    branding: {
+      ...branding,
+      embedAllowedOrigins: embedOrigins,
+    },
   }
 }
 
@@ -126,7 +129,7 @@ async function sendPublicSurvey(app, request, reply, row) {
   const branding = buildPublicBrandingPayload(settings, row.survey, planId)
   const embedOrigins = readEmbedAllowedOrigins(settings)
   applyEmbedSecurityHeaders(reply, { isEmbed, embedOrigins })
-  return publicSurveyPayload(row, branding)
+  return publicSurveyPayload(row, branding, { embedOrigins: isEmbed ? embedOrigins : [] })
 }
 
 async function enforcePublicLimits(

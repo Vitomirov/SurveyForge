@@ -51,6 +51,7 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-rescopesurveys}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD to a strong random value}@postgres:5432/${POSTGRES_DB:-rescopesurveys}
       REDIS_URL: redis://redis:6379
       RATE_LIMIT_REDIS_REQUIRED: 'true'
+      INTERNAL_API_SECRET: ${INTERNAL_API_SECRET:?Set INTERNAL_API_SECRET to a strong random value}
       JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET to a strong random value (32+ characters)}
       COOKIE_SECURE: 'true'
       AUTH_ALLOW_BEARER: 'false'

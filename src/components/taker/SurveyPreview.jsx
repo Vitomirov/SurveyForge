@@ -58,6 +58,7 @@ export function SurveyPreview({ survey, items, onClose, isPublic = false, isEmbe
   const { rootRef, postCompleted, postTerminated } = useEmbedMessaging({
     enabled: isEmbed && isPublic,
     surveyId: survey?.id,
+    allowedOrigins: branding?.embedAllowedOrigins || [],
   })
   const fpEnabled = survey?.settings?.fingerprinting?.enabled
   const fpSignals = survey?.settings?.fingerprinting?.signals

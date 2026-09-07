@@ -38,10 +38,21 @@ export function cookieHeader(cookies) {
 }
 
 export function makeApi(base, { injectTokenFromCookie = true } = {}) {
-  return async function api(path, { method = 'GET', body, token, cookies } = {}) {
+  const defaultOrigin = (() => {
+    try { return new URL(base).origin } catch { return 'http://127.0.0.1:3003' }
+  })()
+
+  return async function api(path, { method = 'GET', body, token, cookies, origin } = {}) {
     const headers = {}
     if (body) headers['Content-Type'] = 'application/json'
     if (token) headers.Authorization = `Bearer ${token}`
+
+    const normalizedMethod = String(method).toUpperCase()
+    const jar = cookies || {}
+    if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(normalizedMethod)) {
+      headers.Origin = origin || defaultOrigin
+      if (jar.rs_csrf) headers['X-CSRF-Token'] = jar.rs_csrf
+    }
     if (cookies && Object.keys(cookies).length) headers.Cookie = cookieHeader(cookies)
 
     const res = await fetch(`${base}${path}`, {

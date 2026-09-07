@@ -89,6 +89,8 @@
     }
 
     window.addEventListener('message', (event) => {
+      if (event.origin !== window.location.origin) return
+      if (event.source !== iframe.contentWindow) return
       const data = event.data
       if (!data || data.source !== 'rescope-survey') return
       appendLog(`${data.type} (height: ${data.height ?? '—'})`)

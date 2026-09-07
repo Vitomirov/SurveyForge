@@ -11,6 +11,7 @@
 - **Phase 1 dependency/config hardening: implemented and locally verified.** `@fastify/jwt` is upgraded from 9.1.0 to 10.2.2, Fastify is upgraded to 5.12.3, JWT signing and verification are restricted to HS256, obsolete `JWT_EXPIRES_IN` configuration is removed, production PostgreSQL credentials are required by the Compose override, and strict production mode now rejects unsafe seed, migration, rate-limit, cookie, and Bearer-auth flags.
 - **Phase 2 distributed abuse protection: implemented and locally verified.** Production Compose now includes a private, non-published Redis service and requires the API to connect before startup. Auth and public survey limits use shared atomic counters, with layered per-IP, per-account, global, and per-survey quotas. Keys containing identities or survey identifiers are SHA-256 hashed, responses expose standard quota and `Retry-After` headers, and a Redis runtime failure falls back to bounded in-memory protection instead of taking the API offline.
 - **Phase 2 external edge controls: operator action remains.** A CDN/WAF, managed bot challenge/CAPTCHA, and provider-level alerting require production account and DNS configuration and are not enabled by repository code alone.
+- **Phase 3 P0 application security: implemented and locally verified.** Cookie-authenticated mutations now require an allowlisted browser `Origin` plus a double-submit `rs_csrf` token. Refresh cookies are scoped to `/api/auth`, nginx serves `frame-ancestors 'none'` on the default SPA shell, `/embed/*` HTML documents receive per-survey `frame-ancestors` via an nginx auth subrequest, embed `postMessage` targets only validated parent origins, trusted host routing no longer reads raw `X-Forwarded-Host`, production internal routes require `INTERNAL_API_SECRET`, and Caddy ask is rate-limited.
 - **Verification:** frontend production audit reports zero vulnerabilities; the critical JWT and Fastify advisories are removed; production build and base/production Compose validation pass; all executed auth-cookie, API security, RBAC, config, frontend, permission, and branding tests pass. An isolated production Compose stack started healthy with PostgreSQL, API, Redis, and nginx; Redis counters remained intact across an API restart.
 - **Known residual tooling advisory:** Prisma 6.19.3 is the newest release on the current v6 line, but its Prisma CLI/config dependency still reports a high-severity recursive-merge denial-of-service advisory. The affected package is migration/build tooling rather than the request-handling ORM path. A Prisma 7 migration is intentionally deferred because it is a breaking change and must be tested as its own release.
 
@@ -22,8 +23,8 @@ The platform is **not yet enterprise-ready**. The original audit identified crit
 
 The next highest risks are architectural:
 
-- Cookie authentication relies on `SameSite=Lax` without explicit CSRF tokens or server-side Origin enforcement.
-- The intended iframe origin policy is returned on the public survey JSON API response, not on the framed HTML document. `frame-ancestors` on a fetch response does not protect the SPA document, so the configured embed allowlist does not currently enforce framing.
+- Cookie authentication relies on `SameSite=Lax` with explicit CSRF tokens and server-side Origin enforcement on unsafe cookie-authenticated routes.
+- Embed framing policy is enforced on the HTML document for `/embed/*` via nginx plus per-survey `frame-ancestors`; non-embed routes default to `frame-ancestors 'none'`.
 - Public response validation is only structural and partial. It does not fully validate answer type, size, option membership, visibility, termination state, timestamps, fingerprints, or all completion rules against the survey definition.
 - Shared Redis limits now cover IP, account, global auth, and per-survey abuse across API replicas; CDN/WAF bot scoring and managed challenges remain deployment tasks.
 - Optional fingerprinting sends respondent IP and geolocation data to third-party services and collects a canvas fingerprint without an in-product consent or processor-control workflow.
@@ -101,17 +102,17 @@ The initial `npm audit --omit=dev` on 2026-09-07 reported **2 critical, 4 high, 
 
 ### High
 
-#### 3.2 Embed allowlist is not enforced on the framed document
+#### 3.2 Embed allowlist enforced on HTML documents — resolved in Phase 3
 
-`server/src/routes/public.js` adds `Content-Security-Policy: frame-ancestors ...` to the survey JSON response. CSP `frame-ancestors` must be delivered with the HTML document being framed; it does not become document policy when returned by `fetch`. The survey HTML from nginx has no `frame-ancestors`, and survey hosts intentionally omit `X-Frame-Options`. Consequently, any origin can currently frame the survey SPA despite the organization embed-origin setting.
+The original issue was that `frame-ancestors` was returned only on the public survey JSON API response, which does not protect the framed SPA document. Phase 3 adds `frame-ancestors 'none'` to the default nginx HTML shell, resolves per-survey allowlists for `/embed/*` through an nginx auth subrequest to `/api/internal/embed-csp`, and restricts embed `postMessage` to validated parent origins.
 
-**Action:** emit the per-survey `frame-ancestors` policy on the actual HTML navigation response (or serve a survey-specific HTML bootstrap through the API/reverse proxy). Default non-embed routes to `'none'`; apply the validated origin list only to `/embed/...`; add browser-level tests that attempt allowed and denied framing.
+**Remaining action:** add real-browser framing allow/deny tests in CI and keep the development embed harness out of production artifacts.
 
-#### 3.3 No explicit CSRF defense for cookie-authenticated mutations
+#### 3.3 CSRF defense for cookie-authenticated mutations — resolved in Phase 3
 
-`HttpOnly`, `Secure`, `SameSite=Lax` cookies and restrictive CORS substantially reduce ordinary cross-site POST attacks, but they are not a complete CSRF policy. Same-site sibling-domain compromise, future cookie/domain changes, browser behavior differences, and endpoints accepting simple requests can reintroduce risk. CORS controls response reading, not whether every request is sent.
+`HttpOnly`, `Secure`, `SameSite=Lax` cookies and restrictive CORS substantially reduce ordinary cross-site POST attacks, but they are not a complete CSRF policy on their own. Phase 3 adds explicit `Origin` / `Sec-Fetch-Site` enforcement plus a double-submit `rs_csrf` token for unsafe cookie-authenticated API methods, and scopes refresh cookies to `/api/auth`.
 
-**Action:** enforce an exact `Origin`/`Sec-Fetch-Site` policy for authenticated unsafe methods and add a synchronizer or signed double-submit CSRF token. Reject missing/invalid Origin on browser mutation routes, with narrowly documented exceptions for non-browser clients. Scope the refresh cookie to `/api/auth/refresh` where practical.
+**Remaining action:** narrow refresh-cookie path further to `/api/auth/refresh` only if logout is refactored to read the refresh token through a dedicated auth-scoped route.
 
 #### 3.4 Public response payload validation is incomplete
 
@@ -264,14 +265,14 @@ Local mode stores plaintext users/passwords, sessions, survey data, responses, D
 ## 4. Prioritized Recommendations
 
 1. **Completed in Phase 1 — Patch the authentication/runtime dependency chain.** JWT/Fastify dependencies and transitive URL packages are upgraded, the lockfile is regenerated, HS256 is explicit, and auth/RBAC/security tests pass. Prisma CLI’s remaining advisory is isolated for a separate major-version migration.
-2. **P0 — Enforce iframe policy on HTML documents.** Move dynamic `frame-ancestors` to the framed `/embed/...` navigation response, deny framing elsewhere, restrict `postMessage` target/listener origins, and add real-browser allow/deny tests.
-3. **P0 — Add CSRF enforcement.** Validate exact Origin/Fetch Metadata on unsafe authenticated requests and add CSRF tokens; narrow auth-cookie paths.
+2. **Completed in Phase 3 — Enforce iframe policy on HTML documents.** Default SPA responses deny framing; `/embed/*` HTML uses per-survey `frame-ancestors`; embed `postMessage` no longer uses wildcard targets.
+3. **Completed in Phase 3 — Add CSRF enforcement.** Unsafe cookie-authenticated API methods require allowlisted `Origin` plus a double-submit CSRF token; refresh cookies are scoped under `/api/auth`.
 4. **P1 — Introduce authoritative schemas.** Add versioned Fastify JSON schemas and per-question answer validators, strict limits, trusted server timestamps/status, server-side completion/termination evaluation, and one normalization/sanitization path for normal writes and imports.
 5. **Partially completed in Phase 2 — Deploy shared abuse protection.** Redis-backed per-IP, per-account, global, and per-survey quotas now protect auth, public fetch, DNC, and response writes. Edge WAF/bot challenges, Caddy-ask throttling, alerting, and production quota tuning remain.
 6. **P1 — Build immutable audit logging.** Cover authentication, admin/vendor actions, data exports/deletes, publication, billing/domain changes, and organization deletion; ship alerts off-host.
 7. **P1 — Harden privileged identity.** Add MFA first for `platform_owner` and admins, verified invites/email, safe password reset, one-time setup links, session inventory/revocation, and absolute session lifetime.
 8. **P1 — Establish data governance.** Disable third-party fingerprint lookups by default, classify and minimize PII/fingerprints/DNC storage, implement consent and retention/deletion/export, encrypt volumes and off-host backups, manage keys, and test restores.
-9. **P1 — Close proxy/internal trust gaps.** Stop publicly proxying internal routes or authenticate them strongly; overwrite forwarding headers; validate hosts; remove production query fallbacks.
+9. **Partially completed in Phase 3 — Close proxy/internal trust gaps.** Trusted host routing ignores raw `X-Forwarded-Host`, production internal routes require `INTERNAL_API_SECRET`, and Caddy ask is rate-limited. Further hardening: stop proxying internal routes publicly and remove production query fallbacks entirely.
 10. **P2 — Make production the safe default.** Separate demo settings, require all production secrets in Compose, fail startup on insecure flag combinations, remove stale JWT configuration, and align README claims with code.
 11. **P2 — Harden containers and supply chain.** Non-root/minimal/read-only containers, dropped capabilities, resource limits, immutable release tags and image digests, SBOM, vulnerability scans, provenance, and signing.
 12. **P2 — Enforce security in CI/CD.** Run database-backed auth/RBAC/security tests; gate on dependency, secret, SAST, container, and IaC findings; pin third-party actions; and require approval or release promotion before production deployment.

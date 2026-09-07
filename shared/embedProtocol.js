@@ -62,6 +62,25 @@ export function isEmbedMessage(data) {
   return data && typeof data === 'object' && data.source === EMBED_MESSAGE_PREFIX
 }
 
+/** Resolve a validated parent origin for outbound postMessage. */
+export function resolveParentOrigin(allowedOrigins = []) {
+  if (typeof window === 'undefined' || window.parent === window) return null
+
+  const normalized = allowedOrigins
+    .map(normalizeEmbedOrigin)
+    .filter(Boolean)
+  if (!normalized.length) return null
+
+  try {
+    const referrer = document.referrer
+    if (!referrer) return null
+    const origin = new URL(referrer).origin
+    return normalized.includes(origin) ? origin : null
+  } catch {
+    return null
+  }
+}
+
 /** Normalize origin for allowlist comparison. */
 export function normalizeEmbedOrigin(origin) {
   if (!origin || typeof origin !== 'string') return null

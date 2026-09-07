@@ -18,6 +18,14 @@ const AUTH_PATHS = new Set([
   '/api/auth/logout',
 ])
 
+const UNSAFE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE'])
+
+function readCsrfToken() {
+  if (typeof document === 'undefined') return null
+  const match = document.cookie.match(/(?:^|;\s*)rs_csrf=([^;]+)/)
+  return match ? decodeURIComponent(match[1]) : null
+}
+
 let refreshInFlight = null
 
 function pathOnly(path) {
@@ -25,10 +33,14 @@ function pathOnly(path) {
 }
 
 async function doRefreshFetch() {
+  const headers = { 'Content-Type': 'application/json' }
+  const csrfToken = readCsrfToken()
+  if (csrfToken) headers['X-CSRF-Token'] = csrfToken
+
   const res = await fetch('/api/auth/refresh', {
     method: 'POST',
     credentials: 'include',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: '{}',
   })
   if (!res.ok) {
@@ -63,6 +75,12 @@ export async function apiFetch(path, options = {}) {
   const headers = { ...fetchOptions.headers }
   if (fetchOptions.body != null && !headers['Content-Type']) {
     headers['Content-Type'] = 'application/json'
+  }
+
+  const method = String(fetchOptions.method || 'GET').toUpperCase()
+  if (useApi && UNSAFE_METHODS.has(method)) {
+    const csrfToken = readCsrfToken()
+    if (csrfToken) headers['X-CSRF-Token'] = csrfToken
   }
 
   const rawBody = fetchOptions.body

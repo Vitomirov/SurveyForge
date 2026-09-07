@@ -43,6 +43,7 @@ test('login sets httpOnly cookies and JSON has session but no token', async () =
   const names = setCookieNames(login.headers)
   assert.ok(names.includes('rs_access'), 'rs_access Set-Cookie')
   assert.ok(names.includes('rs_refresh'), 'rs_refresh Set-Cookie')
+  assert.ok(names.includes('rs_csrf'), 'rs_csrf Set-Cookie')
   const accessHeader = login.headers.getSetCookie().find((h) => h.startsWith('rs_access='))
   assert.match(accessHeader, /HttpOnly/i)
   assert.match(accessHeader, /SameSite=Lax/i)
@@ -85,7 +86,10 @@ test('expired access cookie with valid refresh cookie can restore the session', 
 
   const rotated = await api('/api/auth/refresh', {
     method: 'POST',
-    cookies: { rs_refresh: refreshCookie },
+    cookies: {
+      rs_refresh: refreshCookie,
+      rs_csrf: client.getCookies().rs_csrf,
+    },
   })
   assert.equal(rotated.status, 200)
   assert.ok(rotated.cookies.rs_access)
@@ -151,7 +155,10 @@ test('refresh reuse returns 401 and revokes the family', async () => {
   rotator.clear()
   const rotated = await rotator.request('/api/auth/refresh', {
     method: 'POST',
-    cookies: { rs_refresh: firstRefresh },
+    cookies: {
+      rs_refresh: firstRefresh,
+      rs_csrf: signup.cookies.rs_csrf,
+    },
   })
   assert.equal(rotated.status, 200)
   const secondRefresh = rotator.getCookies().rs_refresh
@@ -160,7 +167,10 @@ test('refresh reuse returns 401 and revokes the family', async () => {
 
   const reuse = await signupApi('/api/auth/refresh', {
     method: 'POST',
-    cookies: { rs_refresh: firstRefresh },
+    cookies: {
+      rs_refresh: firstRefresh,
+      rs_csrf: signup.cookies.rs_csrf,
+    },
   })
   assert.equal(reuse.status, 401)
   assert.equal(reuse.data.code, 'REUSE_DETECTED')
@@ -224,7 +234,10 @@ test('self-service password change revokes other sessions but keeps current devi
 
   const staleB = await signupApi('/api/auth/refresh', {
     method: 'POST',
-    cookies: { rs_refresh: refreshCookieB },
+    cookies: {
+      rs_refresh: refreshCookieB,
+      rs_csrf: sessionB.getCookies().rs_csrf,
+    },
   })
   assert.equal(staleB.status, 401, 'other session refresh token must be revoked')
 
@@ -306,7 +319,10 @@ test('admin password reset revokes victim sessions', async () => {
 
   const stale = await api('/api/auth/refresh', {
     method: 'POST',
-    cookies: { rs_refresh: editorRefresh },
+    cookies: {
+      rs_refresh: editorRefresh,
+      rs_csrf: editorClient.getCookies().rs_csrf,
+    },
   })
   assert.equal(stale.status, 401, 'victim refresh token must be revoked after admin reset')
 
