@@ -27,6 +27,8 @@ test('development defaults enable seed, cookies, and bearer fallback', () => {
   assert.equal(config.cookieSecure, false)
   assert.equal(config.authAllowBearer, true)
   assert.equal(config.corsOrigin, 'http://localhost:5173')
+  assert.equal(config.redisUrl, null)
+  assert.equal(config.rateLimitRedisRequired, false)
 })
 
 test('production defaults disable seed and platform migration', () => {
@@ -90,6 +92,31 @@ test('strict production mode accepts the hardened defaults', () => {
     JWT_SECRET: STRONG_SECRET,
     CORS_ORIGIN: 'https://app.example.com',
   }))
+})
+
+test('Redis rate limiting requires a valid URL when enabled', () => {
+  assert.throws(
+    () => loadConfig({
+      NODE_ENV: 'development',
+      RATE_LIMIT_REDIS_REQUIRED: 'true',
+    }),
+    /REDIS_URL is required/,
+  )
+  assert.throws(
+    () => loadConfig({
+      NODE_ENV: 'development',
+      REDIS_URL: 'https://redis.example.com',
+    }),
+    /redis:\/\/ or rediss:\/\//,
+  )
+
+  const config = loadConfig({
+    NODE_ENV: 'development',
+    REDIS_URL: 'redis://127.0.0.1:6379',
+    RATE_LIMIT_REDIS_REQUIRED: 'true',
+  })
+  assert.equal(config.redisUrl, 'redis://127.0.0.1:6379')
+  assert.equal(config.rateLimitRedisRequired, true)
 })
 
 test('production rejects missing JWT_SECRET', () => {

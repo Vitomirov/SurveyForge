@@ -6,8 +6,7 @@
  */
 import { verifyPassword, hashPassword } from '../lib/auth/password.js'
 import { provisionOrgBilling } from '../lib/billing/billingDefaults.js'
-import { createRouteLimiters, sendIfRateLimited } from '../lib/survey/rateLimit.js'
-import { loadConfig } from '../config.js'
+import { sendIfRateLimited } from '../lib/survey/rateLimit.js'
 import { setAuthCookies, clearAuthCookies, readRefreshToken } from '../lib/auth/cookies.js'
 import {
   createRefreshToken,
@@ -75,12 +74,32 @@ function validateAvatarUrl(value) {
   return { ok: true, avatarUrl: value }
 }
 
+async function enforceAuthLimits(
+  request,
+  reply,
+  { ipLimiter, globalLimiter, scope },
+) {
+  const globallyLimited = await sendIfRateLimited(
+    globalLimiter,
+    request,
+    reply,
+    `${scope}-global`,
+    { includeIp: false },
+  )
+  if (globallyLimited) return globallyLimited
+
+  return sendIfRateLimited(ipLimiter, request, reply, scope)
+}
+
 export async function registerAuthRoutes(app) {
-  const { rateLimitRelaxed } = loadConfig()
-  const limits = createRouteLimiters({ relaxed: rateLimitRelaxed })
+  const limits = app.rateLimits
 
   app.post('/api/auth/signup', async (request, reply) => {
-    const limited = sendIfRateLimited(limits.signup, request, reply, 'signup')
+    const limited = await enforceAuthLimits(request, reply, {
+      ipLimiter: limits.signup,
+      globalLimiter: limits.signupGlobal,
+      scope: 'signup',
+    })
     if (limited) return limited
 
     const { organizationName, name, email, password } = request.body ?? {}
@@ -128,7 +147,11 @@ export async function registerAuthRoutes(app) {
   })
 
   app.post('/api/auth/login', async (request, reply) => {
-    const limited = sendIfRateLimited(limits.login, request, reply, 'login')
+    const limited = await enforceAuthLimits(request, reply, {
+      ipLimiter: limits.login,
+      globalLimiter: limits.loginGlobal,
+      scope: 'login',
+    })
     if (limited) return limited
 
     const { email, password } = request.body ?? {}
@@ -137,6 +160,15 @@ export async function registerAuthRoutes(app) {
     }
 
     const identifier = email.trim()
+    const accountLimited = await sendIfRateLimited(
+      limits.loginAccount,
+      request,
+      reply,
+      'login-account',
+      { discriminator: identifier, includeIp: false },
+    )
+    if (accountLimited) return accountLimited
+
     const normalizedEmail = normalizeEmail(identifier)
     const user = await app.prisma.user.findFirst({
       where: identifier.includes('@')
@@ -161,7 +193,11 @@ export async function registerAuthRoutes(app) {
   })
 
   app.post('/api/auth/refresh', async (request, reply) => {
-    const limited = sendIfRateLimited(limits.refresh, request, reply, 'refresh')
+    const limited = await enforceAuthLimits(request, reply, {
+      ipLimiter: limits.refresh,
+      globalLimiter: limits.refreshGlobal,
+      scope: 'refresh',
+    })
     if (limited) return limited
 
     const raw = readRefreshToken(request)

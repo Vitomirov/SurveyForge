@@ -425,6 +425,8 @@ Uses development bootstrap settings (default account seeding enabled, relaxed JW
 | `RUN_PLATFORM_LIST_MIGRATION` | `true` in dev, `false` in prod | Normalize legacy platform IDs on startup |
 | `REQUIRE_STRONG_JWT` | `true` in prod, `false` in dev override | Refuse weak or placeholder JWT secrets |
 | `RATE_LIMIT_RELAXED` | `true` in dev, `false` in prod | Multiply public/login rate limits for local testing |
+| `REDIS_URL` | unset in dev, `redis://redis:6379` in prod | Shared production rate-limit counter store |
+| `RATE_LIMIT_REDIS_REQUIRED` | `false` in dev, `true` in prod | Refuse production startup when the shared limiter is unavailable |
 | `VITE_USE_API` | unset | Build-time flag: enable API persistence |
 | `PLATFORM_OWNER_*` | see seed.js | Platform owner bootstrap credentials (dev seed only) |
 | `WEB_HOST_PORT` | `8080` | Docker web container host port |

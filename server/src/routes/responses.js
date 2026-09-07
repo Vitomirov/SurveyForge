@@ -8,8 +8,7 @@ import { findAccessibleSurvey } from '../lib/auth/surveyAccess.js'
 import { resolveDncStatus } from '../lib/survey/dncCheck.js'
 import { normalizeResponseEntry } from '../lib/survey/responseNormalization.js'
 import { validateCompleteAnswers } from '../lib/survey/completeValidation.js'
-import { loadConfig } from '../config.js'
-import { createRouteLimiters, sendIfRateLimited } from '../lib/survey/rateLimit.js'
+import { sendIfRateLimited } from '../lib/survey/rateLimit.js'
 
 const DEFAULT_LIMIT = 50
 const MAX_LIMIT = 200
@@ -175,8 +174,7 @@ export function sendUpsertResult(reply, result) {
 }
 
 export async function registerResponseRoutes(app) {
-  const { rateLimitRelaxed } = loadConfig()
-  const limits = createRouteLimiters({ relaxed: rateLimitRelaxed })
+  const limits = app.rateLimits
 
   app.get('/api/surveys/:id/responses/stats', async (request, reply) => {
     const survey = await findAccessibleSurvey(
@@ -240,7 +238,21 @@ export async function registerResponseRoutes(app) {
   })
 
   app.post('/api/surveys/:id/responses', async (request, reply) => {
-    const limited = sendIfRateLimited(limits.responses, request, reply, 'responses')
+    const surveyLimited = await sendIfRateLimited(
+      limits.surveyResponses,
+      request,
+      reply,
+      'authenticated-responses-survey',
+      { discriminator: request.params.id, includeIp: false },
+    )
+    if (surveyLimited) return surveyLimited
+
+    const limited = await sendIfRateLimited(
+      limits.responses,
+      request,
+      reply,
+      'authenticated-responses',
+    )
     if (limited) return limited
 
     const survey = await findAccessibleSurvey(

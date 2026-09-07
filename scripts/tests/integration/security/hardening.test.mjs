@@ -50,6 +50,24 @@ test('refresh limiter rejects 31st request per IP (production limits)', () => {
   assert.equal(refresh(key).allowed, false, '31st refresh should be rate limited')
 })
 
+test('account limiter rejects distributed login attempts after 30 requests', () => {
+  const { loginAccount } = createRouteLimiters({ relaxed: false })
+  const key = 'login-account:hashed-identity'
+  for (let i = 0; i < 30; i += 1) {
+    assert.equal(loginAccount(key).allowed, true, `request ${i + 1} should be allowed`)
+  }
+  assert.equal(loginAccount(key).allowed, false, '31st account attempt should be rate limited')
+})
+
+test('global signup limiter rejects distributed bursts after 60 requests', () => {
+  const { signupGlobal } = createRouteLimiters({ relaxed: false })
+  const key = 'signup-global'
+  for (let i = 0; i < 60; i += 1) {
+    assert.equal(signupGlobal(key).allowed, true, `request ${i + 1} should be allowed`)
+  }
+  assert.equal(signupGlobal(key).allowed, false, '61st global signup should be rate limited')
+})
+
 test('signup spam from the same client is rate limited even with spoofed X-Forwarded-For', async (t) => {
   if (rateLimitRelaxed) {
     return t.skip('RATE_LIMIT_RELAXED=true (default in development): limit is 1000/min/IP, not 10')

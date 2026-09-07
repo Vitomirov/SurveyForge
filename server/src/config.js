@@ -24,6 +24,21 @@ function parseBool(value, defaultValue) {
   return defaultValue
 }
 
+function parseRedisUrl(value) {
+  const raw = String(value || '').trim()
+  if (!raw) return null
+  let parsed
+  try {
+    parsed = new URL(raw)
+  } catch {
+    throw new Error('REDIS_URL must be a valid redis:// or rediss:// URL.')
+  }
+  if (parsed.protocol !== 'redis:' && parsed.protocol !== 'rediss:') {
+    throw new Error('REDIS_URL must use the redis:// or rediss:// protocol.')
+  }
+  return raw
+}
+
 export function durationToMs(value, fallbackMs) {
   const match = String(value ?? '').trim().match(/^(\d+)\s*(ms|s|m|h|d)$/i)
   if (!match) return fallbackMs
@@ -116,8 +131,14 @@ export function loadConfig(env = process.env) {
   const requireStrongJwt = parseBool(env.REQUIRE_STRONG_JWT, !isDev)
   const rateLimitRelaxed = parseBool(env.RATE_LIMIT_RELAXED, isDev)
   const rateLimitDisabled = parseBool(env.RATE_LIMIT_DISABLED, false)
+  const rateLimitRedisRequired = parseBool(env.RATE_LIMIT_REDIS_REQUIRED, false)
   const cookieSecure = parseBool(env.COOKIE_SECURE, !isDev)
   const authAllowBearer = parseBool(env.AUTH_ALLOW_BEARER, isDev)
+  const redisUrl = parseRedisUrl(env.REDIS_URL)
+
+  if (rateLimitRedisRequired && !redisUrl) {
+    throw new Error('REDIS_URL is required when RATE_LIMIT_REDIS_REQUIRED=true.')
+  }
 
   let jwtSecret = env.JWT_SECRET
   if (!jwtSecret) {
@@ -162,5 +183,7 @@ export function loadConfig(env = process.env) {
     requireStrongJwt,
     rateLimitRelaxed,
     rateLimitDisabled,
+    rateLimitRedisRequired,
+    redisUrl,
   }
 }

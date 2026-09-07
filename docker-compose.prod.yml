@@ -22,9 +22,35 @@ services:
     environment:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD to a strong random value}
 
+  redis:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    command:
+      - redis-server
+      - --save
+      - ''
+      - --appendonly
+      - 'no'
+      - --maxmemory
+      - 128mb
+      - --maxmemory-policy
+      - allkeys-lru
+    expose:
+      - '6379'
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
   api:
+    depends_on:
+      redis:
+        condition: service_healthy
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-rescopesurveys}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD to a strong random value}@postgres:5432/${POSTGRES_DB:-rescopesurveys}
+      REDIS_URL: redis://redis:6379
+      RATE_LIMIT_REDIS_REQUIRED: 'true'
       JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET to a strong random value (32+ characters)}
       COOKIE_SECURE: 'true'
       AUTH_ALLOW_BEARER: 'false'

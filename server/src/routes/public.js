@@ -9,8 +9,7 @@ import { buildPublicBrandingPayload } from '../lib/branding/publicBranding.js'
 import { readEmbedAllowedOrigins } from '../lib/platform/orgSettings.js'
 import { resolvePlanId } from '../../../shared/planFeatures.js'
 import { buildFrameAncestorsDirective } from '../../../shared/embedProtocol.js'
-import { createRouteLimiters, sendIfRateLimited } from '../lib/survey/rateLimit.js'
-import { loadConfig } from '../config.js'
+import { sendIfRateLimited } from '../lib/survey/rateLimit.js'
 import { isEmailOnDncList, normalizeEmail } from '../lib/survey/dncCheck.js'
 import { assertOrgActive } from '../lib/billing/planEnforcement.js'
 
@@ -130,12 +129,33 @@ async function sendPublicSurvey(app, request, reply, row) {
   return publicSurveyPayload(row, branding)
 }
 
+async function enforcePublicLimits(
+  request,
+  reply,
+  { ipLimiter, resourceLimiter, scope, resourceId },
+) {
+  const resourceLimited = await sendIfRateLimited(
+    resourceLimiter,
+    request,
+    reply,
+    `${scope}-resource`,
+    { discriminator: resourceId, includeIp: false },
+  )
+  if (resourceLimited) return resourceLimited
+
+  return sendIfRateLimited(ipLimiter, request, reply, scope)
+}
+
 export async function registerPublicRoutes(app) {
-  const { rateLimitRelaxed } = loadConfig()
-  const limits = createRouteLimiters({ relaxed: rateLimitRelaxed })
+  const limits = app.rateLimits
 
   app.get('/api/public/s/:publicPath', async (request, reply) => {
-    const limited = sendIfRateLimited(limits.publicFetch, request, reply, 'public-fetch')
+    const limited = await enforcePublicLimits(request, reply, {
+      ipLimiter: limits.publicFetch,
+      resourceLimiter: limits.surveyFetch,
+      scope: 'public-fetch',
+      resourceId: request.params.publicPath,
+    })
     if (limited) return limited
 
     const clientDomain = clientDomainFromRequest(request)
@@ -154,7 +174,12 @@ export async function registerPublicRoutes(app) {
   })
 
   app.get('/api/public/surveys/:id', async (request, reply) => {
-    const limited = sendIfRateLimited(limits.publicFetch, request, reply, 'public-fetch')
+    const limited = await enforcePublicLimits(request, reply, {
+      ipLimiter: limits.publicFetch,
+      resourceLimiter: limits.surveyFetch,
+      scope: 'public-fetch',
+      resourceId: request.params.id,
+    })
     if (limited) return limited
 
     const row = await loadLivePublicSurvey(app, request.params.id, reply)
@@ -164,7 +189,12 @@ export async function registerPublicRoutes(app) {
   })
 
   app.post('/api/public/surveys/:id/dnc/check', async (request, reply) => {
-    const limited = sendIfRateLimited(limits.dnc, request, reply, 'public-dnc')
+    const limited = await enforcePublicLimits(request, reply, {
+      ipLimiter: limits.dnc,
+      resourceLimiter: limits.surveyDnc,
+      scope: 'public-dnc',
+      resourceId: request.params.id,
+    })
     if (limited) return limited
 
     const row = await loadLivePublicSurvey(app, request.params.id, reply)
@@ -180,7 +210,12 @@ export async function registerPublicRoutes(app) {
   })
 
   app.post('/api/public/surveys/:id/responses', async (request, reply) => {
-    const limited = sendIfRateLimited(limits.responses, request, reply, 'responses')
+    const limited = await enforcePublicLimits(request, reply, {
+      ipLimiter: limits.responses,
+      resourceLimiter: limits.surveyResponses,
+      scope: 'responses',
+      resourceId: request.params.id,
+    })
     if (limited) return limited
 
     const row = await loadLivePublicSurvey(app, request.params.id, reply)

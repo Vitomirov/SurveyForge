@@ -9,7 +9,9 @@
 - **Phase 0 repository baseline: completed.** Existing config, frontend, auth-cookie, RBAC, security, branding, build, Prisma schema, and Compose checks were executed locally. The working tree introduces no database migration or UI change.
 - **Phase 0 production preflight: operator action required.** Before deployment, create and copy a fresh production backup off-host, record the currently deployed image/tag, and run the production smoke checklist after release. No production database or service was modified by this implementation session.
 - **Phase 1 dependency/config hardening: implemented and locally verified.** `@fastify/jwt` is upgraded from 9.1.0 to 10.2.2, Fastify is upgraded to 5.12.3, JWT signing and verification are restricted to HS256, obsolete `JWT_EXPIRES_IN` configuration is removed, production PostgreSQL credentials are required by the Compose override, and strict production mode now rejects unsafe seed, migration, rate-limit, cookie, and Bearer-auth flags.
-- **Verification:** frontend production audit reports zero vulnerabilities; the critical JWT and Fastify advisories are removed; production build and base/production Compose validation pass; all executed auth-cookie, API security, RBAC, config, frontend, permission, and branding tests pass.
+- **Phase 2 distributed abuse protection: implemented and locally verified.** Production Compose now includes a private, non-published Redis service and requires the API to connect before startup. Auth and public survey limits use shared atomic counters, with layered per-IP, per-account, global, and per-survey quotas. Keys containing identities or survey identifiers are SHA-256 hashed, responses expose standard quota and `Retry-After` headers, and a Redis runtime failure falls back to bounded in-memory protection instead of taking the API offline.
+- **Phase 2 external edge controls: operator action remains.** A CDN/WAF, managed bot challenge/CAPTCHA, and provider-level alerting require production account and DNS configuration and are not enabled by repository code alone.
+- **Verification:** frontend production audit reports zero vulnerabilities; the critical JWT and Fastify advisories are removed; production build and base/production Compose validation pass; all executed auth-cookie, API security, RBAC, config, frontend, permission, and branding tests pass. An isolated production Compose stack started healthy with PostgreSQL, API, Redis, and nginx; Redis counters remained intact across an API restart.
 - **Known residual tooling advisory:** Prisma 6.19.3 is the newest release on the current v6 line, but its Prisma CLI/config dependency still reports a high-severity recursive-merge denial-of-service advisory. The affected package is migration/build tooling rather than the request-handling ORM path. A Prisma 7 migration is intentionally deferred because it is a breaking change and must be tested as its own release.
 
 ## 1. Executive Summary
@@ -23,7 +25,7 @@ The next highest risks are architectural:
 - Cookie authentication relies on `SameSite=Lax` without explicit CSRF tokens or server-side Origin enforcement.
 - The intended iframe origin policy is returned on the public survey JSON API response, not on the framed HTML document. `frame-ancestors` on a fetch response does not protect the SPA document, so the configured embed allowlist does not currently enforce framing.
 - Public response validation is only structural and partial. It does not fully validate answer type, size, option membership, visibility, termination state, timestamps, fingerprints, or all completion rules against the survey definition.
-- Rate limiting is per-process, in-memory, and IP-only. It is not effective as a global control across replicas or distributed attackers.
+- Shared Redis limits now cover IP, account, global auth, and per-survey abuse across API replicas; CDN/WAF bot scoring and managed challenges remain deployment tasks.
 - Optional fingerprinting sends respondent IP and geolocation data to third-party services and collects a canvas fingerprint without an in-product consent or processor-control workflow.
 - Security audit logging, MFA/SSO, mature account recovery, data retention/deletion controls, encrypted off-host backups, and production monitoring are absent.
 
@@ -143,11 +145,11 @@ When survey fingerprinting is enabled, its default signal set includes IP/geoloc
 
 ### Medium
 
-#### 3.9 Rate limiting is local and easy to distribute around
+#### 3.9 Distributed rate limiting implemented; edge bot controls remain
 
-The limiter is an in-memory fixed-window map keyed only by IP. Counters are not shared between processes/replicas, disappear on restart, and can be bypassed by distributed clients or large NAT populations. Responses do not include standard quota/`Retry-After` headers. Public reads, DNC membership checks, writes, signup, and login need different identity-aware abuse controls.
+The original limiter was an in-memory fixed-window map keyed only by IP. Phase 2 replaces the production path with atomic Redis counters shared across API processes. Login, signup, and refresh have per-IP and global quotas; login also has a normalized account quota; public fetch, DNC, and response writes combine per-IP with per-survey quotas. Rate-limit keys are opaque hashes and responses include quota and `Retry-After` headers. Redis is private to the Compose network and is required at production startup, while runtime errors degrade to the bounded local limiter.
 
-**Action:** move limits to Redis or an edge/WAF, combine IP with account/survey/email/device signals, add exponential login backoff and risk alerts, apply global and per-survey quotas, return standard rate-limit headers, and load-test enforcement.
+**Remaining action:** configure an edge CDN/WAF for network-level floods, bot scoring, and managed challenges; add login-risk and quota alerts; tune quotas from production traffic; and run a dedicated abuse/load test before large respondent campaigns.
 
 #### 3.10 DNC endpoint is an email-membership oracle
 
@@ -265,7 +267,7 @@ Local mode stores plaintext users/passwords, sessions, survey data, responses, D
 2. **P0 — Enforce iframe policy on HTML documents.** Move dynamic `frame-ancestors` to the framed `/embed/...` navigation response, deny framing elsewhere, restrict `postMessage` target/listener origins, and add real-browser allow/deny tests.
 3. **P0 — Add CSRF enforcement.** Validate exact Origin/Fetch Metadata on unsafe authenticated requests and add CSRF tokens; narrow auth-cookie paths.
 4. **P1 — Introduce authoritative schemas.** Add versioned Fastify JSON schemas and per-question answer validators, strict limits, trusted server timestamps/status, server-side completion/termination evaluation, and one normalization/sanitization path for normal writes and imports.
-5. **P1 — Deploy shared abuse protection.** Put Redis/edge rate limiting and WAF controls in front of login, signup, refresh, public fetch, DNC, response writes, and Caddy ask; add per-account/survey and global quotas.
+5. **Partially completed in Phase 2 — Deploy shared abuse protection.** Redis-backed per-IP, per-account, global, and per-survey quotas now protect auth, public fetch, DNC, and response writes. Edge WAF/bot challenges, Caddy-ask throttling, alerting, and production quota tuning remain.
 6. **P1 — Build immutable audit logging.** Cover authentication, admin/vendor actions, data exports/deletes, publication, billing/domain changes, and organization deletion; ship alerts off-host.
 7. **P1 — Harden privileged identity.** Add MFA first for `platform_owner` and admins, verified invites/email, safe password reset, one-time setup links, session inventory/revocation, and absolute session lifetime.
 8. **P1 — Establish data governance.** Disable third-party fingerprint lookups by default, classify and minimize PII/fingerprints/DNC storage, implement consent and retention/deletion/export, encrypt volumes and off-host backups, manage keys, and test restores.

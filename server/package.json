@@ -24,7 +24,8 @@
     "bcrypt": "^6.0.0",
     "dotenv": "^16.6.1",
     "fastify": "5.12.3",
-    "isomorphic-dompurify": "^2.36.0"
+    "isomorphic-dompurify": "^2.36.0",
+    "redis": "6.2.1"
   },
   "devDependencies": {
     "prisma": "^6.9.0"

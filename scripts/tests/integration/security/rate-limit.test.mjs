@@ -10,7 +10,14 @@ import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { randomUUID } from 'node:crypto'
 import { makeApi, provisionOrg, surveyId, createSurvey } from '../../lib/rbacFixtures.mjs'
-import { createRateLimiter, clientIp, pruneExpiredRateLimitBuckets } from '../../../../server/src/lib/survey/rateLimit.js'
+import {
+  createRateLimiter,
+  createRedisRateLimiter,
+  sendIfRateLimited,
+  clientIp,
+  opaqueRateLimitKey,
+  pruneExpiredRateLimitBuckets,
+} from '../../../../server/src/lib/survey/rateLimit.js'
 import { publicErrorResponse } from '../../../../server/src/lib/httpErrors.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -43,6 +50,74 @@ test('pruneExpiredRateLimitBuckets starts a new window after expiry', () => {
   const next = limit(key)
   assert.equal(next.allowed, true)
   assert.equal(next.remaining, 1)
+})
+
+test('Redis limiter shares atomic counters and reports remaining quota', async () => {
+  let count = 0
+  const redis = {
+    eval: async () => {
+      count += 1
+      return [count, 60_000]
+    },
+  }
+  const limit = createRedisRateLimiter(redis, { windowMs: 60_000, max: 2 })
+
+  assert.deepEqual(await limit('shared'), {
+    allowed: true,
+    limit: 2,
+    remaining: 1,
+    resetMs: 60_000,
+  })
+  assert.equal((await limit('shared')).allowed, true)
+  assert.equal((await limit('shared')).allowed, false)
+})
+
+test('Redis limiter falls back to bounded memory on store errors', async () => {
+  let errors = 0
+  const limit = createRedisRateLimiter(
+    { eval: async () => { throw new Error('redis unavailable') } },
+    { windowMs: 60_000, max: 1, onError: () => { errors += 1 } },
+  )
+
+  assert.equal((await limit('fallback')).allowed, true)
+  assert.equal((await limit('fallback')).allowed, false)
+  assert.equal(errors, 2)
+})
+
+test('rate-limit responses include quota and retry headers', async () => {
+  const key = `headers_${Date.now()}`
+  const limit = createRateLimiter({ windowMs: 60_000, max: 1 })
+  const headers = {}
+  const reply = {
+    status: 200,
+    header(name, value) {
+      headers[name] = value
+      return this
+    },
+    code(status) {
+      this.status = status
+      return this
+    },
+    send(body) {
+      return { status: this.status, body }
+    },
+  }
+  const request = { ip: '203.0.113.10' }
+
+  assert.equal(await sendIfRateLimited(limit, request, reply, key), null)
+  const blocked = await sendIfRateLimited(limit, request, reply, key)
+  assert.equal(blocked.status, 429)
+  assert.equal(headers['RateLimit-Limit'], '1')
+  assert.equal(headers['RateLimit-Remaining'], '0')
+  assert.equal(headers['Retry-After'], '60')
+})
+
+test('opaque rate-limit keys normalize identities without storing PII', () => {
+  assert.equal(
+    opaqueRateLimitKey(' User@Example.com '),
+    opaqueRateLimitKey('user@example.com'),
+  )
+  assert.equal(opaqueRateLimitKey('user@example.com').includes('@'), false)
 })
 
 test('clientIp uses request.ip and ignores X-Forwarded-For', () => {
@@ -88,6 +163,9 @@ test('invalid response status returns 400; valid taker submit succeeds', async (
   })
   assert.equal(invalid.status, 400)
   assert.match(invalid.data?.error || '', /status/i)
+  assert.ok(invalid.headers.get('ratelimit-limit'))
+  assert.ok(invalid.headers.get('ratelimit-remaining'))
+  assert.ok(invalid.headers.get('ratelimit-reset'))
 
   const ok = await api(`/api/public/surveys/${id}/responses`, {
     method: 'POST',
