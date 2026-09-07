@@ -56,7 +56,6 @@ services:
       PORT: 3003
       NODE_ENV: production
       JWT_SECRET: ${JWT_SECRET:-partner-docker-local-only-not-for-production-use-32ch}
-      JWT_EXPIRES_IN: '24h'
       ACCESS_TOKEN_EXPIRES_IN: '15m'
       REFRESH_TOKEN_EXPIRES_IN: '30d'
       COOKIE_SECURE: ${COOKIE_SECURE:-false}

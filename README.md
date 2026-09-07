@@ -25,7 +25,7 @@ Controlled by `VITE_USE_API` at build time (`src/config/api.js`):
 | Mode | `VITE_USE_API` | Persistence | Auth |
 |------|----------------|-------------|------|
 | **Local** (default dev) | unset / `false` | Browser `localStorage` | Plain-text credentials in `localStorage` |
-| **API** (production) | `true` | PostgreSQL via Fastify | JWT in `sessionStorage` (`POST /api/auth/login`) |
+| **API** (production) | `true` | PostgreSQL via Fastify | HttpOnly access/refresh cookies; session metadata in `sessionStorage` |
 
 Both modes share the same React UI, logic engines, and question type registries. Store modules (`authStore`, `surveyLibrary`, `responseStore`, `dncStore`, `platformStore`) branch internally on `useApi`.
 
@@ -311,7 +311,7 @@ Data is per-browser, per-origin. Clearing site data removes everything.
 |----------|-------------------|
 | Surveys | `api/surveys.js` → `PATCH /api/surveys/:id` |
 | Responses | `api/responses.js` → `/api/surveys/:id/responses` |
-| Auth | `authStore.js` → JWT + `sessionStorage` session |
+| Auth | `authStore.js` → HttpOnly cookies + `sessionStorage` session metadata |
 | DNC | `dncStore.js` → `/api/surveys/:id/dnc` (in-memory cache on client) |
 | Platform lists | `api/platform.js` → `/api/platform/clients`, `/topics` |
 
@@ -418,7 +418,8 @@ Uses development bootstrap settings (default account seeding enabled, relaxed JW
 | `PORT` | `3003` | API listen port |
 | `NODE_ENV` | `development` | Enables dev-only routes (migrate), CORS |
 | `JWT_SECRET` | `dev-secret-change-me` (dev only) | JWT signing key — **required (32+ chars) in production** |
-| `JWT_EXPIRES_IN` | `7d` (dev) / `24h` (prod Compose) | Token lifetime |
+| `ACCESS_TOKEN_EXPIRES_IN` | `15m` | Access-token and cookie lifetime |
+| `REFRESH_TOKEN_EXPIRES_IN` | `30d` | Rotating refresh-token lifetime |
 | `POSTGRES_PASSWORD` | `rescopesurveys` (dev only) | Postgres password — **required in production Compose** |
 | `SEED_DEFAULT_ACCOUNTS` | `true` in dev, `false` in prod | Bootstrap admin/vendor accounts (`server/src/lib/platform/seed.js`) |
 | `RUN_PLATFORM_LIST_MIGRATION` | `true` in dev, `false` in prod | Normalize legacy platform IDs on startup |

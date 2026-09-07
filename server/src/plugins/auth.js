@@ -37,7 +37,13 @@ function extractAccessToken(request, authAllowBearer) {
 export async function registerAuth(app, { jwtSecret, jwtExpiresIn, authAllowBearer = false }) {
   await app.register(fastifyJwt, {
     secret: jwtSecret,
-    sign: { expiresIn: jwtExpiresIn },
+    sign: {
+      algorithm: 'HS256',
+      expiresIn: jwtExpiresIn,
+    },
+    verify: {
+      algorithms: ['HS256'],
+    },
   })
 
   app.addHook('onRequest', async (request, reply) => {

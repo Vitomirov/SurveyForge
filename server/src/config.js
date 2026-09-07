@@ -78,6 +78,35 @@ export function validateJwtSecret(secret, { minLength = MIN_JWT_SECRET_LENGTH } 
   }
 }
 
+function validateStrictProductionFlags({
+  isDev,
+  requireStrongJwt,
+  seedDefaultAccounts,
+  runPlatformListMigration,
+  rateLimitRelaxed,
+  rateLimitDisabled,
+  cookieSecure,
+  authAllowBearer,
+}) {
+  if (isDev || !requireStrongJwt) return
+
+  const unsafe = [
+    seedDefaultAccounts && 'SEED_DEFAULT_ACCOUNTS',
+    runPlatformListMigration && 'RUN_PLATFORM_LIST_MIGRATION',
+    rateLimitRelaxed && 'RATE_LIMIT_RELAXED',
+    rateLimitDisabled && 'RATE_LIMIT_DISABLED',
+    !cookieSecure && 'COOKIE_SECURE',
+    authAllowBearer && 'AUTH_ALLOW_BEARER',
+  ].filter(Boolean)
+
+  if (unsafe.length) {
+    throw new Error(
+      `Unsafe production security configuration: ${unsafe.join(', ')}. `
+      + 'Use the production Compose override and secure flag values.',
+    )
+  }
+}
+
 export function loadConfig(env = process.env) {
   const nodeEnv = env.NODE_ENV || 'development'
   const isDev = nodeEnv !== 'production'
@@ -99,10 +128,21 @@ export function loadConfig(env = process.env) {
     validateJwtSecret(jwtSecret)
   }
 
+  validateStrictProductionFlags({
+    isDev,
+    requireStrongJwt,
+    seedDefaultAccounts,
+    runPlatformListMigration,
+    rateLimitRelaxed,
+    rateLimitDisabled,
+    cookieSecure,
+    authAllowBearer,
+  })
+
   const port = Number(env.PORT) || DEFAULT_PORT
   const accessTokenExpiresIn = env.ACCESS_TOKEN_EXPIRES_IN || DEFAULT_ACCESS_TOKEN_EXPIRES_IN
   const refreshTokenExpiresIn = env.REFRESH_TOKEN_EXPIRES_IN || DEFAULT_REFRESH_TOKEN_EXPIRES_IN
-  // Alias: access tokens used to be signed with jwtExpiresIn / JWT_EXPIRES_IN.
+  // Internal compatibility alias used by the auth plugin.
   const jwtExpiresIn = accessTokenExpiresIn
   const corsOrigin = parseCorsOrigin(env.CORS_ORIGIN, { isDev })
 

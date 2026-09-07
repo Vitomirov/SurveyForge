@@ -18,8 +18,13 @@
 # Keep WEB_HOST_PORT a bare port number (e.g. 8080) when using this file.
 
 services:
+  postgres:
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD to a strong random value}
+
   api:
     environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-rescopesurveys}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD to a strong random value}@postgres:5432/${POSTGRES_DB:-rescopesurveys}
       JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET to a strong random value (32+ characters)}
       COOKIE_SECURE: 'true'
       AUTH_ALLOW_BEARER: 'false'

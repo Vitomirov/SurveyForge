@@ -62,6 +62,36 @@ test('explicit env flags override defaults', () => {
   assert.equal(config.corsOrigin, 'https://app.example.com')
 })
 
+test('strict production mode rejects unsafe runtime flags', () => {
+  const base = {
+    NODE_ENV: 'production',
+    JWT_SECRET: STRONG_SECRET,
+    CORS_ORIGIN: 'https://app.example.com',
+  }
+
+  for (const [key, value] of [
+    ['SEED_DEFAULT_ACCOUNTS', 'true'],
+    ['RUN_PLATFORM_LIST_MIGRATION', 'true'],
+    ['RATE_LIMIT_RELAXED', 'true'],
+    ['RATE_LIMIT_DISABLED', 'true'],
+    ['COOKIE_SECURE', 'false'],
+    ['AUTH_ALLOW_BEARER', 'true'],
+  ]) {
+    assert.throws(
+      () => loadConfig({ ...base, [key]: value }),
+      new RegExp(`Unsafe production security configuration:.*${key}`),
+    )
+  }
+})
+
+test('strict production mode accepts the hardened defaults', () => {
+  assert.doesNotThrow(() => loadConfig({
+    NODE_ENV: 'production',
+    JWT_SECRET: STRONG_SECRET,
+    CORS_ORIGIN: 'https://app.example.com',
+  }))
+})
+
 test('production rejects missing JWT_SECRET', () => {
   assert.throws(
     () => loadConfig({ NODE_ENV: 'production' }),
