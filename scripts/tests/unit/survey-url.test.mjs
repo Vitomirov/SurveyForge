@@ -100,10 +100,13 @@ test('ensureUniquePublicPath appends suffix on collision', () => {
   )
 })
 
-test('displayPublicPath follows name until live', () => {
+test('displayPublicPath uses assigned path for drafts; preview only before save', () => {
   const today = dateSuffix(new Date())
   const draft = { title: 'New Name', publicPath: 'old-name-060826', status: 'draft' }
-  assert.equal(displayPublicPath(draft), `new-name-${today}`)
+  assert.equal(displayPublicPath(draft), 'old-name-060826')
+
+  const unsaved = { title: 'New Name', status: 'draft' }
+  assert.equal(displayPublicPath(unsaved), `new-name-${today}`)
 
   const live = { ...draft, status: 'live' }
   assert.equal(displayPublicPath(live), 'old-name-060826')

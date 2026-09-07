@@ -106,6 +106,8 @@ export function isPublicPathLocked(survey) {
 /** Path shown in the builder and used when assigning a slug. */
 export function displayPublicPath(survey) {
   if (isPublicPathLocked(survey)) return survey.publicPath
+  // Use the path already assigned on save — preview only before first persist.
+  if (survey?.publicPath) return survey.publicPath
   return previewPublicPath(survey)
 }
 

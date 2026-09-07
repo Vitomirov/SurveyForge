@@ -78,7 +78,9 @@ export function ShareableSurveyUrl({ survey, planId: planIdProp, surveyDomain: s
               <p className="text-xs text-ink-500">
                 {pathLocked
                   ? 'White-label link for this survey. The path is fixed while the survey is live.'
-                  : 'White-label link for this survey. Updates when you change the survey name.'}
+                  : survey.publicPath
+                    ? 'White-label link for this survey. Copy after you see Saved — the path is assigned on first save.'
+                    : 'White-label link for this survey. Save once to assign a path, then copy the link.'}
               </p>
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                 <code className="flex-1 text-xs bg-surface-muted border border-ink-200 text-ink-700 px-3 py-2 rounded-lg truncate font-mono min-w-0">
