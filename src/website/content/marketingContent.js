@@ -14,7 +14,7 @@ export const MARKETING_NAV = {
   ],
   primaryCta: { label: 'Start free trial', ctaId: 'freeTrial' },
   signedInPrimaryCta: { label: 'Go to dashboard', ctaId: 'dashboard' },
-  signInCta: { label: 'Sign in', ctaId: 'signIn' },
+  signInCta: { label: 'Log in', ctaId: 'signIn' },
 }
 
 export const MARKETING_HERO = {

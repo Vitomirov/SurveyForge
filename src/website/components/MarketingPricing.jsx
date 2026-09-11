@@ -1,5 +1,27 @@
 import { MARKETING_PRICING_SECTION, listMarketingPricingPlans } from '@shared/planCatalog.js'
+import { nav } from '@/utils/routing/appRoute'
+import { scrollToMarketingTarget } from '@/website/scrollToSection'
 import { MarketingButton } from './MarketingButton'
+
+/** In-page anchor for the pricing section (shared with signup “compare plans”). */
+export const marketingPricingHash = `#${MARKETING_PRICING_SECTION.id}`
+
+export function goToMarketingPricing() {
+  nav('home')
+  requestAnimationFrame(() => scrollToMarketingTarget(marketingPricingHash))
+}
+
+export function MarketingPricingCompareLink({ className = '' }) {
+  return (
+    <button
+      type="button"
+      onClick={goToMarketingPricing}
+      className={`text-sm font-semibold text-brand-600 underline-offset-4 hover:text-brand-700 hover:underline ${className}`.trim()}
+    >
+      Compare all plans
+    </button>
+  )
+}
 
 export function MarketingPricing({ isAuthenticated }) {
   const plans = listMarketingPricingPlans()

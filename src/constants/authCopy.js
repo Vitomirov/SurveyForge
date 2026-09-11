@@ -5,6 +5,7 @@ export const AUTH_COPY = {
   signOut:             'Sign out',
   createOrgHeading:    'Start your free trial',
   createOrgButton:     'Start free trial',
+  createAccountButton: 'Create account',
   createOrgLink:       'Start a free trial',
   createOrgSubtitle:   '14 days free · 5 surveys · 1 seat · no credit card',
   signingIn:           'Signing in…',
