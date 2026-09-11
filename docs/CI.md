@@ -1,109 +1,115 @@
 # CI/CD
 
-Continuous integration and delivery for Rescope Surveys — what runs automatically, what needs a server, and how to set it up.
+Continuous integration and delivery — automated testing, image publishing, and VPS deployment.
+
+**Related:** [DOCKER.md](DOCKER.md) · [DEPLOY.md](DEPLOY.md) · [OPERATIONS.md](OPERATIONS.md)
 
 ---
 
-## What you can do **before** buying a VPS
+## Pipeline overview
 
-You do not need a production server to ship quality releases.
-
-| Step | Where | Needs VPS? |
-|------|-------|------------|
-| Write code + local dev | Laptop | No |
-| Unit tests + registry check | GitHub Actions (CI) | No |
-| Build Docker images (verify Dockerfile) | GitHub Actions (CI) | No |
-| Push images to Docker Hub | GitHub Actions or `./scripts/deploy/publish-docker.sh` | No |
-| Partner demo on your laptop | `docker compose up -d` | No |
-| Buy domain, plan DNS | Registrar | No |
-| Generate production secrets | Laptop → save for later `.env` on VPS | No |
-| Read [DEPLOY.md](DEPLOY.md) | — | No |
-
-**Buy the VPS when** you have images on Docker Hub and are ready to point DNS and run the first deploy.
+```
+┌────────────── Workstation / GitHub ──────────────┐
+│  Feature branch → PR → CI (tests, docker build)  │
+│  Merge to main → CD (build, push Hub, SSH deploy)│
+│  Tag v*.*.* → docker-publish (semver images)     │
+└──────────────────────┬───────────────────────────┘
+                       ▼
+┌────────────── VPS ───────────────────────────────┐
+│  deploy.sh pulls tagged images, health check     │
+└──────────────────────────────────────────────────┘
+```
 
 ---
 
-## What needs a server
+## What runs without a VPS
 
-| Step | Where |
-|------|-------|
-| First bootstrap (Docker, Caddy, ufw) | VPS — `./scripts/deploy/bootstrap-vps.sh` |
-| Generate production `.env` | VPS — `./scripts/deploy/init-env.sh` |
-| First `deploy.sh` / later updates | VPS |
-| Let's Encrypt (after DNS) | Caddy on the VPS host |
-| Off-site backups | `./scripts/deploy/backup.sh` + copy dumps off the server |
+| Step | Location |
+|------|----------|
+| Unit tests and registry check | GitHub Actions |
+| Docker build validation | GitHub Actions |
+| Push images to Docker Hub | GitHub Actions or `publish-docker.sh` |
+| Local demo | `docker compose up -d` |
+| DNS planning, secret generation | Workstation |
 
-Automatic deploy **to** the VPS runs via [`.github/workflows/cd.yml`](../.github/workflows/cd.yml) after CI passes on `main` (build → Hub → SSH deploy). Tag releases with `v*.*.*` still use [`docker-publish.yml`](../.github/workflows/docker-publish.yml) for semver rollbacks.
+Provision a VPS when images are on Docker Hub and DNS is ready.
 
 ---
 
 ## GitHub Actions workflows
 
-Workflows live in [`.github/workflows/`](../.github/workflows/).
+Workflows: [`.github/workflows/`](../.github/workflows/)
 
-### `ci.yml` — on every push and pull request
+### `ci.yml` — every push and pull request
 
-Runs without secrets:
+No secrets required:
 
 1. `npm ci` (root + server)
 2. `npm run check:registries`
-3. Unit tests (`test:track-a`, `test:config`, selected brand/unit suites)
-4. `docker compose config` validation (base + prod merge)
-5. `docker build` for API and web images (**no push**)
-
-Purpose: catch broken builds and test failures before merge.
+3. Unit tests (`test:track-a`, `test:config`, selected suites)
+4. `docker compose config` (base + prod merge)
+5. `docker build` for API and web (**no push**)
 
 ### `docker-publish.yml` — publish to Docker Hub
 
 Triggers:
 
-- Push a git tag matching `v*.*.*` (e.g. `v0.1.0`)
-- Manual **workflow_dispatch** with a custom tag
+- Git tag matching `v*.*.*`
+- Manual workflow_dispatch
 
-Requires repository secrets:
+Secrets:
 
 | Secret | Value |
 |--------|-------|
-| `DOCKERHUB_USERNAME` | Your Docker Hub username |
-| `DOCKERHUB_TOKEN` | Docker Hub access token ([create here](https://hub.docker.com/settings/security)) |
-
-Add secrets: GitHub repo → **Settings** → **Secrets and variables** → **Actions**.
-
-Typical release:
+| `DOCKERHUB_USERNAME` | Docker Hub username |
+| `DOCKERHUB_TOKEN` | Hub access token |
 
 ```bash
 git tag v0.1.0
 git push origin v0.1.0
-# CI builds and pushes vitomirov/rescopesurveys-api:v0.1.0 and web:v0.1.0
 ```
 
-Then on the VPS, set `IMAGE_TAG=v0.1.0` in `.env` and run `./scripts/deploy/deploy.sh`.
+### `cd.yml` — deploy to VPS after CI on `main`
+
+```
+push to main → CI passes → build images → Docker Hub → SSH deploy
+```
+
+Secrets:
+
+| Secret | Purpose |
+|--------|---------|
+| `DOCKERHUB_USERNAME` | Push images |
+| `DOCKERHUB_TOKEN` | Push images |
+| `VPS_HOST` | SSH target IP or hostname |
+| `VPS_USER` | SSH user (e.g. `root`) |
+| `VPS_SSH_KEY` | Private key (full PEM) |
+| `IMAGE_TAG` | *(optional)* defaults to `v0.1.0` |
+
+CD also syncs compose files, deploy scripts, and Caddyfile; reloads Caddy when the Caddyfile changed.
 
 ---
 
 ## Recommended release flow
 
-```
-┌─────────────── Local / GitHub (no VPS) ───────────────┐
-│ 1. Feature branch + PR                                │
-│ 2. CI passes (tests, docker build)                  │
-│ 3. Merge to main                                    │
-│ 4. Tag v0.1.0 → docker-publish pushes to Hub        │
-└─────────────────────────────────────────────────────┘
-                        │
-                        ▼
-┌─────────────── VPS (first time or update) ────────────┐
-│ 5. IMAGE_TAG=v0.1.0 in .env                         │
-│ 6. ./scripts/deploy/deploy.sh                       │
-│ 7. Verify https://your-domain.com                   │
-└─────────────────────────────────────────────────────┘
+1. Feature branch + PR
+2. CI passes → merge to `main`
+3. Tag `v0.1.0` → images published
+4. VPS: `IMAGE_TAG=v0.1.0` in `.env`
+5. VPS: `./scripts/deploy/deploy.sh v0.1.0`
+6. Verify with `./scripts/deploy/verify.sh` and browser checks
+
+### Manual deploy (fallback)
+
+```bash
+./scripts/deploy/publish-docker.sh v0.1.1
+./scripts/deploy/sync-to-vps.sh root@VPS_IP
+ssh root@VPS_IP 'cd /opt/rescopesurveys && ./scripts/deploy/deploy.sh v0.1.1'
 ```
 
 ---
 
-## Running CI checks locally
-
-Same commands as the workflow:
+## Run CI checks locally
 
 ```bash
 npm ci && npm ci --prefix server
@@ -117,58 +123,16 @@ docker build --build-arg VITE_USE_API=true -t rescopesurveys-web:test .
 
 ---
 
-## CD — deploy to VPS after CI on `main`
+## Integration tests
 
-Workflow: [`.github/workflows/cd.yml`](../.github/workflows/cd.yml)
+RBAC and security integration tests need a live API + Postgres. Not in the default CI job (keeps CI fast and secret-free).
 
-```
-push to main → CI passes → CD builds images → Docker Hub → SSH deploy on VPS
-```
-
-Image tag: `v0.1.0` by default (same as your VPS `.env`). Override with an `IMAGE_TAG` repository secret when you bump versions.
-
-### Repository secrets (Settings → Secrets → Actions)
-
-| Secret | Example | Purpose |
-|--------|---------|---------|
-| `DOCKERHUB_USERNAME` | `vitomirov` | Push API + web images |
-| `DOCKERHUB_TOKEN` | Hub access token | Push API + web images |
-| `VPS_HOST` | `49.13.12.162` | SSH target |
-| `VPS_USER` | `root` | SSH user |
-| `VPS_SSH_KEY` | contents of `~/.ssh/id_ed25519` | Private key (full PEM, including newlines) |
-| `IMAGE_TAG` | *(optional)* `v0.1.0` | Docker Hub + VPS deploy tag; defaults to `v0.1.0` |
-
-`VPS_SSH_KEY` must match a public key in `/root/.ssh/authorized_keys` on the VPS.
-
-CD also copies `docker-compose*.yml`, `scripts/deploy/*`, and `docker/caddy/Caddyfile`, then reloads Caddy when the Caddyfile changed.
-
-### Manual deploy (fallback)
+Run before major releases:
 
 ```bash
-./scripts/deploy/publish-docker.sh v0.1.1
-./scripts/deploy/sync-to-vps.sh root@VPS_IP
-ssh root@VPS_IP 'cd /opt/rescopesurveys && ./scripts/deploy/deploy.sh v0.1.1'
-```
-
----
-
-## Future: deploy to VPS from CI
-
-Implemented — see **CD** section above. Optional later: deploy only on `v*.*.*` tags instead of every `main` push.
-
----
-
-## Integration tests in CI
-
-RBAC and security integration tests require a live API + Postgres. They are **not** in the default CI job yet (keeps CI fast and secret-free).
-
-Run them locally before major releases:
-
-```bash
-npm run dev:docker   # or docker compose up -d
-# in another terminal:
+npm run dev:docker
 npm run test:rbac1
 npm run test:security
 ```
 
-Adding a CI job with `docker compose up` + integration tests is a good next step once the base pipeline is stable.
+Adding a CI job with `docker compose up` + integration tests is a recommended next step.

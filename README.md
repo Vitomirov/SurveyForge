@@ -256,7 +256,7 @@ Public writes go through `POST /api/public/surveys/:id/responses` (no auth, live
 | `/api/public/*` | None | Live survey fetch, DNC list, response submit |
 | `/api/migrate/local` | JWT (dev only) | Import localStorage library into Postgres |
 
-See [docs/PUBLIC_API.md](docs/PUBLIC_API.md) for frontend module-level detail.
+See [docs/CODE_REFERENCE.md](docs/CODE_REFERENCE.md) for frontend module-level detail.
 
 ---
 
@@ -519,7 +519,7 @@ For API/RBAC changes, run the relevant `test:rbac*` scripts against a live serve
 4. Add validation in `answerValidation.js` and CSV formatting
 5. Run `npm run check:registries`
 
-Full checklist: [docs/PUBLIC_API.md](docs/PUBLIC_API.md#adding-a-new-question-type).
+Full checklist: [docs/CODE_REFERENCE.md](docs/CODE_REFERENCE.md#adding-a-new-question-type).
 
 ### Migrating localStorage → Postgres
 
@@ -603,12 +603,14 @@ Production deployments must address:
 
 | Document | Contents |
 |----------|----------|
-| [docs/README.md](docs/README.md) | Documentation index — dev, Docker, deploy, CI/CD |
+| [docs/README.md](docs/README.md) | Documentation index |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | System design, infrastructure, tenancy, data model |
+| [docs/DEPLOY.md](docs/DEPLOY.md) | Production deployment on your own VPS |
+| [docs/OPERATIONS.md](docs/OPERATIONS.md) | Updates, backups, enterprise customers, troubleshooting |
+| [docs/DOCKER.md](docs/DOCKER.md) | Container images and distribution |
 | [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) | Local development workflows |
-| [docs/DOCKER.md](docs/DOCKER.md) | Docker Hub publish and partner demo |
-| [docs/DEPLOY.md](docs/DEPLOY.md) | Production VPS deploy — Caddy, DNS, secrets, firewall, backups |
 | [docs/CI.md](docs/CI.md) | GitHub Actions CI/CD |
-| [docs/PUBLIC_API.md](docs/PUBLIC_API.md) | Module exports, store actions, engine reference |
+| [docs/CODE_REFERENCE.md](docs/CODE_REFERENCE.md) | Module exports, store actions, engine reference |
 | [docs/SMOKE_CHECKLIST.md](docs/SMOKE_CHECKLIST.md) | Manual QA checklist |
 
 ---

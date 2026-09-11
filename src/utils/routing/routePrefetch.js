@@ -32,6 +32,7 @@ export function prefetchForRoute({ session, publicSurveyId } = {}) {
     prefetchCommonEditors()
     return
   }
+  prefetchModule(() => import('@/website/MarketingPage.jsx'))
   prefetchModule(() => import('@/components/auth/LoginPage.jsx'))
 }
 

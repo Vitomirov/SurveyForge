@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Eye, EyeOff, AlertCircle } from 'lucide-react'
 import { AppLogo } from '@/components/shared/branding/AppLogo.jsx'
 import { login, signup, DEFAULT_CREDENTIALS } from '@/utils/data/authStore'
@@ -6,8 +6,12 @@ import { prefetchForRoute } from '@/utils/routing/routePrefetch'
 import { AUTH_COPY, AUTH_VALIDATION } from '@/constants/authCopy'
 import { APP_TAGLINE } from '@/constants/branding'
 
-export function LoginPage({ onLogin }) {
-  const [mode, setMode] = useState('login') // 'login' | 'signup'
+export function LoginPage({ onLogin, initialMode = 'login', onGoHome }) {
+  const [mode, setMode] = useState(initialMode)
+
+  useEffect(() => {
+    setMode(initialMode)
+  }, [initialMode])
 
   const [organizationName, setOrganizationName] = useState('')
   const [name,     setName]     = useState('')
@@ -64,8 +68,17 @@ export function LoginPage({ onLogin }) {
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="flex flex-col items-center mb-8">
-          <AppLogo size="lg" className="w-[min(280px,80vw)]" />
+          <AppLogo size="lg" className="w-[min(280px,80vw)]" onClick={onGoHome} />
           <p className="text-xs text-ink-400 mt-3">{APP_TAGLINE}</p>
+          {onGoHome && (
+            <button
+              type="button"
+              onClick={onGoHome}
+              className="mt-4 text-sm font-medium text-brand-600 hover:text-brand-700"
+            >
+              ← Back to home
+            </button>
+          )}
         </div>
 
         {/* Card */}

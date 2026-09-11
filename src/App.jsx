@@ -16,6 +16,7 @@ import { useSurveyBranding } from '@/hooks/useSurveyBranding'
 import { isPlatformOwner } from '@/utils/platform/permissions'
 
 const LoginPage        = lazy(() => import('@/components/auth/LoginPage.jsx'))
+const MarketingPage    = lazy(() => import('@/website/MarketingPage.jsx'))
 const Dashboard        = lazy(() => import('@/components/dashboard/Dashboard.jsx'))
 const PlatformConsole  = lazy(() => import('@/components/dashboard/PlatformConsole.jsx'))
 const SurveyBuilder    = lazy(() => import('@/components/builder/SurveyBuilder.jsx'))
@@ -141,7 +142,7 @@ export default function App() {
     return onAuthInvalidated((code) => {
       logout()
       setSession(null)
-      nav('dashboard')
+      nav('home')
       const message = code === 'TOKEN_EXPIRED'
         ? AUTH_ERRORS.sessionExpired
         : AUTH_ERRORS.sessionInvalid
@@ -154,10 +155,17 @@ export default function App() {
   }, [session, isPublic, id])
 
   useEffect(() => {
+    if (!session) return
+    if (view === 'login' || view === 'signup') nav('dashboard')
+  }, [session, view])
+
+  useEffect(() => {
     if (!ownerSession) return
     if (view === 'builder' || view === 'preview') nav('dashboard')
   }, [ownerSession, view])
 
+  const goHome = () => nav('home')
+  const authMode = view === 'signup' ? 'signup' : 'login'
   const back = () => nav('dashboard')
 
   if (isPublic) {
@@ -182,9 +190,20 @@ export default function App() {
   }
 
   if (!session) {
+    if (view === 'login' || view === 'signup' || view === 'builder' || view === 'preview') {
+      return (
+        <Page title="Sign-in error" label="Loading…">
+          <LoginPage
+            initialMode={authMode}
+            onGoHome={goHome}
+            onLogin={(s) => { prefetchForRoute({ session: s }); setSession(s) }}
+          />
+        </Page>
+      )
+    }
     return (
-      <Page title="Sign-in error" label="Loading…">
-        <LoginPage onLogin={(s) => { prefetchForRoute({ session: s }); setSession(s) }} />
+      <Page title="Marketing" label="Loading site…">
+        <MarketingPage isAuthenticated={false} />
       </Page>
     )
   }
@@ -195,8 +214,16 @@ export default function App() {
         <PlatformConsole
           session={session}
           onSessionUpdate={setSession}
-          onLogout={() => { logout(); setSession(null); nav('dashboard') }}
+          onLogout={() => { logout(); setSession(null); nav('home') }}
         />
+      </Page>
+    )
+  }
+
+  if (view === 'home') {
+    return (
+      <Page title="Marketing" label="Loading site…">
+        <MarketingPage isAuthenticated />
       </Page>
     )
   }
@@ -232,7 +259,7 @@ export default function App() {
       <Dashboard
         session={session}
         onSessionUpdate={setSession}
-        onLogout={() => { logout(); setSession(null); nav('dashboard') }}
+        onLogout={() => { logout(); setSession(null); nav('home') }}
         onNewSurvey={() => {
           const surveyId = newSurveyId()
           markNewSurveyDraft(surveyId)

@@ -1,98 +1,137 @@
-# Documentation
+# Rescope Surveys — Documentation
 
-Guides for developing, publishing, and running Rescope Surveys.
-
----
-
-## Start here
-
-| I want to… | Guide |
-|------------|-------|
-| Run the app locally while coding | [DEVELOPMENT.md](DEVELOPMENT.md) |
-| Build and push images to Docker Hub | [DOCKER.md](DOCKER.md) |
-| Deploy to a production VPS | [DEPLOY.md](DEPLOY.md) |
-| Set up CI/CD (with or without a server) | [CI.md](CI.md) |
-| Manual QA after changes | [SMOKE_CHECKLIST.md](SMOKE_CHECKLIST.md) |
-| Module / API reference | [PUBLIC_API.md](PUBLIC_API.md) |
+Professional documentation for deploying, operating, and maintaining Rescope Surveys on your own infrastructure.
 
 ---
 
-## Compose files — one sentence each
+## Who this is for
 
-| File | When to use it |
-|------|----------------|
-| `docker-compose.yml` | **Base stack** — partner demo, local Docker pull, or as the foundation for overrides |
-| `docker-compose.dev.yml` | **npm dev** — exposes Postgres on `localhost:5433` |
-| `docker-compose.prod.yml` | **Production VPS** — no seed accounts, HTTPS cookies, web bound to `127.0.0.1` only |
-| `docker-compose.load.yml` | **Load tests** — separate project with CPU/RAM caps + k6 |
+| Audience | Start here |
+|----------|------------|
+| **Platform operator** — run the SaaS on a VPS you control | [DEPLOY.md](DEPLOY.md) → [OPERATIONS.md](OPERATIONS.md) |
+| **Developer** — contribute features or fix bugs | [DEVELOPMENT.md](DEVELOPMENT.md) → [ARCHITECTURE.md](ARCHITECTURE.md) |
+| **DevOps / release engineer** — build images and automate delivery | [DOCKER.md](DOCKER.md) → [CI.md](CI.md) |
+| **Maintainer** — understand design decisions and code layout | [ARCHITECTURE.md](ARCHITECTURE.md) → [CODE_REFERENCE.md](CODE_REFERENCE.md) |
+| **QA** — manual regression after changes | [SMOKE_CHECKLIST.md](SMOKE_CHECKLIST.md) |
 
-You almost never edit these for day-to-day work. Pick the right combination:
+Security posture and remediation roadmap: [SECURITY_AUDIT.md](SECURITY_AUDIT.md) *(maintained separately)*.
+
+---
+
+## Documentation map
+
+| Guide | Purpose |
+|-------|---------|
+| [ARCHITECTURE.md](ARCHITECTURE.md) | System design, infrastructure, tenancy, data model, and how the codebase is organized |
+| [DEPLOY.md](DEPLOY.md) | First-time production deployment on a single VPS (Caddy + Docker) |
+| [OPERATIONS.md](OPERATIONS.md) | Day-2 maintenance — updates, backups, enterprise customers, monitoring, troubleshooting |
+| [DOCKER.md](DOCKER.md) | Container images, Compose files, publishing to Docker Hub, partner/self-hosted pulls |
+| [DEVELOPMENT.md](DEVELOPMENT.md) | Local development setup, workflows, and verification |
+| [CI.md](CI.md) | Continuous integration, release tagging, and automated VPS deployment |
+| [CODE_REFERENCE.md](CODE_REFERENCE.md) | Frontend module layout, store actions, logic engines, and API surface |
+| [SMOKE_CHECKLIST.md](SMOKE_CHECKLIST.md) | Manual QA checklist for builder, taker, and export flows |
+
+---
+
+## Deployment models
+
+Rescope Surveys supports two commercial delivery patterns from the **same codebase and Docker images**:
+
+### 1. Hosted multi-tenant SaaS
+
+You operate one VPS (or larger stack). Multiple customer organizations share a single PostgreSQL database. You control billing, plan assignment, and platform-wide settings through the **Platform Console** (`platform_owner` role).
+
+- Canonical app host: `app.yourdomain.com`
+- Public survey links: `surveys.yourdomain.com/{publicPath}`
+- Enterprise customers can use verified custom domains: `surveys.client.com/{publicPath}`
+
+→ Follow [DEPLOY.md](DEPLOY.md).
+
+### 2. Self-hosted single-tenant (Docker)
+
+A customer runs the full stack on **their** server with **their** database. Data never leaves their infrastructure. You deliver versioned images from Docker Hub plus Compose files and deployment documentation.
+
+- One organization per deployment (isolated Postgres volume)
+- Customer manages HTTPS, secrets, and backups
+- No license server — entitlement is contractual
+
+→ See [DOCKER.md](DOCKER.md) (images) and [DEPLOY.md](DEPLOY.md) (production hardening pattern).
+
+---
+
+## Compose files at a glance
+
+| File | Use when |
+|------|----------|
+| `docker-compose.yml` | Base stack — Postgres, API, web. Partner demo or foundation for overrides |
+| `docker-compose.dev.yml` | Local npm dev — exposes Postgres on `localhost:5433` |
+| `docker-compose.prod.yml` | Production — no seed accounts, secure cookies, web bound to loopback only, Redis for rate limits |
+| `docker-compose.load.yml` | Load testing — 2 CPU / 4 GB caps + k6 runner (separate project) |
+
+Typical commands:
 
 ```bash
-# Partner / demo (Docker Hub pull)
-docker compose up -d
+# Partner / local demo (Docker Hub images)
+docker compose pull && docker compose up -d
 
-# npm dev (Postgres only in Docker)
+# Local development (Postgres only)
 npm run dev:docker
 
-# Production VPS (set COMPOSE_FILE once in .env on the server)
+# Production VPS
 COMPOSE_FILE=docker-compose.yml:docker-compose.prod.yml docker compose up -d
 ```
 
 ---
 
-## Three environments at a glance
+## Environments
 
 ```
-┌─────────────────────────────────────────────────────────────────────────┐
-│ DEVELOPMENT (your laptop)                                               │
-│   Vite :5173 + API :3003 + Postgres :5433                               │
-│   Hot reload, seed accounts, relaxed auth                               │
-│   → DEVELOPMENT.md                                                      │
-└─────────────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────────┐
+│ DEVELOPMENT (laptop)                                                     │
+│   Vite :5173 + API :3003 + Postgres :5433                              │
+│   Hot reload, seeded accounts, relaxed rate limits                       │
+│   → DEVELOPMENT.md                                                       │
+└──────────────────────────────────────────────────────────────────────────┘
 
-┌─────────────────────────────────────────────────────────────────────────┐
-│ DOCKER HUB (images + partner demo)                                      │
-│   docker compose pull && up -d  →  localhost:8080                     │
-│   Pre-built images, demo login admin / admin123                         │
-│   → DOCKER.md                                                           │
-└─────────────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────────┐
+│ STAGING / DEMO (Docker on laptop or CI)                                  │
+│   docker compose up -d  →  localhost:8080                                │
+│   Pre-built Hub images, demo credentials                                 │
+│   → DOCKER.md                                                            │
+└──────────────────────────────────────────────────────────────────────────┘
 
-┌─────────────────────────────────────────────────────────────────────────┐
-│ PRODUCTION (VPS)                                                        │
-│   Caddy :443 → 127.0.0.1:8080 → Docker stack                            │
-│   Real domain, HTTPS, no seed, secrets in .env                          │
-│   → DEPLOY.md                                                           │
-└─────────────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────────┐
+│ PRODUCTION (VPS)                                                         │
+│   Caddy :443 → 127.0.0.1:8080 → Docker (web → api → postgres + redis)  │
+│   Real domain, HTTPS, strong secrets, no seed accounts                   │
+│   → DEPLOY.md · OPERATIONS.md                                            │
+└──────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Before you buy a server
+## Recommended path before production
 
-You do **not** need a VPS to make progress. Do this first:
-
-1. **Develop locally** — [DEVELOPMENT.md](DEVELOPMENT.md)
-2. **Run tests in CI** — push to GitHub; see [CI.md](CI.md)
-3. **Build and publish Docker images** — `./scripts/deploy/publish-docker.sh v0.1.0`
-4. **Demo the stack locally** — `docker compose up -d` on your machine (same images partners get)
-5. **Prepare production files** — generate secrets, read [DEPLOY.md](DEPLOY.md), buy domain DNS
-
-Buy the VPS when you are ready to point DNS and run the first-deploy scripts in [DEPLOY.md](DEPLOY.md).
+1. Develop and test locally — [DEVELOPMENT.md](DEVELOPMENT.md)
+2. Run automated checks — `npm run check:registries && npm run test:track-a`
+3. Build and publish versioned images — [DOCKER.md](DOCKER.md)
+4. Demo the stack locally with Hub images — `docker compose up -d`
+5. Read architecture and deployment guides — [ARCHITECTURE.md](ARCHITECTURE.md), [DEPLOY.md](DEPLOY.md)
+6. Provision VPS, configure DNS, deploy — [DEPLOY.md](DEPLOY.md)
+7. Set up backups and release process — [OPERATIONS.md](OPERATIONS.md), [CI.md](CI.md)
 
 ---
 
-## Scripts
+## Deploy scripts
 
-| Script | Purpose |
-|--------|---------|
-| `scripts/dev/start-postgres.sh` | Postgres for npm dev |
-| `scripts/deploy/publish-docker.sh` | Build + push API and web images (laptop) |
-| `scripts/deploy/sync-to-vps.sh` | Copy compose files, deploy scripts, and Caddyfile to the VPS |
-| `scripts/deploy/bootstrap-vps.sh` | Install Docker, Caddy, ufw; install Caddyfile |
-| `scripts/deploy/init-env.sh` | Generate production `.env` with openssl (VPS) |
-| `scripts/deploy/check-dns.sh` | Confirm apex / www / surveys point at this VPS |
-| `scripts/deploy/deploy.sh` | Production pull + up + health check (optional image tag) |
-| `scripts/deploy/verify.sh` | Loopback bind, health, Caddy, public HTTPS |
-| `scripts/deploy/backup.sh` | Postgres dump; `--install-cron` for nightly |
-| `scripts/load/run-load-test.sh` | k6 load test stack |
+| Script | Where | Purpose |
+|--------|-------|---------|
+| `scripts/deploy/publish-docker.sh` | Laptop | Build and push API + web images to Docker Hub |
+| `scripts/deploy/sync-to-vps.sh` | Laptop | Copy Compose files, deploy scripts, and Caddyfile to the VPS |
+| `scripts/deploy/bootstrap-vps.sh` | VPS | Install Docker, Caddy, ufw; install Caddyfile |
+| `scripts/deploy/init-env.sh` | VPS | Generate production `.env` with `openssl` |
+| `scripts/deploy/check-dns.sh` | VPS | Verify DNS A records point at this server |
+| `scripts/deploy/deploy.sh` | VPS | Validate secrets, pull images, start stack, health check |
+| `scripts/deploy/verify.sh` | VPS | Loopback bind, health, Caddy, public HTTPS |
+| `scripts/deploy/backup.sh` | VPS | Postgres dump; `--install-cron` for nightly backups |
+| `scripts/load/run-load-test.sh` | Laptop | k6 load test against capped Compose stack |

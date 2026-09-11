@@ -1,282 +1,288 @@
-# Rescope Surveys Security Audit
-
-**Audit date:** 2026-09-07  
-**Scope:** React SPA, Fastify API, Prisma/PostgreSQL data layer, authentication and authorization, survey/response input handling, Docker Compose, nginx, Caddy, deployment scripts, and CI workflows.  
-**Method:** Static source and configuration review plus `npm audit --omit=dev` against both lockfiles. This was not a penetration test, dynamic application scan, cloud configuration review, or legal/compliance assessment.
+# Rescope Surveys — Security Posture & Audit
 
-### Implementation status — 2026-09-07
+**Last updated:** 2026-09-07  
+**Product:** Rescope Surveys (Survey SaaS)  
+**Scope:** React SPA, Fastify API, Prisma/PostgreSQL, Docker/nginx/Caddy deployment, CI/CD  
+**Method:** Static code and configuration review, dependency audit (`npm audit --omit=dev`), integration test execution. Not a penetration test, dynamic scan, or compliance certification.
 
-- **Phase 0 repository baseline: completed.** Existing config, frontend, auth-cookie, RBAC, security, branding, build, Prisma schema, and Compose checks were executed locally. The working tree introduces no database migration or UI change.
-- **Phase 0 production preflight: operator action required.** Before deployment, create and copy a fresh production backup off-host, record the currently deployed image/tag, and run the production smoke checklist after release. No production database or service was modified by this implementation session.
-- **Phase 1 dependency/config hardening: implemented and locally verified.** `@fastify/jwt` is upgraded from 9.1.0 to 10.2.2, Fastify is upgraded to 5.12.3, JWT signing and verification are restricted to HS256, obsolete `JWT_EXPIRES_IN` configuration is removed, production PostgreSQL credentials are required by the Compose override, and strict production mode now rejects unsafe seed, migration, rate-limit, cookie, and Bearer-auth flags.
-- **Phase 2 distributed abuse protection: implemented and locally verified.** Production Compose now includes a private, non-published Redis service and requires the API to connect before startup. Auth and public survey limits use shared atomic counters, with layered per-IP, per-account, global, and per-survey quotas. Keys containing identities or survey identifiers are SHA-256 hashed, responses expose standard quota and `Retry-After` headers, and a Redis runtime failure falls back to bounded in-memory protection instead of taking the API offline.
-- **Phase 2 external edge controls: operator action remains.** A CDN/WAF, managed bot challenge/CAPTCHA, and provider-level alerting require production account and DNS configuration and are not enabled by repository code alone.
-- **Phase 3 P0 application security: implemented and locally verified.** Cookie-authenticated mutations now require an allowlisted browser `Origin` plus a double-submit `rs_csrf` token. Refresh cookies are scoped to `/api/auth`, nginx serves `frame-ancestors 'none'` on the default SPA shell, `/embed/*` HTML documents receive per-survey `frame-ancestors` via an nginx auth subrequest, embed `postMessage` targets only validated parent origins, trusted host routing no longer reads raw `X-Forwarded-Host`, production internal routes require `INTERNAL_API_SECRET`, and Caddy ask is rate-limited.
-- **Verification:** frontend production audit reports zero vulnerabilities; the critical JWT and Fastify advisories are removed; production build and base/production Compose validation pass; all executed auth-cookie, API security, RBAC, config, frontend, permission, and branding tests pass. An isolated production Compose stack started healthy with PostgreSQL, API, Redis, and nginx; Redis counters remained intact across an API restart.
-- **Known residual tooling advisory:** Prisma 6.19.3 is the newest release on the current v6 line, but its Prisma CLI/config dependency still reports a high-severity recursive-merge denial-of-service advisory. The affected package is migration/build tooling rather than the request-handling ORM path. A Prisma 7 migration is intentionally deferred because it is a breaking change and must be tested as its own release.
+---
 
-## 1. Executive Summary
+## 1. Executive summary
 
-Rescope Surveys has a solid application-security baseline for an early Survey SaaS product. The code consistently applies organization and survey-owner scoping, verifies JWTs server-side, reloads authorization state from PostgreSQL, uses short-lived HttpOnly access cookies with rotating hashed refresh tokens, sanitizes rich text on both write and render, parameterizes database access through Prisma, limits request body size, constrains public routes, and provides a production topology that keeps PostgreSQL and the application port off the public network.
+Rescope Surveys has a **solid baseline** for an early-stage B2B survey platform: organization-scoped data access, HttpOnly cookie sessions with rotating refresh tokens, server-side HTML sanitization, parameterized database access, production network isolation, and a growing automated security test suite.
 
-The platform is **not yet enterprise-ready**. The original audit identified critical advisories in the resolved `@fastify/jwt` / `fast-jwt` chain. Phase 1 remediation has upgraded the affected JWT and Fastify packages, restricted tokens to HS256, and passed the existing authentication, RBAC, and security regression suites. The remediated code must still pass the production backup, deployment, and smoke-test preflight before it is considered live.
+**Phases 0–3 are implemented** in the application and production Compose stack (see §3). The original critical JWT/Fastify advisories are remediated; cookie-authenticated mutations are CSRF-protected; distributed rate limiting runs on private Redis; embed framing and proxy trust boundaries are materially improved.
 
-The next highest risks are architectural:
+The platform is **not yet enterprise-ready**. Highest residual risks are incomplete public-response schema validation, absence of MFA/audit logging/data-governance controls, limited container and CI/CD assurance, and operational dependencies (DNS, `CORS_ORIGIN`, secrets) that must be configured correctly on every VPS.
 
-- Cookie authentication relies on `SameSite=Lax` with explicit CSRF tokens and server-side Origin enforcement on unsafe cookie-authenticated routes.
-- Embed framing policy is enforced on the HTML document for `/embed/*` via nginx plus per-survey `frame-ancestors`; non-embed routes default to `frame-ancestors 'none'`.
-- Public response validation is only structural and partial. It does not fully validate answer type, size, option membership, visibility, termination state, timestamps, fingerprints, or all completion rules against the survey definition.
-- Shared Redis limits now cover IP, account, global auth, and per-survey abuse across API replicas; CDN/WAF bot scoring and managed challenges remain deployment tasks.
-- Optional fingerprinting sends respondent IP and geolocation data to third-party services and collects a canvas fingerprint without an in-product consent or processor-control workflow.
-- Security audit logging, MFA/SSO, mature account recovery, data retention/deletion controls, encrypted off-host backups, and production monitoring are absent.
+| Area | Status |
+|------|--------|
+| Authentication & session hygiene | **Good baseline** — short-lived JWT, refresh rotation, HS256 |
+| Tenant isolation (application layer) | **Good baseline** — consistent org/survey scoping |
+| CSRF, embed framing, proxy trust | **Implemented** (Phase 3) |
+| Abuse protection | **Implemented** in-app (Phase 2); edge WAF deferred |
+| Public response integrity | **Gap** — structural validation only |
+| Identity lifecycle (MFA, SSO, recovery) | **Gap** |
+| Audit logging & monitoring | **Gap** |
+| Data governance & encryption | **Gap** |
+| Container / supply-chain hardening | **Gap** |
+| CI/CD security gates | **Partial** |
 
-Phase 1 corrects the README and Compose drift around HttpOnly cookie authentication and access/refresh-token lifetime settings. One limitation remains: role data is re-read through a two-second user cache, so a role change or revocation is not guaranteed to take effect on the very next request.
+**Overall posture:** suitable for controlled production use with operator diligence; **additional P1 work required** before marketing to regulated or large enterprise customers.
 
-**Overall posture:** reasonable baseline controls, but **high residual risk for enterprise or sensitive CX/market-research data until the P0/P1 recommendations below are completed**.
+---
 
-## 2. Currently Implemented Security Controls
+## 2. Implementation roadmap
 
-### Backend application controls
+### Completed
 
-- **Bounded request bodies:** Fastify limits request bodies to 2 MiB, reducing oversized JSON and memory-exhaustion risk (`server/src/app.js`).
-- **Safe production errors:** unexpected production errors return a generic message; body-limit errors are normalized to HTTP 413 (`server/src/app.js`, `server/src/lib/httpErrors.js`).
-- **Parameterized database access:** application CRUD uses Prisma query builders. The few raw SQL calls use Prisma tagged-template `$queryRaw`, not unsafe string interpolation. No `$queryRawUnsafe` or `$executeRawUnsafe` use was found.
-- **Survey write sanitization:** survey descriptions and text-block HTML are sanitized server-side using `isomorphic-dompurify` with restricted tags, attributes, and `text-align`-only styles (`server/src/lib/survey/sanitizeHtml.js`, `server/src/routes/surveys.js`).
-- **Response hardening:** response IDs must be UUIDs; statuses are allowlisted; unknown question IDs are rejected; IDs cannot be reused across surveys or organizations; terminal responses cannot be changed back to partial; DNC status is resolved server-side (`server/src/routes/responses.js`).
-- **Basic completion validation:** complete/DNC submissions must contain an answer, required questions must be non-empty, and configured email questions must contain a valid email (`server/src/lib/survey/completeValidation.js`).
-- **Optimistic concurrency:** survey updates require an integer revision and use an atomic `updateMany` condition to prevent lost updates (`server/src/routes/surveys.js`).
-- **Safer external redirects:** respondent redirect URLs are parsed and restricted to HTTP/HTTPS, then opened with `noopener,noreferrer` (`src/utils/survey/engines/externalRedirectEngine.js`).
-- **Controlled development features:** local-library migration is not registered in production, and forced custom-domain verification is rejected outside development (`server/src/routes/migrate.js`, `server/src/routes/billing.js`).
-- **Trusted-proxy intent:** Fastify is configured for one proxy hop, and nginx/Caddy overwrite `X-Forwarded-For` for the documented production path (`server/src/app.js`, `docker/nginx.conf`, `docker/caddy/Caddyfile`).
+| Phase | Focus | Outcome |
+|-------|--------|---------|
+| **0** | Baseline & preflight | Regression suites documented; production backup/smoke checklist defined |
+| **1** | Dependencies & config | `@fastify/jwt` 10.x, Fastify 5.x, HS256-only JWTs, strict prod config, required `POSTGRES_PASSWORD` / strong `JWT_SECRET` |
+| **2** | Distributed rate limits | Private Redis; per-IP, per-account, global auth, and per-survey quotas; hashed keys; `Retry-After` headers; in-memory fallback |
+| **3** | Application security (P0) | CSRF (`Origin` + `rs_csrf`); refresh cookie path `/api/auth`; CSP `frame-ancestors` on HTML; per-survey embed CSP; validated `postMessage` origins; `INTERNAL_API_SECRET` for Caddy ask; trusted `X-Forwarded-Host` overwrite; Caddy ask rate limits |
 
-### Database and tenant-isolation controls
+### Remaining
 
-- **Application-level tenant scoping:** organization IDs are included throughout dashboard, users, platform lists, billing, response, export, and survey queries.
-- **Owner-level survey scoping:** admins receive organization scope; editors receive organization plus `createdById` scope. Shared lookup helpers return 404 for inaccessible surveys to avoid existence disclosure (`server/src/lib/auth/authz.js`, `server/src/lib/auth/surveyAccess.js`).
-- **Cross-tenant response protection:** reads and deletes include survey and organization conditions; public upserts reject an existing response ID owned by a different survey or organization (`server/src/routes/responses.js`).
-- **Role-separated vendor access:** cross-organization vendor endpoints require the live `platform_owner` role; organization administration and billing endpoints require `admin` (`server/src/routes/billing.js`, `server/src/routes/platform.js`, `server/src/routes/admin.js`).
-- **Relational integrity:** foreign keys and cascading behavior are defined in Prisma. Public survey paths, user emails, refresh-token hashes, and per-survey DNC addresses have uniqueness constraints (`server/prisma/schema.prisma`).
-- **Atomic sensitive operations:** organization signup creates billing and the first admin in a transaction. Password changes/reset revoke refresh tokens in the same transaction (`server/src/routes/auth.js`, `server/src/routes/platform.js`).
-- **No direct database publication in the production override:** PostgreSQL is only available on the Compose network; the web service is loopback-bound for Caddy (`docker-compose.yml`, `docker-compose.prod.yml`).
+| Phase | Priority | Focus |
+|-------|----------|--------|
+| **2.1** | P2 | Rate-limit tuning for enterprise NAT (shared-office IP quotas) |
+| **4** | P1 | Authoritative JSON schemas; security audit log; MFA & account lifecycle; data governance & fingerprinting controls |
+| **5** | P2 | Container hardening; CI/CD security gates; monitoring & alerting; PostgreSQL RLS evaluation |
+| **6** | P3 | Browser/upload polish (HSTS, CSP reporting); host SSH hardening; penetration test; `SECURITY.md` |
 
-### API, authentication, and authorization controls
+---
 
-- **Central API authentication boundary:** all `/api` routes require authentication except explicitly listed login/signup/logout/refresh, public survey routes, and internal Caddy integration routes (`server/src/plugins/auth.js`).
-- **Short-lived access JWTs:** production defaults to 15-minute access tokens. Production configuration requires a non-placeholder JWT secret of at least 32 characters (`server/src/config.js`, `docker-compose.prod.yml`).
-- **HttpOnly cookie storage:** access and refresh credentials are in `HttpOnly`, `SameSite=Lax` cookies; production sets `Secure=true`. Tokens are not exposed in login/signup JSON (`server/src/lib/auth/cookies.js`, `server/src/routes/auth.js`).
-- **Refresh-token protection:** refresh tokens are 256-bit random values, stored only as SHA-256 hashes, rotated on use, grouped into token families, and family-revoked when reuse is detected (`server/src/lib/auth/refreshTokens.js`).
-- **Session revocation:** JWTs carry `tokenVersion`; password changes increment it and revoke existing refresh tokens. Deleted users, organization changes, and token-version changes invalidate sessions (`server/src/plugins/auth.js`).
-- **Live authorization source:** the server uses the current database user role and organization rather than trusting role claims in the JWT. The user cache has a two-second TTL and write paths invalidate it (`server/src/plugins/auth.js`, `server/src/plugins/hotCache.js`).
-- **Password hashing:** bcrypt is used with cost factor 10. Authentication failures use a generic invalid-credentials response (`server/src/lib/auth/password.js`, `server/src/routes/auth.js`).
-- **Role and ownership checks:** reusable `preHandler` role guards and survey-scope helpers are applied to privileged routes.
-- **Account safety checks:** role values are allowlisted at the API layer, organization admins cannot create `platform_owner` users, and last-admin/last-user protections are present (`server/src/routes/platform.js`).
-- **CORS allowlist:** production requires explicit origins and rejects wildcard/reflect configurations while credentials are enabled (`server/src/config.js`, `server/src/app.js`).
-- **Public route restrictions:** public reads only return live surveys belonging to active organizations. Login, signup, refresh, public fetch, DNC checks, and response submission have endpoint-specific rate limits (`server/src/routes/public.js`, `server/src/lib/survey/rateLimit.js`).
-- **Security regression tests exist:** tests cover RBAC, survey/response ownership, cookie/refresh behavior, revision conflicts, rate limits, status/ID validation, completion checks, and XSS sanitization under `scripts/tests/integration/`.
+## 3. Implemented controls
 
-### Frontend and infrastructure controls
+### 3.1 Authentication & sessions
 
-- **Defense-in-depth XSS handling:** the frontend sanitizes rich HTML before editor insertion and immediately before every identified `dangerouslySetInnerHTML` render (`src/utils/sanitizeHtml.js`, `src/components/shared/forms/RichTextEditor.jsx`, `src/components/taker/screens/CoverPage.jsx`, `src/components/taker/SurveyPreview.jsx`).
-- **React escaping:** ordinary survey titles, question text, profile data, and messages are rendered as React text rather than raw HTML.
-- **No API-mode token in web storage:** API mode keeps only display/session metadata in `sessionStorage`; authentication credentials remain inaccessible to JavaScript in HttpOnly cookies (`src/utils/data/authStore.js`, `src/api/client.js`).
-- **White-label path normalization:** generated public paths are slugified to lowercase ASCII, capped at 80 characters, globally unique, and locked while live (`shared/surveyUrl.js`, `server/src/lib/survey/surveyPublicPath.js`).
-- **Custom-domain verification:** custom survey certificates are limited to verified Enterprise survey domains, and DNS TXT lookup uses an expected token (`server/src/lib/platform/caddyAsk.js`, `server/src/lib/platform/checkDomainVerificationDns.js`).
-- **Browser headers:** nginx/Caddy set `X-Content-Type-Options`, `Referrer-Policy`, and a restrictive `Permissions-Policy`. nginx provides a CSP with self-only scripts, no objects, self-only forms/base URI, and restricted connection/font/image sources (`docker/nginx.conf`, `docker/caddy/Caddyfile`).
-- **TLS termination:** Caddy provides automatic certificate issuance/renewal and HTTP-to-HTTPS behavior. On-demand custom certificates use an allow decision endpoint (`docker/caddy/Caddyfile`).
-- **Network separation:** production binds nginx to `127.0.0.1`, leaves the API exposed only inside Compose, and does not publish PostgreSQL. Deployment verification checks for accidental public web-port binding.
-- **Production secret workflow:** `init-env.sh` generates random database/JWT secrets under `umask 077`; `.env` is mode 600; deployment validation rejects known placeholders and missing values (`scripts/deploy/init-env.sh`, `scripts/deploy/common.sh`).
-- **Production bootstrap safety:** the production override disables default account seeding, development migrations, Bearer-token acceptance, and relaxed rate limits (`docker-compose.prod.yml`).
-- **Backups:** a nightly `pg_dump` workflow exists, stores local dumps with restrictive permissions, retains 14 days, and documents restore commands and the need for off-host copies (`scripts/deploy/backup.sh`, `docs/DEPLOY.md`).
+- **HttpOnly cookies:** `rs_access` (JWT) and `rs_refresh` (rotating opaque token); production `Secure` + `SameSite=Lax`.
+- **Short-lived access tokens:** default 15 minutes; refresh ~30 days with rotation on each use.
+- **Refresh-token security:** 256-bit random values, SHA-256 hashed at rest, family revocation on reuse detection.
+- **Session revocation:** JWT `tokenVersion` incremented on password change; refresh families revoked; deleted users invalidated.
+- **Live authorization:** role and organization reloaded from PostgreSQL (2-second cache TTL on user row).
+- **Password storage:** bcrypt (cost 10); generic auth failure messages.
+- **CSRF (Phase 3):** unsafe cookie-authenticated `/api` methods require allowlisted `Origin` / `Sec-Fetch-Site` plus double-submit `rs_csrf` / `X-CSRF-Token`. Login/signup and `/api/public/*` exempt.
+- **CORS:** production requires explicit origin allowlist; wildcards rejected. **`CORS_ORIGIN` must include every app host** (e.g. `https://app.rescopesurveys.com`).
 
-## 3. Gaps & Missing Protections
+*References:* `server/src/lib/auth/cookies.js`, `server/src/lib/security/csrf.js`, `server/src/plugins/csrf.js`, `server/src/plugins/auth.js`, `src/api/client.js`
 
-### Resolved during Phase 1
+### 3.2 Authorization & tenant isolation
 
-#### 3.1 Vulnerable backend JWT dependency chain — resolved in working tree
+- **Organization scope** on dashboard, billing, platform lists, responses, exports, and surveys.
+- **Survey scope:** admins see org surveys; editors see own surveys; inaccessible surveys return **404** (no existence leak).
+- **Vendor isolation:** `platform_owner` required for cross-tenant vendor routes.
+- **Atomic sensitive writes:** signup transaction; password change + token revocation in one transaction.
+- **Public reads:** live surveys only; inactive subscriptions rejected.
 
-The initial `npm audit --omit=dev` on 2026-09-07 reported **2 critical, 4 high, and 1 moderate package findings** in the backend lockfile. Most importantly, `@fastify/jwt <=9.1.0` resolved a vulnerable `fast-jwt` version with published advisories covering algorithm confusion, claim/cache confusion, critical-header handling, and an empty-secret authentication bypass scenario.
+*References:* `server/src/lib/auth/authz.js`, `server/src/lib/auth/surveyAccess.js`, `server/src/routes/public.js`
 
-**Implemented:** upgraded `@fastify/jwt` to 10.2.2 (`fast-jwt` 6.3.3) and Fastify to 5.12.3, refreshed compatible transitive packages, pinned JWT signing and verification to HS256, regenerated the lockfile, and ran the full existing auth-cookie, API security, and RBAC suites successfully. The critical and Fastify/`fast-uri` findings are no longer reported.
+### 3.3 Input handling & XSS
 
-**Residual:** the audit still reports three high findings in Prisma CLI/config tooling through `deepmerge-ts`. Prisma 6.19.3 is current on the existing major; upgrading to Prisma 7 is deferred to a separately tested compatibility release. Do not expose Prisma CLI tooling to untrusted input or production request paths.
+- **Survey HTML sanitization** on write (`isomorphic-dompurify`, restricted tags/attributes).
+- **Defense in depth** on render: editor paste sanitization + pre-render sanitization for `dangerouslySetInnerHTML`.
+- **Response validation (partial):** UUID IDs, allowlisted statuses, known question keys, cross-survey ID blocking, basic completion checks, server-side DNC resolution.
+- **External redirects:** HTTP/HTTPS only; `noopener,noreferrer`.
+- **Request body limit:** 2 MiB; generic production error messages.
 
-### High
+*References:* `server/src/lib/survey/sanitizeHtml.js`, `server/src/routes/responses.js`, `server/src/lib/survey/completeValidation.js`
 
-#### 3.2 Embed allowlist enforced on HTML documents — resolved in Phase 3
+### 3.4 Abuse protection (Phase 2)
 
-The original issue was that `frame-ancestors` was returned only on the public survey JSON API response, which does not protect the framed SPA document. Phase 3 adds `frame-ancestors 'none'` to the default nginx HTML shell, resolves per-survey allowlists for `/embed/*` through an nginx auth subrequest to `/api/internal/embed-csp`, and restricts embed `postMessage` to validated parent origins.
+- **Redis-backed counters** shared across API replicas (`RATE_LIMIT_REDIS_REQUIRED=true` in production).
+- **Layered limits:** per-IP; per-account (login); global auth ceilings; per-survey public fetch/DNC/submit.
+- **Opaque rate-limit keys** (SHA-256 hashed identifiers).
+- **Standard `Retry-After` and quota headers** on throttle responses.
+- **Degraded mode:** bounded in-memory limiter if Redis fails at runtime (API stays up).
 
-**Remaining action:** add real-browser framing allow/deny tests in CI and keep the development embed harness out of production artifacts.
+*References:* `server/src/lib/survey/rateLimit.js`, `server/src/plugins/rateLimits.js`, `docker-compose.prod.yml`
 
-#### 3.3 CSRF defense for cookie-authenticated mutations — resolved in Phase 3
+### 3.5 Embed & framing (Phase 3)
 
-`HttpOnly`, `Secure`, `SameSite=Lax` cookies and restrictive CORS substantially reduce ordinary cross-site POST attacks, but they are not a complete CSRF policy on their own. Phase 3 adds explicit `Origin` / `Sec-Fetch-Site` enforcement plus a double-submit `rs_csrf` token for unsafe cookie-authenticated API methods, and scopes refresh cookies to `/api/auth`.
+- **Default SPA:** `frame-ancestors 'none'` on nginx HTML responses.
+- **Embed routes:** nginx `auth_request` to `/api/internal/embed-csp` sets per-survey `frame-ancestors` from org allowlist.
+- **`postMessage`:** targets validated parent origin only (no `*`).
+- **Public branding payload** includes `embedAllowedOrigins` for embed mode.
 
-**Remaining action:** narrow refresh-cookie path further to `/api/auth/refresh` only if logout is refactored to read the refresh token through a dedicated auth-scoped route.
+*References:* `docker/nginx.conf`, `server/src/routes/internal.js`, `shared/embedProtocol.js`, `src/hooks/useEmbedMessaging.js`
 
-#### 3.4 Public response payload validation is incomplete
+### 3.6 Proxy, host trust & internal routes (Phase 3)
 
-The server validates IDs, statuses, known question keys, and basic completion, but it does not fully validate answers against question schemas. Examples include string/array/object shape, maximum lengths/counts, option membership, numeric/date bounds, matrix row/column IDs, ranking uniqueness, constant-sum totals, visibility/branch state, termination claims, `pageReached`, timestamp reasonableness, and fingerprint structure. `terminated` submissions do not receive the completion checks applied to `complete`/`dnc`. A forged but structurally accepted payload can corrupt analytics and store unexpected or excessive PII.
+- **nginx/Caddy** overwrite `X-Forwarded-Host` from validated host.
+- **`clientDomainFromRequest`** uses framework hostname; dev-only `?client=` query fallback.
+- **`INTERNAL_API_SECRET` required** in production for `/api/internal/caddy-ask` (passed via Caddy systemd override).
+- **Caddy ask** rate-limited; domain allowlist + DNS TXT verification for enterprise hosts.
 
-**Action:** define versioned JSON schemas per question type and for survey definitions/responses; reject unknown properties; set field-level limits; calculate trusted status/timestamp/termination metadata server-side; and rerun applicable visibility, branch, termination, and completion rules before finalization.
+*References:* `docker/nginx.conf`, `docker/caddy/Caddyfile`, `server/src/routes/internal.js`, `server/src/lib/survey/surveyPublicPath.js`
 
-#### 3.5 Authentication and account lifecycle lacks enterprise controls
+### 3.7 Infrastructure & deployment
 
-There is no MFA, SSO/SAML/OIDC, email verification, secure invitation flow, password reset/recovery, compromised-password screening, or user-visible session management. Signup is public and immediately creates an admin organization. The password policy is only eight characters, and admins set/receive temporary passwords directly through API responses. Refresh rotation creates a new 30-day expiry each time, with no separate absolute session lifetime.
+- **Network:** PostgreSQL and API not published publicly; web on `127.0.0.1` only; Caddy terminates TLS.
+- **Secrets:** `init-env.sh` generates JWT/DB secrets; `.env` mode 600; deploy validation rejects placeholders.
+- **Production override:** no seed accounts, no dev migrations, no Bearer auth, strict JWT, Redis required.
+- **Backups:** nightly `pg_dump` script with retention (operator must copy off-host).
+- **DNS:** four A records required — `@`, `www`, `app`, **`surveys`** (public respondent links).
 
-**Action:** prioritize MFA for `admin` and `platform_owner`, verified-email/invite workflows, one-time expiring setup links instead of returned passwords, stronger password policy and breached-password checks, secure recovery, session/device inventory with revocation, and absolute plus idle session limits. Enterprise SSO should follow.
+*References:* `docs/DEPLOY.md`, `docker-compose.prod.yml`, `scripts/deploy/`
 
-#### 3.6 No immutable security audit trail
+### 3.8 Automated verification
 
-Fastify request/error logging is not an audit log. The system does not durably record logins, failed authentication, password/role changes, user creation/deletion, survey publication/deletion, response/DNC exports or deletion, domain verification, plan changes, vendor cross-tenant actions, or organization deletion with actor, target, time, request ID, and source.
+Integration tests cover RBAC, survey/response ownership, auth cookies & refresh, CSRF, rate limits, revision conflicts, XSS sanitization, and config validation under `scripts/tests/`.
 
-**Action:** add append-only, tenant-aware security audit events with restricted access and export, tamper resistance/remote shipping, PII-safe fields, retention policy, and alerts for high-risk events. Never log credentials, raw tokens, response bodies, or full DNC values.
+**Production operator checklist (after each security-related deploy):**
 
-#### 3.7 Data-governance and cryptographic controls are incomplete
+1. `CORS_ORIGIN` includes all app/survey hosts (no spaces after commas).
+2. `INTERNAL_API_SECRET` in `.env` **and** Caddy systemd override (same value).
+3. Recreate API after `.env` changes: `docker compose … up -d --force-recreate api` (`restart` does not reload env).
+4. `./scripts/deploy/check-dns.sh` passes for all four hostnames.
+5. Run smoke checklist in `docs/DEPLOY.md` §7.
 
-Survey answers, DNC email addresses, user profiles, organization settings, and backups are stored without application-level encryption. Repository deployment guidance does not establish managed volume encryption, encrypted off-host backup automation, key management/rotation, retention schedules, respondent deletion/export workflows, legal holds, data residency, or restore testing. The local backup script only gzip-compresses dumps; compression is not encryption.
+---
 
-**Action:** define data classification and retention/deletion rules; encrypt disks and backups with KMS-managed keys; automate off-host versioned backups; test restores; minimize/pseudonymize fingerprints and DNC data; add tenant/respondent deletion/export workflows; and document subprocessor/data-residency controls.
+## 4. Open findings & residual risk
 
-#### 3.8 Optional fingerprinting creates an undisclosed third-party privacy flow
+Findings below are **still open** or **partially mitigated**. Resolved items from the original audit (JWT CVEs, CSRF, embed CSP, Redis rate limits, proxy host overwrite, internal secret) are omitted here.
 
-When survey fingerprinting is enabled, its default signal set includes IP/geolocation and canvas fingerprinting. The browser calls `https://ipapi.co/json/`, falling back to `https://api.ipify.org`, so respondent network data is disclosed to external services before being stored with the survey response (`src/utils/format/deviceSignals.js`, `src/components/taker/SurveyPreview.jsx`, `src/store/initialState.js`). No consent gate, data-processing configuration, regional routing, or self-hosted alternative was found.
+### P1 — High priority
 
-**Action:** disable third-party IP lookup by default; collect only necessary server-observed fields; obtain and record appropriate consent where required; provide tenant controls and disclosures; execute processor agreements; honor Global Privacy Control/Do Not Track policy decisions; and define retention/deletion for IP, location, canvas, and device identifiers.
+#### 4.1 Public response validation is incomplete
 
-### Medium
+The API validates IDs, statuses, and basic completion but not full per-question answer schemas (types, bounds, option membership, matrix IDs, visibility/branch state, trusted timestamps, fingerprint structure). Forged payloads can corrupt analytics or store excess PII.
 
-#### 3.9 Distributed rate limiting implemented; edge bot controls remain
+**Recommendation:** versioned JSON schemas per question type; server-side completion/termination evaluation; reject unknown properties; trusted metadata only from server.
 
-The original limiter was an in-memory fixed-window map keyed only by IP. Phase 2 replaces the production path with atomic Redis counters shared across API processes. Login, signup, and refresh have per-IP and global quotas; login also has a normalized account quota; public fetch, DNC, and response writes combine per-IP with per-survey quotas. Rate-limit keys are opaque hashes and responses include quota and `Retry-After` headers. Redis is private to the Compose network and is required at production startup, while runtime errors degrade to the bounded local limiter.
+#### 4.2 No enterprise identity controls
 
-**Remaining action:** configure an edge CDN/WAF for network-level floods, bot scoring, and managed challenges; add login-risk and quota alerts; tune quotas from production traffic; and run a dedicated abuse/load test before large respondent campaigns.
+No MFA, SSO, email verification, secure invites, password reset, breached-password screening, or session inventory. Signup is open; minimum password length is 8 characters.
 
-#### 3.10 DNC endpoint is an email-membership oracle
+**Recommendation:** MFA for `admin` and `platform_owner`; verified-email invites; one-time setup links; absolute + idle session limits; SSO for enterprise tier.
 
-Anyone who can identify a live survey can submit an email to the public DNC check and learn whether it is on that survey's suppression list. IP limiting reduces volume but does not remove the privacy leak.
+#### 4.3 No security audit trail
 
-**Action:** avoid returning raw membership where possible. Bind the check to a respondent invitation or signed survey token, return a generic flow outcome, and add distributed per-survey abuse detection.
+No durable record of logins, failed auth, role changes, exports, deletions, survey publication, billing/domain changes, or vendor cross-tenant actions.
 
-#### 3.11 Client-supplied response IDs permit partial-response takeover if leaked
+**Recommendation:** append-only, tenant-aware audit events; off-host shipping; alerts on high-risk actions; never log secrets or raw tokens.
 
-UUID entropy prevents guessing, and cross-survey conflicts are blocked. However, a leaked partial response UUID is sufficient for an unauthenticated caller to overwrite that partial response.
+#### 4.4 Data governance gaps
 
-**Action:** issue response IDs server-side with a separate unguessable write secret/capability, or use a signed respondent session token. Store only a hash of that capability and require it for updates/finalization.
+No application-level encryption, automated encrypted off-host backups, retention/deletion workflows, or documented subprocessor/consent controls. Optional fingerprinting can call third-party IP APIs (`ipapi.co`, `ipify`) without in-product consent.
 
-#### 3.12 Internal Caddy endpoint trusts network shape rather than strong identity
+**Recommendation:** classify data; encrypt volumes/backups; minimize/disable third-party fingerprint lookups by default; tenant disclosures and retention policies.
 
-`/api/internal/*` bypasses global authentication. The Caddy ask route accepts loopback and broad Docker bridge (`172.16.0.0/12`) source addresses. Through the documented nginx path, external requests also arrive at the API from nginx's bridge address, so network-location logic alone does not prove the caller is Caddy. The endpoint still verifies the requested domain, limiting impact, but it exposes a database-backed operation and creates a fragile trust boundary.
+### P2 — Medium priority
 
-**Action:** do not proxy `/api/internal/` from public nginx, bind a separate loopback-only listener, or require a Caddy-held shared secret/mTLS. Add strict rate limiting and cache verified-domain decisions.
+#### 4.5 Edge and bot controls (Phase 2 remainder)
 
-#### 3.13 Host routing consumes a raw spoofable forwarding header
+In-app Redis limits are live; CDN/WAF, bot scoring, CAPTCHA, and provider alerting are not configured in code.
 
-`clientDomainFromRequest()` prefers raw `X-Forwarded-Host`. nginx overwrites `Host` and `X-Forwarded-For` but does not explicitly overwrite or clear `X-Forwarded-Host`. A client can therefore influence custom-domain matching through that header. Public surveys are intentionally public, but this bypasses the expected host/domain boundary and can complicate certificate/routing assumptions.
+**Recommendation:** Cloudflare or similar in front of public survey hosts; alert on 429/403 spikes; tune quotas from production traffic (Phase 2.1 for NAT).
 
-**Action:** have each proxy overwrite `X-Forwarded-Host` from its validated host value, and only consume the framework's trusted hostname after an explicit allowed-host check. Remove the query-string client-domain fallback outside development.
+#### 4.6 Internal routes still reachable via nginx proxy
 
-#### 3.14 Role revocation is briefly stale and database roles are unconstrained strings
+`/api/internal/*` bypasses user authentication. Production requires `INTERNAL_API_SECRET` for Caddy ask, but routes remain proxied through the public web stack. Embed-CSP subrequest is internal to nginx.
 
-Authorization reload uses a two-second cache, despite comments/README statements that changes apply on the next request. In addition, role/status fields are plain strings without database enum/check constraints; the same applies to response, invoice, and subscription statuses.
+**Recommendation:** bind internal listener on loopback only or block `/api/internal/` at nginx for external clients.
 
-**Action:** document the bounded two-second revocation window or remove caching for privileged actions. Require an uncached lookup/step-up check for vendor, user-management, export, billing, and destructive routes. Add database enum/check constraints and migration tests.
+#### 4.7 DNC check is a membership oracle
 
-#### 3.15 Production safety depends on using the override and deployment script
+Public DNC check reveals whether an email is on a survey suppression list.
 
-The base Compose file declares `NODE_ENV=production` while defaulting to seeded `admin`/`vendor` accounts, a known JWT value, Bearer auth, insecure cookies, relaxed limits, and a publicly bound web port. These are intended for partner demos, but accidental use resembles production. The production override requires `JWT_SECRET` but does not itself require `POSTGRES_PASSWORD`; only the provided deployment script catches the default database password.
+**Recommendation:** bind to signed respondent token or return generic flow outcomes only.
 
-**Action:** make insecure demo settings an explicit development/demo override, keep the base production-safe, require the database password in production Compose interpolation, and make startup fail when incompatible production flags are enabled.
+#### 4.8 Partial response takeover if UUID leaks
 
-#### 3.16 Container and image hardening is limited
+A known partial-response UUID allows unauthenticated overwrite.
 
-The API and nginx containers run with their image-default users; the API image includes compilers/build tooling and Prisma CLI; filesystems are writable; capabilities are not dropped; `no-new-privileges`, resource limits, and read-only root filesystems are absent. Images use mutable tags rather than digests.
+**Recommendation:** server-issued write capability or signed respondent session.
 
-**Action:** use a multi-stage API image, copy only production runtime dependencies, run both services as non-root, drop capabilities, enable `no-new-privileges`, use read-only filesystems/tmpfs where possible, add CPU/memory/PID limits, pin base/deploy images by digest, and scan/sign images with SBOM and provenance.
+#### 4.9 Role cache staleness (~2 s)
 
-#### 3.17 CI does not enforce the existing security suite or vulnerability policy
+Privileged revocations may lag by up to two seconds on cached user rows.
 
-The primary CI workflow builds images and runs selected unit/config tests, but does not start PostgreSQL/API and run auth/RBAC/security integration tests. It also lacks dependency audit enforcement, SAST, secret scanning, container/IaC scanning, SBOM generation, signed artifacts, and pinned action commit SHAs. After CI succeeds on `main`, CD builds, pushes, and deploys automatically without a protected-environment approval. The workflow can overwrite a fixed production tag such as `v0.1.0`, while Compose pulls by tag rather than verified digest, making releases non-reproducible and rollback provenance ambiguous.
+**Recommendation:** bypass cache for vendor, export, billing, and destructive routes; or document accepted window.
 
-**Action:** run the full security integration suite in CI; add Dependabot/Renovate, `npm audit` or OSV policy, CodeQL/Semgrep, Gitleaks, Trivy/Grype, Dockerfile/Compose linting, SBOM/provenance, image signing, and protected-branch review requirements. Publish immutable release tags, deploy verified image digests, and require production environment approval or release-tag promotion.
+#### 4.10 Container & image hardening
 
-#### 3.18 Security monitoring and incident readiness are absent
+API image includes build tooling; containers run as default user; no read-only root, capability drops, or resource limits; tags not pinned by digest.
 
-There is no documented centralized log sink, metrics/alerts for auth failures, 403/429 spikes, DNC probing, response floods, vendor actions, certificate abuse, database anomalies, or backup failure. No incident-response, vulnerability-disclosure, key-rotation, or breach playbook was found.
+**Recommendation:** multi-stage images, non-root, Trivy/Grype in CI, deploy by digest.
 
-**Action:** add structured/redacted logs, metrics and alerts, request correlation, uptime and synthetic checks, database/container monitoring, backup alerts, incident runbooks, security contacts, and periodic access/key reviews.
+#### 4.11 CI/CD security gates incomplete
 
-#### 3.19 Tenant isolation has no database-level backstop
+CI builds images and runs unit/config tests; full auth/RBAC/security integration suite not gated on every PR; no SAST, secret scan, or SBOM enforcement; CD auto-deploys on `main`.
 
-Tenant separation is consistently implemented in the reviewed application queries, but PostgreSQL row-level security is not enabled. A future route, raw query, background job, or maintenance script that omits `organizationId` can cross tenant boundaries. The `Response` model also stores both `surveyId` and `organizationId` without a composite database constraint proving that the survey belongs to the same organization.
+**Recommendation:** PostgreSQL + API integration job; `npm audit`/OSV policy; CodeQL; Gitleaks; production approval gate.
 
-**Action:** evaluate PostgreSQL RLS with transaction-scoped tenant context, add composite foreign-key or equivalent consistency constraints, use tenant-required repository helpers, and add negative cross-tenant tests for every new data path and background job.
+#### 4.12 Monitoring & incident readiness
 
-#### 3.20 Token configuration and documentation have drifted
+No centralized logs, auth/abuse alerts, backup-failure alerts, or published incident runbook / `SECURITY.md`.
 
-Compose sets `JWT_EXPIRES_IN: 24h` and the README documents that variable, but `loadConfig()` uses `ACCESS_TOKEN_EXPIRES_IN` with a 15-minute default. The short effective lifetime is safer, but operators may make incorrect incident-response and session-lifetime assumptions.
+**Recommendation:** structured logs, metrics, synthetic checks, on-call runbooks.
 
-**Action:** remove the obsolete variable or implement one clearly documented compatibility alias; validate unknown/deprecated security settings at startup; and test the effective production configuration in CI.
+#### 4.13 No database-level tenant backstop
 
-#### 3.21 Development import and rich-text state are not sanitized consistently
+Tenant isolation is application-enforced only; PostgreSQL RLS not enabled.
 
-The rich-text editor sanitizes initial/external values and paste input, but emits its live `contentEditable.innerHTML` without sanitizing it first. Normal typed text and toolbar operations are low risk, and API-mode render/write paths sanitize again; however, local mode can retain untrusted markup in browser state. Separately, the development-only `/api/migrate/local` route writes imported survey JSON without the server survey sanitizers, creating a persistent-XSS regression path in development or any environment accidentally started with a non-production `NODE_ENV`.
+**Recommendation:** evaluate RLS with transaction-scoped `organizationId`; composite FK constraints; negative cross-tenant tests.
 
-**Action:** sanitize every editor emission before state storage, route local imports through the same survey normalization/sanitization pipeline as normal writes, and add migration/editor regression tests.
+### P3 — Lower priority / defense in depth
 
-#### 3.22 Embed messaging uses a wildcard target origin
+- **CSP polish:** remove remaining inline handlers in `index.html` (font loader); add HSTS, CSP reporting, narrower image hosts.
+- **Upload validation:** magic-byte checks for avatars/logos; dedicated asset origin.
+- **Public anti-automation:** signed collector links, optional bot challenges, deduplication rules.
+- **Local/demo mode:** plaintext storage in browser — must never ship with `VITE_USE_API=false` in production builds.
+- **Prisma CLI advisory:** high-severity `deepmerge-ts` in migration tooling only; plan Prisma 7 migration separately.
+- **Host hardening:** key-only SSH, disable root login, fail2ban, automated patching.
+- **Penetration test** before enterprise launch and after major auth/data-flow changes.
 
-The embedded taker posts ready, resize, completion, and termination events with `window.parent.postMessage(..., '*')` (`src/hooks/useEmbedMessaging.js`). The protocol intentionally excludes answers and direct PII, which limits impact, but a malicious framing parent receives survey ID and lifecycle metadata. The bundled `public/embed-test.html` listener also validates only the message payload marker, not `event.origin` and `event.source`.
+---
 
-**Action:** pass the server-approved parent origin into the embed bootstrap and use it as `targetOrigin`; require integrators and the test harness to verify both `event.origin` and `event.source`; exclude the development embed harness from production artifacts.
+## 5. Prioritized backlog (summary)
 
-#### 3.23 Host and operational access hardening is incomplete
+| # | Item | Priority | Status |
+|---|------|----------|--------|
+| 1 | JWT/Fastify dependency upgrades | P0 | **Done** (Phase 1) |
+| 2 | CSRF + Origin enforcement | P0 | **Done** (Phase 3) |
+| 3 | Embed `frame-ancestors` on HTML + safe `postMessage` | P0 | **Done** (Phase 3) |
+| 4 | Redis distributed rate limiting | P0 | **Done** (Phase 2) |
+| 5 | Proxy/host trust + `INTERNAL_API_SECRET` | P0 | **Done** (Phase 3) |
+| 6 | Authoritative response/survey schemas | P1 | Open |
+| 7 | Security audit logging | P1 | Open |
+| 8 | MFA & account lifecycle | P1 | Open |
+| 9 | Data governance & fingerprinting controls | P1 | Open |
+| 10 | Edge WAF / bot controls | P2 | Open |
+| 11 | Internal route network isolation | P2 | Partial |
+| 12 | Container & supply-chain hardening | P2 | Open |
+| 13 | CI/CD security gates | P2 | Partial |
+| 14 | Monitoring & incident readiness | P2 | Open |
+| 15 | PostgreSQL RLS evaluation | P2 | Open |
+| 16 | Enterprise NAT rate-limit tuning | P2 | Deferred (2.1) |
+| 17 | Browser/upload polish, pen test | P3 | Open |
 
-The deployment bootstrap configures a deny-by-default firewall, but repository automation does not enforce key-only SSH, disable direct root login, add brute-force protection, or define periodic host patching. CD documentation supports a root VPS user. The DNS helper also calls `ifconfig.me` to discover the public IP, adding an avoidable third-party availability/privacy dependency. No `SECURITY.md` or coordinated vulnerability-disclosure channel was found.
+---
 
-**Action:** use an unprivileged deployment account with narrowly scoped sudo, disable password and root SSH login, add fail2ban or provider controls, automate security updates with maintenance policy, remove the external IP lookup where possible, document access review, and publish a private or public vulnerability-reporting process.
+## 6. Dependency & verification record
 
-### Low / defense in depth
+| Check | Result (2026-09-07) |
+|-------|---------------------|
+| Frontend `npm audit --omit=dev` | 0 vulnerabilities |
+| Backend JWT/Fastify advisories | Remediated (Phase 1) |
+| Backend Prisma CLI transitive | 1 high (`deepmerge-ts`) — tooling only |
+| Auth, RBAC, CSRF, rate-limit integration tests | Passing |
+| Production Compose (API + Redis + nginx) | Healthy in isolated validation |
+| Production VPS smoke | Operator-verified: app login, survey save, public link on `surveys.*` (DNS propagation dependent) |
 
-#### 3.24 Header policy can be strengthened
+---
 
-The static CSP still permits `'unsafe-inline'` styles and arbitrary HTTPS/data/blob images, and it does not set `frame-ancestors`. HSTS and COOP-related headers are not explicitly configured. Arbitrary remote brand logos can create third-party tracking of respondents.
+## 7. Document maintenance
 
-**Action:** add HSTS after confirming HTTPS-only operation, deliver correct `frame-ancestors`, narrow image hosts or proxy uploaded logos, prefer uploaded/validated assets, evaluate nonce/hash-based style policy, and consider `Cross-Origin-Opener-Policy`, `Cross-Origin-Resource-Policy`, and a CSP reporting endpoint.
+Update this file when:
 
-#### 3.25 Uploaded image validation trusts prefixes
+- A roadmap phase ships to production.
+- A new material finding is discovered or closed.
+- Production architecture changes (new subdomains, proxy layers, auth methods).
+- A penetration test or compliance review produces actionable results.
 
-Avatar checks trust a `data:image/` prefix and approximate base64 length rather than restricting MIME type, decoding safely, checking magic bytes, and re-encoding. Brand logos are better restricted but still accept GIF and arbitrary remote HTTP/HTTPS URLs.
-
-**Action:** accept only required raster formats, decode and inspect magic bytes/dimensions, re-encode server-side, cap pixels and bytes, malware-scan stored uploads where appropriate, serve from a dedicated asset origin, and disallow plaintext HTTP.
-
-#### 3.26 Public response authenticity and anti-automation are limited
-
-No invitation signature, CAPTCHA/bot challenge, replay-resistant respondent token, duplicate policy, or server-side device-risk control protects public submissions. Device fingerprint data is client-asserted and should not be treated as proof.
-
-**Action:** support signed invitations/collector links, optional privacy-preserving bot challenges, deduplication rules, server-observed abuse signals, and transparent consent/retention for fingerprinting.
-
-#### 3.27 Local mode is intentionally insecure
-
-Local mode stores plaintext users/passwords, sessions, survey data, responses, DNC email addresses, and platform data in browser storage. Any script running on the origin can read it, and browser profiles/backups may retain it.
-
-**Action:** ensure production builds fail unless `VITE_USE_API=true`; display a persistent development-only warning; prevent sensitive real data from being imported into local mode; and consider removing local authentication entirely in favor of an explicit single-user demo mode.
-
-## 4. Prioritized Recommendations
-
-1. **Completed in Phase 1 — Patch the authentication/runtime dependency chain.** JWT/Fastify dependencies and transitive URL packages are upgraded, the lockfile is regenerated, HS256 is explicit, and auth/RBAC/security tests pass. Prisma CLI’s remaining advisory is isolated for a separate major-version migration.
-2. **Completed in Phase 3 — Enforce iframe policy on HTML documents.** Default SPA responses deny framing; `/embed/*` HTML uses per-survey `frame-ancestors`; embed `postMessage` no longer uses wildcard targets.
-3. **Completed in Phase 3 — Add CSRF enforcement.** Unsafe cookie-authenticated API methods require allowlisted `Origin` plus a double-submit CSRF token; refresh cookies are scoped under `/api/auth`.
-4. **P1 — Introduce authoritative schemas.** Add versioned Fastify JSON schemas and per-question answer validators, strict limits, trusted server timestamps/status, server-side completion/termination evaluation, and one normalization/sanitization path for normal writes and imports.
-5. **Partially completed in Phase 2 — Deploy shared abuse protection.** Redis-backed per-IP, per-account, global, and per-survey quotas now protect auth, public fetch, DNC, and response writes. Edge WAF/bot challenges, Caddy-ask throttling, alerting, and production quota tuning remain.
-6. **P1 — Build immutable audit logging.** Cover authentication, admin/vendor actions, data exports/deletes, publication, billing/domain changes, and organization deletion; ship alerts off-host.
-7. **P1 — Harden privileged identity.** Add MFA first for `platform_owner` and admins, verified invites/email, safe password reset, one-time setup links, session inventory/revocation, and absolute session lifetime.
-8. **P1 — Establish data governance.** Disable third-party fingerprint lookups by default, classify and minimize PII/fingerprints/DNC storage, implement consent and retention/deletion/export, encrypt volumes and off-host backups, manage keys, and test restores.
-9. **Partially completed in Phase 3 — Close proxy/internal trust gaps.** Trusted host routing ignores raw `X-Forwarded-Host`, production internal routes require `INTERNAL_API_SECRET`, and Caddy ask is rate-limited. Further hardening: stop proxying internal routes publicly and remove production query fallbacks entirely.
-10. **P2 — Make production the safe default.** Separate demo settings, require all production secrets in Compose, fail startup on insecure flag combinations, remove stale JWT configuration, and align README claims with code.
-11. **P2 — Harden containers and supply chain.** Non-root/minimal/read-only containers, dropped capabilities, resource limits, immutable release tags and image digests, SBOM, vulnerability scans, provenance, and signing.
-12. **P2 — Enforce security in CI/CD.** Run database-backed auth/RBAC/security tests; gate on dependency, secret, SAST, container, and IaC findings; pin third-party actions; and require approval or release promotion before production deployment.
-13. **P2 — Add monitoring and incident readiness.** Centralized redacted logs, auth/abuse/backup/certificate alerts, runbooks, disclosure process, and periodic access/key reviews.
-14. **P3 — Strengthen browser/upload defenses.** HSTS, corrected CSP framing policy, narrower asset policy, safe image decoding/re-encoding, dedicated asset hosting, and CSP reporting.
-15. **P3 — Add recurring assurance.** Harden and periodically review SSH/host access, publish a vulnerability-disclosure process, threat-model tenant isolation (including an RLS/database backstop), public collectors, vendor access, and custom domains, and commission penetration tests before enterprise launch and after major auth/data-flow changes.
-
+For deployment steps tied to security configuration, see `docs/DEPLOY.md`. For day-one smoke checks, see `docs/SMOKE_CHECKLIST.md`.

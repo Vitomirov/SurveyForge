@@ -1,9 +1,10 @@
 # Manual Smoke Checklist
 
-Run this checklist after refactors that touch builder, taker, visibility, termination, or export logic.
-Use a survey that includes **at least one of each** question type when possible.
+Run after changes that touch builder, taker, visibility, termination, export, or API persistence.
 
-**How to run:** `npm run dev` → log in → use dashboard + builder. For public route, open `#/take/SURVEY_ID` in a new tab.
+**How to run (API mode):** `npm run dev:docker` → log in at http://localhost:5173. For public routes, open `#/take/SURVEY_ID` or the shareable URL.
+
+Use a survey with **at least one of each** question type when possible.
 
 ---
 
@@ -21,7 +22,7 @@ Use a survey that includes **at least one of each** question type when possible.
 
 - [ ] Add each question type from sidebar (or spot-check key types)
 - [ ] Add page break, group, text block, termination block
-- [ ] Drag-reorder items (questions + structural items)
+- [ ] Drag-reorder items
 - [ ] Duplicate and delete a question
 - [ ] Collapse/expand a group
 - [ ] Survey title edits persist after reload
@@ -31,11 +32,11 @@ Use a survey that includes **at least one of each** question type when possible.
 
 ## 3. Builder — question editing
 
-- [ ] Change question type via type badge menu (choice ↔ non-choice resets options)
+- [ ] Change question type via type badge menu
 - [ ] Required toggle on/off
-- [ ] Piping token inserted into question text (`{{qid:…}}`)
+- [ ] Piping token inserted into question text
 - [ ] Visibility rules: add condition, AND/OR toggle, save
-- [ ] Choice question: options, exclusive, open-text companion, instant terminate option
+- [ ] Choice question: options, exclusive, open-text companion, instant terminate
 - [ ] Email capture field (DNC) — only one per survey
 
 ---
@@ -43,8 +44,8 @@ Use a survey that includes **at least one of each** question type when possible.
 ## 4. Cover page & branding
 
 - [ ] Cover page enabled — shows title, description, start button in preview
-- [ ] Cover page disabled — skips straight to Q1
-- [ ] Company logo / cover image display (if configured)
+- [ ] Cover page disabled — skips to Q1
+- [ ] Company logo / cover image display
 - [ ] Branding settings (logo position, start button text)
 
 ---
@@ -55,23 +56,23 @@ Use a survey that includes **at least one of each** question type when possible.
 - [ ] Exit preview returns to builder
 - [ ] Progress bar on multi-page surveys
 - [ ] Back / Next navigation
-- [ ] Validation errors show on required empty fields
+- [ ] Validation errors on required empty fields
 - [ ] Submit shows completion screen
 - [ ] Download CSV from completion screen
 
 ---
 
-## 6. Public route (`#/take/SURVEY_ID`)
+## 6. Public route
 
 - [ ] Valid survey ID loads taker (no login)
-- [ ] Invalid ID shows “Survey not found”
+- [ ] Invalid ID shows "Survey not found"
 - [ ] Closed survey shows closed screen
 - [ ] Draft survey behavior matches expectation
 - [ ] Complete survey — response saved (check Export Manager)
 
 ---
 
-## 7. Visibility (conditional show/hide)
+## 7. Visibility
 
 - [ ] Question hidden until prior answer matches rule
 - [ ] Question shown when rule matches (`show_if`)
@@ -101,7 +102,7 @@ Use a survey that includes **at least one of each** question type when possible.
 
 ---
 
-## 10. Question types (taker — spot-check or full pass)
+## 10. Question types (taker)
 
 | Type | Answer & submit |
 |------|-----------------|
@@ -146,15 +147,16 @@ Use a survey that includes **at least one of each** question type when possible.
 
 ---
 
-## 13. Platform settings (if used)
+## 13. Platform & billing (API mode)
 
 - [ ] Platform settings save and reload
+- [ ] Billing overview shows current plan
 - [ ] Fingerprint toggle affects preview header badge
 - [ ] DNC list upload / management
 
 ---
 
-## 14. Automated guardrail (run every time)
+## 14. Automated guardrails
 
 ```bash
 npm run check:registries
@@ -166,8 +168,8 @@ npm run build
 
 ---
 
-## Notes
+## Test log
 
 | Date | Tester | Branch / commit | Failures |
-|------|--------|---------------|----------|
-|      |        |               |          |
+|------|--------|-----------------|----------|
+|      |        |                 |          |

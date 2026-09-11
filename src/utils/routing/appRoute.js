@@ -1,7 +1,10 @@
 // ─── Hash routing ──────────────────────────────────────────────────────────
 // The URL is the single source of truth for navigation, so every view
 // survives a refresh and browser back/forward works.
-//   #/                dashboard
+//   #/                dashboard (signed in) or marketing home (signed out)
+//   #/home            marketing site (always)
+//   #/login           sign in
+//   #/signup          create organization / free trial
 //   #/builder/:id     edit (unknown id = new draft)
 //   #/builder/:id?export=1  edit and open Export Manager (notification deep link)
 //   #/preview/:id     preview
@@ -14,6 +17,27 @@ import { parseSurveyHost } from '@shared/surveyUrl.js'
 
 const DASHBOARD = { view: 'dashboard', id: null, byPath: false, clientDomain: null, isEmbed: false, openExport: false }
 const VIEWS     = ['builder', 'preview', 'take', 'embed']
+const PUBLIC_APP_VIEWS = ['home', 'login', 'signup']
+
+function parsePublicAppHash(hash = '') {
+  const path = hashPath(hash)
+  const match = path.match(/^#\/(home|login|signup)$/)
+  if (match) {
+    return {
+      view: match[1],
+      id: null,
+      byPath: false,
+      clientDomain: null,
+      isEmbed: false,
+      openExport: false,
+    }
+  }
+  return null
+}
+
+export function isMarketingRoute(view) {
+  return view === 'home' || view === 'dashboard'
+}
 
 function pathSlug(pathname = window.location.pathname) {
   const slug = pathname.replace(/^\//, '').split('/').filter(Boolean)[0]
@@ -40,6 +64,9 @@ function wantsExport(hash = '') {
 }
 
 export function parseRoute(hash = window.location.hash, pathname = window.location.pathname) {
+  const publicView = parsePublicAppHash(hash)
+  if (publicView) return publicView
+
   const openExport = wantsExport(hash)
   const [, view, id] = hashPath(hash).match(/^#\/([a-z]+)\/([^/]+)$/) || []
   if (view === 'embed') {
@@ -84,7 +111,17 @@ export function parseTakeHash() {
 
 /** Navigate — pushes a history entry so back/forward moves between views. */
 export function nav(view, id, opts = {}) {
-  let hash = view === 'dashboard' ? '#/' : `#/${view}/${id}`
+  if (view === 'dashboard') {
+    const hash = '#/'
+    if (window.location.hash !== hash) window.location.hash = hash
+    return
+  }
+  if (PUBLIC_APP_VIEWS.includes(view)) {
+    const hash = `#/${view}`
+    if (window.location.hash !== hash) window.location.hash = hash
+    return
+  }
+  let hash = `#/${view}/${id}`
   if (opts.export && view === 'builder') hash += '?export=1'
   if (window.location.hash !== hash) window.location.hash = hash
 }
