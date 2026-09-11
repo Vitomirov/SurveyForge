@@ -35,6 +35,10 @@ import {
 import {
   PLAN_CATALOG,
   selfServiceTargetPlanIds,
+  listMarketingPricingPlans,
+  planPriceDisplay,
+  normalizeSignupPlanId,
+  signupIntentSummary,
 } from '../../../shared/planCatalog.js'
 
 test('plan feature matrix gates by tier', () => {
@@ -51,6 +55,19 @@ test('plan feature matrix gates by tier', () => {
   assert.equal(embedOriginLimit('enterprise'), null)
   assert.equal(maxSurveys('free_trial'), 5)
   assert.equal(maxSurveys('starter'), null)
+})
+
+test('marketing pricing reads from catalog only', () => {
+  const cards = listMarketingPricingPlans()
+  assert.equal(cards.length, 3)
+  assert.deepEqual(cards.map(c => c.id), ['starter', 'professional', 'enterprise'])
+  assert.equal(planPriceDisplay('starter').amount, '$49')
+  assert.equal(planPriceDisplay('professional').amount, '$149')
+  assert.equal(planPriceDisplay('enterprise').type, 'label')
+  assert.equal(normalizeSignupPlanId('bogus'), 'free_trial')
+  assert.equal(signupIntentSummary('professional').planId, 'professional')
+  assert.equal(cards[0].cta.label, 'Choose Starter')
+  assert.equal(cards[1].cta.label, 'Choose Professional')
 })
 
 test('no paid plan is self-service until checkout exists', () => {

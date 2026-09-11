@@ -5,8 +5,12 @@ import { login, signup, DEFAULT_CREDENTIALS } from '@/utils/data/authStore'
 import { prefetchForRoute } from '@/utils/routing/routePrefetch'
 import { AUTH_COPY, AUTH_VALIDATION } from '@/constants/authCopy'
 import { APP_TAGLINE } from '@/constants/branding'
+import { SignupPlanSummary } from '@/components/auth/SignupPlanSummary.jsx'
+import { nav } from '@/utils/routing/appRoute'
+import { normalizeSignupPlanId, signupIntentSummary } from '@shared/planCatalog.js'
 
-export function LoginPage({ onLogin, initialMode = 'login', onGoHome }) {
+export function LoginPage({ onLogin, initialMode = 'login', onGoHome, signupPlanId = 'free_trial' }) {
+  const signupSummary = signupIntentSummary(signupPlanId)
   const [mode, setMode] = useState(initialMode)
 
   useEffect(() => {
@@ -30,6 +34,11 @@ export function LoginPage({ onLogin, initialMode = 'login', onGoHome }) {
     setPassword('')
     setConfirm('')
     setShowPass(false)
+    if (next === 'signup') {
+      nav('signup', null, { plan: normalizeSignupPlanId(signupPlanId) })
+    } else if (initialMode === 'signup' || signupPlanId) {
+      nav('login')
+    }
   }
 
   const handleSubmit = async (e) => {
@@ -44,7 +53,13 @@ export function LoginPage({ onLogin, initialMode = 'login', onGoHome }) {
       if (password !== confirm)    { setError(AUTH_VALIDATION.passwordsMismatch); return }
 
       setLoading(true)
-      const result = await signup({ organizationName, name, email, password })
+      const result = await signup({
+        organizationName,
+        name,
+        email,
+        password,
+        intendedPlanId: normalizeSignupPlanId(signupPlanId),
+      })
       setLoading(false)
       if (result.ok) {
         prefetchForRoute({ session: result.session })
@@ -84,13 +99,15 @@ export function LoginPage({ onLogin, initialMode = 'login', onGoHome }) {
         {/* Card */}
         <div className="card p-6">
           <h2 className="text-base font-bold text-ink-800 mb-1">
-            {isSignup ? AUTH_COPY.createOrgHeading : AUTH_COPY.signIn}
+            {isSignup ? signupSummary.headline : AUTH_COPY.signIn}
           </h2>
           <p className="text-sm text-ink-400 mb-5">
             {isSignup
-              ? AUTH_COPY.createOrgSubtitle
+              ? 'Fill in your organization details below.'
               : 'Enter your credentials to access the dashboard.'}
           </p>
+
+          {isSignup && <SignupPlanSummary planId={signupPlanId} />}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {isSignup && (

@@ -22,6 +22,7 @@ import {
   assertUsernameAvailableInOrg,
   deriveUsernameForOrg,
 } from '../lib/auth/userIdentity.js'
+import { catalogPlan } from '../../../shared/planCatalog.js'
 
 function buildSession(user, organizationName = null) {
   return {
@@ -102,7 +103,7 @@ export async function registerAuthRoutes(app) {
     })
     if (limited) return limited
 
-    const { organizationName, name, email, password } = request.body ?? {}
+    const { organizationName, name, email, password, intendedPlanId } = request.body ?? {}
 
     if (!organizationName?.trim()) {
       return reply.code(400).send({ error: 'Organization name is required.' })
@@ -121,11 +122,15 @@ export async function registerAuthRoutes(app) {
     if (!emailCheck.ok) return reply.code(409).send({ error: emailCheck.error })
 
     const passwordHash = await hashPassword(password)
+    const intentPlan = intendedPlanId && catalogPlan(intendedPlanId) ? intendedPlanId : null
 
     // Create org and admin atomically so a failure never leaves an orphan org behind.
     const { org, user } = await app.prisma.$transaction(async (tx) => {
       const org = await tx.organization.create({
-        data: { name: organizationName.trim(), settings: {} },
+        data: {
+          name: organizationName.trim(),
+          settings: intentPlan ? { signupIntentPlanId: intentPlan } : {},
+        },
       })
       await provisionOrgBilling(tx, org.id)
       const username = await deriveUsernameForOrg(tx, org.id, emailCheck.email)

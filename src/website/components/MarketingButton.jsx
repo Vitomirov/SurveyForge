@@ -1,7 +1,15 @@
-import { resolveCta, runCtaAction } from '../cta'
+import { resolveCta, runCtaAction, navToSignup } from '../cta'
 
-export function MarketingButton({ ctaId, label, variant = 'primary', className = '', isAuthenticated, onClick }) {
-  const action = resolveCta(ctaId)
+export function MarketingButton({
+  ctaId,
+  planId,
+  label,
+  variant = 'primary',
+  className = '',
+  isAuthenticated,
+  onClick,
+}) {
+  const action = ctaId ? resolveCta(ctaId) : null
   const variantClass =
     variant === 'ghost' ? 'btn-ghost'
       : variant === 'on-dark' ? 'btn-on-dark'
@@ -14,6 +22,14 @@ export function MarketingButton({ ctaId, label, variant = 'primary', className =
       className={classes}
       onClick={() => {
         onClick?.()
+        if (planId) {
+          if (isAuthenticated) {
+            runCtaAction(resolveCta('dashboard'), { isAuthenticated: true })
+          } else {
+            navToSignup(planId)
+          }
+          return
+        }
         runCtaAction(action, { isAuthenticated })
       }}
     >

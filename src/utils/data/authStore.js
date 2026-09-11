@@ -87,12 +87,12 @@ export async function login(email, password) {
   return { ok: true, session }
 }
 
-export async function signup({ organizationName, name, email, password }) {
+export async function signup({ organizationName, name, email, password, intendedPlanId }) {
   if (useApi) {
     try {
       const data = await apiFetch('/api/auth/signup', {
         method: 'POST',
-        body: JSON.stringify({ organizationName, name, email, password }),
+        body: JSON.stringify({ organizationName, name, email, password, intendedPlanId }),
       })
       writeSessionStorage(data.session)
       return { ok: true, session: data.session }

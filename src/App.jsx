@@ -113,7 +113,7 @@ export default function App() {
   const [session, setSession] = useState(() => (useApi ? null : getSession()))
   const [authChecking, setAuthChecking] = useState(() => useApi)
   const { toast }             = useToast()
-  const { view, id, byPath, clientDomain, isEmbed, openExport } = useRoute()
+  const { view, id, byPath, clientDomain, isEmbed, openExport, signupPlanId } = useRoute()
   const isPublic              = view === 'take'
   const ownerSession          = isPlatformOwner(session)
   const { status, entry }     = useSurveyEntry(
@@ -196,6 +196,7 @@ export default function App() {
           <LoginPage
             initialMode={authMode}
             onGoHome={goHome}
+            signupPlanId={signupPlanId ?? 'free_trial'}
             onLogin={(s) => { prefetchForRoute({ session: s }); setSession(s) }}
           />
         </Page>

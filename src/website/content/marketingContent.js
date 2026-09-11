@@ -136,57 +136,6 @@ export const MARKETING_STEPS = {
   ],
 }
 
-export const MARKETING_PRICING = {
-  id: 'pricing',
-  eyebrow: 'Pricing',
-  title: 'Simple tiers. Talk to us for anything custom.',
-  subtitle:
-    "Pricing below is illustrative while we finalize plans — start a free trial and we'll confirm final rates before you're charged anything.",
-  plans: [
-    {
-      id: 'starter',
-      name: 'Starter',
-      description: 'For small agencies running occasional fieldwork surveys.',
-      price: '$—',
-      priceSuffix: '/month',
-      placeholderNote: 'Placeholder — final pricing confirmed at trial signup',
-      features: [
-        'Up to 3 active surveys',
-        'Core question types & logic',
-        '1 exclusion list per survey',
-        'CSV export',
-      ],
-      cta: { label: 'Start free trial', ctaId: 'freeTrial', variant: 'ghost' },
-    },
-    {
-      id: 'agency',
-      featured: true,
-      name: 'Agency',
-      description: 'For teams running fieldwork surveys continuously.',
-      price: '$—',
-      priceSuffix: '/month',
-      placeholderNote: 'Placeholder — final pricing confirmed at trial signup',
-      features: [
-        'Unlimited active surveys',
-        'Full question, logic & piping library',
-        'Unlimited exclusion lists',
-        'Digital fingerprinting',
-        'Filtered CSV export',
-      ],
-      cta: { label: 'Start free trial', ctaId: 'freeTrial', variant: 'primary' },
-    },
-    {
-      id: 'enterprise',
-      name: 'Enterprise',
-      description: 'For larger agencies with custom workflow needs.',
-      priceLabel: 'Contact us',
-      placeholderNote: '\u00a0',
-      features: ['Everything in Agency', 'Custom onboarding', 'Priority support'],
-      cta: { label: 'Contact us', ctaId: 'contact', variant: 'ghost' },
-    },
-  ],
-}
-
 export const MARKETING_FINAL_CTA = {
   id: 'trial',
   title: 'Get your first survey live this week.',

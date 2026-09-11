@@ -4,7 +4,7 @@
 //   #/                dashboard (signed in) or marketing home (signed out)
 //   #/home            marketing site (always)
 //   #/login           sign in
-//   #/signup          create organization / free trial
+//   #/signup?plan=starter   create org (optional plan intent from pricing)
 //   #/builder/:id     edit (unknown id = new draft)
 //   #/builder/:id?export=1  edit and open Export Manager (notification deep link)
 //   #/preview/:id     preview
@@ -14,8 +14,17 @@
 // Embedded path URLs resolve on surveys.{client}.com/embed/{publicPath}
 import { useMemo, useSyncExternalStore } from 'react'
 import { parseSurveyHost } from '@shared/surveyUrl.js'
+import { normalizeSignupPlanId } from '@shared/planCatalog.js'
 
-const DASHBOARD = { view: 'dashboard', id: null, byPath: false, clientDomain: null, isEmbed: false, openExport: false }
+const DASHBOARD = {
+  view: 'dashboard',
+  id: null,
+  byPath: false,
+  clientDomain: null,
+  isEmbed: false,
+  openExport: false,
+  signupPlanId: null,
+}
 const VIEWS     = ['builder', 'preview', 'take', 'embed']
 const PUBLIC_APP_VIEWS = ['home', 'login', 'signup']
 
@@ -30,6 +39,9 @@ function parsePublicAppHash(hash = '') {
       clientDomain: null,
       isEmbed: false,
       openExport: false,
+      signupPlanId: match[1] === 'signup'
+        ? normalizeSignupPlanId(hashQuery(hash).get('plan'))
+        : null,
     }
   }
   return null
@@ -70,10 +82,10 @@ export function parseRoute(hash = window.location.hash, pathname = window.locati
   const openExport = wantsExport(hash)
   const [, view, id] = hashPath(hash).match(/^#\/([a-z]+)\/([^/]+)$/) || []
   if (view === 'embed') {
-    return { view: 'take', id, byPath: false, clientDomain: null, isEmbed: true, openExport: false }
+    return { view: 'take', id, byPath: false, clientDomain: null, isEmbed: true, openExport: false, signupPlanId: null }
   }
   if (VIEWS.includes(view)) {
-    return { view, id, byPath: false, clientDomain: null, isEmbed: false, openExport: view === 'builder' && openExport }
+    return { view, id, byPath: false, clientDomain: null, isEmbed: false, openExport: view === 'builder' && openExport, signupPlanId: null }
   }
 
   const clientDomain = parseSurveyHost(window.location.hostname)
@@ -86,6 +98,7 @@ export function parseRoute(hash = window.location.hash, pathname = window.locati
       clientDomain,
       isEmbed: true,
       openExport: false,
+      signupPlanId: null,
     }
   }
 
@@ -98,6 +111,7 @@ export function parseRoute(hash = window.location.hash, pathname = window.locati
       clientDomain,
       isEmbed: false,
       openExport: false,
+      signupPlanId: null,
     }
   }
 
@@ -117,7 +131,10 @@ export function nav(view, id, opts = {}) {
     return
   }
   if (PUBLIC_APP_VIEWS.includes(view)) {
-    const hash = `#/${view}`
+    let hash = `#/${view}`
+    if (view === 'signup' && opts.plan) {
+      hash += `?plan=${encodeURIComponent(normalizeSignupPlanId(opts.plan))}`
+    }
     if (window.location.hash !== hash) window.location.hash = hash
     return
   }

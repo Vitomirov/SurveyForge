@@ -1,17 +1,22 @@
 import { nav } from '@/utils/routing/appRoute'
+import { normalizeSignupPlanId } from '@shared/planCatalog.js'
 import { scrollToMarketingTarget } from './scrollToSection'
 
 /** @typedef {'freeTrial' | 'signIn' | 'contact' | 'scrollTrial' | 'dashboard'} MarketingCtaId */
 
-/** @typedef {{ type: 'route', view: 'signup' | 'login' | 'home' | 'dashboard' } | { type: 'hash', hash: string } | { type: 'mailto', href: string }} CtaAction */
+/** @typedef {{ type: 'route', view: 'signup' | 'login' | 'home' | 'dashboard', plan?: string } | { type: 'hash', hash: string } | { type: 'mailto', href: string }} CtaAction */
 
 /** @type {Record<MarketingCtaId, CtaAction>} */
 export const CTA_ACTIONS = {
-  freeTrial: { type: 'route', view: 'signup' },
+  freeTrial: { type: 'route', view: 'signup', plan: 'free_trial' },
   signIn: { type: 'route', view: 'login' },
   contact: { type: 'hash', hash: '#contact' },
   scrollTrial: { type: 'hash', hash: '#trial' },
   dashboard: { type: 'route', view: 'dashboard' },
+}
+
+export function navToSignup(planId) {
+  nav('signup', null, { plan: normalizeSignupPlanId(planId) })
 }
 
 export function runCtaAction(action, { isAuthenticated } = {}) {
@@ -22,7 +27,11 @@ export function runCtaAction(action, { isAuthenticated } = {}) {
       return
     }
     if (action.view === 'dashboard' && !isAuthenticated) {
-      nav('signup')
+      navToSignup('free_trial')
+      return
+    }
+    if (action.view === 'signup') {
+      navToSignup(action.plan ?? 'free_trial')
       return
     }
     nav(action.view)

@@ -1,43 +1,54 @@
-import { MARKETING_PRICING } from '../content/marketingContent'
+import { MARKETING_PRICING_SECTION, listMarketingPricingPlans } from '@shared/planCatalog.js'
 import { MarketingButton } from './MarketingButton'
 
 export function MarketingPricing({ isAuthenticated }) {
+  const plans = listMarketingPricingPlans()
+
   return (
-    <section id={MARKETING_PRICING.id}>
+    <section id={MARKETING_PRICING_SECTION.id}>
       <div className="wrap">
         <div className="section-head">
-          <div className="eyebrow">{MARKETING_PRICING.eyebrow}</div>
-          <h2>{MARKETING_PRICING.title}</h2>
-          <p>{MARKETING_PRICING.subtitle}</p>
+          <div className="eyebrow">{MARKETING_PRICING_SECTION.eyebrow}</div>
+          <h2>{MARKETING_PRICING_SECTION.title}</h2>
+          <p>{MARKETING_PRICING_SECTION.subtitle}</p>
         </div>
         <div className="pricing-grid">
-          {MARKETING_PRICING.plans.map(plan => (
+          {plans.map(plan => (
             <article key={plan.id} className={`plan-card${plan.featured ? ' plan-card--featured' : ''}`}>
               <div className="pname">{plan.name}</div>
               <div className="pdesc">{plan.description}</div>
-              {plan.priceLabel ? (
-                <div className="price-label">{plan.priceLabel}</div>
+              {plan.price.type === 'label' ? (
+                <div className="price-label">{plan.price.label}</div>
               ) : (
                 <div className="price">
-                  {plan.price}
-                  <span>{plan.priceSuffix}</span>
+                  {plan.price.amount}
+                  <span>{plan.price.suffix}</span>
                 </div>
               )}
-              <div className="placeholder-note">{plan.placeholderNote}</div>
+              <div className="placeholder-note">{plan.pricingNote}</div>
               <ul>
-                {plan.features.map(f => (
-                  <li key={f}>
+                {plan.highlights.map(item => (
+                  <li key={item}>
                     <span className="mark">✓</span>
-                    {f}
+                    {item}
                   </li>
                 ))}
               </ul>
-              <MarketingButton
-                ctaId={plan.cta.ctaId}
-                label={plan.cta.label}
-                variant={plan.cta.variant}
-                isAuthenticated={isAuthenticated}
-              />
+              {plan.cta.kind === 'contact' ? (
+                <MarketingButton
+                  ctaId="contact"
+                  label={plan.cta.label}
+                  variant={plan.cta.variant}
+                  isAuthenticated={isAuthenticated}
+                />
+              ) : (
+                <MarketingButton
+                  label={plan.cta.label}
+                  variant={plan.cta.variant}
+                  planId={plan.cta.planId}
+                  isAuthenticated={isAuthenticated}
+                />
+              )}
             </article>
           ))}
         </div>
