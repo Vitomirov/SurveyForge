@@ -10,6 +10,22 @@ export const AUTH_COPY = {
   createOrgSubtitle:   '14 days free · 5 surveys · 1 seat · no credit card',
   signingIn:           'Signing in…',
   creating:            'Creating…',
+  loginFormTitle:      'Sign in',
+  loginFormSubtitle:   'Use the email and password for your organization account.',
+}
+
+/** Left-rail copy on the sign-in screen (matches signup panel tone). */
+export const AUTH_LOGIN_WELCOME = {
+  eyebrow: 'Welcome back',
+  title: 'Your fieldwork survey workspace',
+  detail:
+    'Sign in to manage surveys, collaborate with your team, and publish links for respondents.',
+  highlights: [
+    'Advanced logic, piping, and exclusion lists',
+    'Team roles and organization settings',
+    'Exports and live survey distribution',
+  ],
+  footerNote: 'Same account you created during signup — one workspace per organization.',
 }
 
 export const AUTH_VALIDATION = {

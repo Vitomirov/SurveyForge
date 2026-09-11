@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react'
 import { Eye, EyeOff, AlertCircle } from 'lucide-react'
-import { AppLogo } from '@/components/shared/branding/AppLogo.jsx'
 import { login, signup, DEFAULT_CREDENTIALS } from '@/utils/data/authStore'
 import { prefetchForRoute } from '@/utils/routing/routePrefetch'
 import { AUTH_COPY, AUTH_VALIDATION } from '@/constants/authCopy'
-import { APP_TAGLINE } from '@/constants/branding'
 import { SignupPlanPanelAside, SignupPlanPanelCompact } from '@/components/auth/SignupPlanPanel.jsx'
+import { LoginWelcomePanelAside, LoginWelcomePanelCompact } from '@/components/auth/LoginWelcomePanel.jsx'
+import { AuthSplitLayout } from '@/components/auth/AuthSplitLayout.jsx'
 import { PricingCompareLink } from '@/website/components/Pricing.jsx'
 import { nav } from '@/utils/routing/appRoute'
 import { normalizeSignupPlanId } from '@shared/planCatalog.js'
@@ -78,6 +78,7 @@ export function LoginPage({ onLogin, initialMode = 'login', onGoHome, signupPlan
     } else setError(result.error)
   }
 
+  const showDevHint = !isSignup && (import.meta.env.DEV || import.meta.env.VITE_USE_API === 'true')
 
   const modeToggle = (
     <p className="text-sm text-ink-500 mt-5">
@@ -204,81 +205,40 @@ export function LoginPage({ onLogin, initialMode = 'login', onGoHome, signupPlan
           ? (isSignup ? AUTH_COPY.creating : AUTH_COPY.signingIn)
           : (isSignup ? AUTH_COPY.createAccountButton : AUTH_COPY.signIn)}
       </button>
+
+      {showDevHint && (
+        <p className="text-[11px] text-center text-ink-400 pt-1">
+          Dev: {DEFAULT_CREDENTIALS.email} / {DEFAULT_CREDENTIALS.password}
+        </p>
+      )}
     </form>
   )
 
   if (isSignup) {
     return (
-      <div className="min-h-screen min-h-[100dvh] flex flex-col lg:flex-row bg-white safe-top safe-bottom">
-        <SignupPlanPanelAside planId={signupPlanId} />
-
-        <div className="flex-1 flex flex-col lg:justify-center px-5 py-6 sm:px-10 lg:px-12 xl:px-16 lg:py-12 overflow-y-auto">
-          <div className="w-full max-w-md sm:max-w-xl mx-auto pb-6">
-            <header className="flex items-center justify-between gap-4 mb-6 lg:mb-10">
-              <AppLogo size="md" className="w-[140px] sm:w-[160px]" onClick={onGoHome} />
-              {onGoHome && (
-                <button
-                  type="button"
-                  onClick={onGoHome}
-                  className="text-sm font-medium text-ink-500 hover:text-brand-700 shrink-0"
-                >
-                  Back to site
-                </button>
-              )}
-            </header>
-
-            <SignupPlanPanelCompact planId={signupPlanId} />
-
-            <div className="mt-6 lg:mt-0">
-              <h1 className="text-xl sm:text-2xl font-bold text-ink-900 tracking-tight text-center lg:text-left">
-                Create your account
-              </h1>
-              <p className="mt-2 text-sm text-ink-500 text-center lg:text-left">
-                Set up your organization in a minute. You can invite teammates after signup.
-              </p>
-              {onGoHome && (
-                <p className="mt-3 text-center lg:text-left">
-                  <PricingCompareLink />
-                </p>
-              )}
-            </div>
-
-            <div className="mt-6">{authForm}</div>
-            <div className="text-center">{modeToggle}</div>
-          </div>
-        </div>
-      </div>
+      <AuthSplitLayout
+        onGoHome={onGoHome}
+        aside={<SignupPlanPanelAside planId={signupPlanId} />}
+        mobileBanner={<SignupPlanPanelCompact planId={signupPlanId} />}
+        title="Create your account"
+        subtitle="Set up your organization in a minute. You can invite teammates after signup."
+        introExtra={onGoHome ? <PricingCompareLink /> : null}
+        form={authForm}
+        footer={modeToggle}
+      />
     )
   }
 
   return (
-    <div className="min-h-screen bg-ink-50 flex items-center justify-center p-4 sm:p-6 safe-top safe-bottom">
-      <div className="w-full max-w-sm">
-        <div className="flex flex-col items-center mb-8">
-          <AppLogo size="lg" className="w-[min(280px,80vw)]" onClick={onGoHome} />
-          <p className="text-xs text-ink-400 mt-3">{APP_TAGLINE}</p>
-          {onGoHome && (
-            <button
-              type="button"
-              onClick={onGoHome}
-              className="mt-4 text-sm font-medium text-brand-600 hover:text-brand-700"
-            >
-              ← Back to home
-            </button>
-          )}
-        </div>
-
-        <div className="card p-6">
-          <h2 className="text-base font-bold text-ink-800 mb-1">{AUTH_COPY.signIn}</h2>
-          <p className="text-sm text-ink-400 mb-5">
-            Enter your credentials to access the dashboard.
-          </p>
-          {authForm}
-        </div>
-
-        <div className="text-center mt-4">{modeToggle}</div>
-      </div>
-    </div>
+    <AuthSplitLayout
+      onGoHome={onGoHome}
+      aside={<LoginWelcomePanelAside />}
+      mobileBanner={<LoginWelcomePanelCompact />}
+      title={AUTH_COPY.loginFormTitle}
+      subtitle={AUTH_COPY.loginFormSubtitle}
+      form={authForm}
+      footer={modeToggle}
+    />
   )
 }
 
