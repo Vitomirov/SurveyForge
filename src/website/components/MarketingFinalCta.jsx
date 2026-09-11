@@ -12,7 +12,7 @@ export function MarketingFinalCta({ isAuthenticated }) {
         <MarketingButton
           ctaId={MARKETING_FINAL_CTA.cta.ctaId}
           label={MARKETING_FINAL_CTA.cta.label}
-          variant="primary"
+          variant="on-dark"
           isAuthenticated={isAuthenticated}
         />
       </div>

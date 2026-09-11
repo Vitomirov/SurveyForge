@@ -7,15 +7,13 @@ export function MarketingCompare() {
     <section className="split">
       <div className="wrap">
         <div className="section-head">
-          <div className="eyebrow" style={{ color: MARKETING_COMPARE.eyebrowColor }}>
-            {MARKETING_COMPARE.eyebrow}
-          </div>
+          <div className="eyebrow">{MARKETING_COMPARE.eyebrow}</div>
           <h2>{MARKETING_COMPARE.title}</h2>
           <p>{MARKETING_COMPARE.subtitle}</p>
         </div>
         <div className="compare">
-          <div className="col">
-            <h3>{generic.title}</h3>
+          <article className="compare-card compare-card--generic">
+            <h3 className="compare-card__head">{generic.title}</h3>
             <ul>
               {generic.items.map(item => (
                 <li key={item}>
@@ -24,9 +22,9 @@ export function MarketingCompare() {
                 </li>
               ))}
             </ul>
-          </div>
-          <div className="col rescope">
-            <h3>{rescope.title}</h3>
+          </article>
+          <article className="compare-card compare-card--brand">
+            <h3 className="compare-card__head">{rescope.title}</h3>
             <ul>
               {rescope.items.map(item => (
                 <li key={item}>
@@ -35,7 +33,7 @@ export function MarketingCompare() {
                 </li>
               ))}
             </ul>
-          </div>
+          </article>
         </div>
       </div>
     </section>

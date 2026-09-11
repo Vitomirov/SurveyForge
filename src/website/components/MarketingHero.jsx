@@ -16,6 +16,7 @@ export function MarketingHero({ isAuthenticated }) {
               ctaId={MARKETING_HERO.primaryCta.ctaId}
               label={MARKETING_HERO.primaryCta.label}
               variant="primary"
+              className="btn-dominant"
               isAuthenticated={isAuthenticated}
             />
             <MarketingButton
@@ -27,7 +28,8 @@ export function MarketingHero({ isAuthenticated }) {
           </div>
           <div className="fine">{MARKETING_HERO.fine}</div>
         </div>
-        <div className="canvas">
+        <div className="product-demo">
+          <div className="canvas">
           <div className="canvas-top">
             <span className="label">{canvas.label}</span>
             <div className="dots">
@@ -56,6 +58,7 @@ export function MarketingHero({ isAuthenticated }) {
               )}
             </div>
           ))}
+          </div>
         </div>
       </div>
     </section>

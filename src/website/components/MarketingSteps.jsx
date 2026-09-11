@@ -10,11 +10,11 @@ export function MarketingSteps() {
         </div>
         <div className="steps">
           {MARKETING_STEPS.steps.map(step => (
-            <div key={step.num} className="step">
+            <article key={step.num} className="step-card">
               <div className="num">{step.num}</div>
               <h3>{step.title}</h3>
               <p>{step.body}</p>
-            </div>
+            </article>
           ))}
         </div>
       </div>

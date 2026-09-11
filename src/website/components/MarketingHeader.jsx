@@ -10,7 +10,7 @@ export function MarketingHeader({ isAuthenticated, onNavHash }) {
 
   return (
     <header>
-      <div className="nav">
+      <div className="wrap nav">
         <button type="button" className="nav-brand" onClick={() => onNavHash('#top')} aria-label={`${APP_NAME} home`}>
           <img src={logoSmUrl} alt="" className="nav-logo-sm" draggable={false} />
           <img src={logoLgUrl} alt={APP_NAME} className="nav-logo-lg" draggable={false} />
@@ -36,6 +36,7 @@ export function MarketingHeader({ isAuthenticated, onNavHash }) {
             ctaId={primary.ctaId}
             label={primary.label}
             variant="primary"
+            className="btn-nav-cta"
             isAuthenticated={isAuthenticated}
           />
         </div>

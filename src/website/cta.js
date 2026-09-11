@@ -1,4 +1,5 @@
 import { nav } from '@/utils/routing/appRoute'
+import { scrollToMarketingTarget } from './scrollToSection'
 
 /** @typedef {'freeTrial' | 'signIn' | 'contact' | 'scrollTrial' | 'dashboard'} MarketingCtaId */
 
@@ -28,16 +29,14 @@ export function runCtaAction(action, { isAuthenticated } = {}) {
     return
   }
   if (action.type === 'hash') {
-    const current = window.location.hash.replace(/\?.*/, '')
-    const onMarketing = current === '#/home' || current === '#/' || current === ''
+    const routeHash = window.location.hash.replace(/\?.*/, '')
+    const onMarketing = routeHash === '#/home' || routeHash === '#/' || routeHash === ''
     if (!onMarketing) {
       nav('home')
-      requestAnimationFrame(() => {
-        document.querySelector(action.hash)?.scrollIntoView({ behavior: 'smooth' })
-      })
+      requestAnimationFrame(() => scrollToMarketingTarget(action.hash))
       return
     }
-    document.querySelector(action.hash)?.scrollIntoView({ behavior: 'smooth' })
+    scrollToMarketingTarget(action.hash)
     return
   }
   if (action.type === 'mailto') {

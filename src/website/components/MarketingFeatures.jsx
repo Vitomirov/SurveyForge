@@ -10,11 +10,14 @@ export function MarketingFeatures() {
         </div>
         <div className="feat-grid">
           {MARKETING_FEATURES.items.map(feat => (
-            <div key={feat.title} className={`feat${feat.highlight ? ' highlight' : ''}`}>
+            <article
+              key={feat.title}
+              className={`feat-card${feat.highlight ? ' feat-card--highlight' : ''}`}
+            >
               <div className="tag">{feat.tag}</div>
               <h3>{feat.title}</h3>
               <p>{feat.body}</p>
-            </div>
+            </article>
           ))}
         </div>
       </div>

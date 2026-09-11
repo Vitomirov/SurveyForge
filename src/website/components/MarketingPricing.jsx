@@ -12,7 +12,7 @@ export function MarketingPricing({ isAuthenticated }) {
         </div>
         <div className="pricing-grid">
           {MARKETING_PRICING.plans.map(plan => (
-            <div key={plan.id} className={`plan${plan.featured ? ' feat-plan' : ''}`}>
+            <article key={plan.id} className={`plan-card${plan.featured ? ' plan-card--featured' : ''}`}>
               <div className="pname">{plan.name}</div>
               <div className="pdesc">{plan.description}</div>
               {plan.priceLabel ? (
@@ -38,7 +38,7 @@ export function MarketingPricing({ isAuthenticated }) {
                 variant={plan.cta.variant}
                 isAuthenticated={isAuthenticated}
               />
-            </div>
+            </article>
           ))}
         </div>
       </div>
