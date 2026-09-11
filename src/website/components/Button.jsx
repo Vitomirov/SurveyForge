@@ -1,6 +1,6 @@
 import { resolveCta, runCtaAction, navToSignup } from '../cta'
 
-export function MarketingButton({
+export function Button({
   ctaId,
   planId,
   label,

@@ -1,6 +1,6 @@
 import { MARKETING_FOOTER } from '../content/marketingContent'
 
-export function MarketingFooter({ onNavHash }) {
+export function Footer({ onNavHash }) {
   return (
     <footer id={MARKETING_FOOTER.id}>
       <div className="wrap">

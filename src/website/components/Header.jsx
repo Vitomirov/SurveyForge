@@ -3,9 +3,9 @@ import logoSmUrl from '@/assets/brand/logo-sm.svg'
 import { APP_NAME } from '@/constants/branding'
 import { MARKETING_NAV } from '../content/marketingContent'
 import { resolveCta, runCtaAction } from '../cta'
-import { MarketingButton } from './MarketingButton'
+import { Button } from './Button'
 
-export function MarketingHeader({ isAuthenticated, onNavHash }) {
+export function Header({ isAuthenticated, onNavHash }) {
   const primary = isAuthenticated ? MARKETING_NAV.signedInPrimaryCta : MARKETING_NAV.primaryCta
 
   return (
@@ -32,7 +32,7 @@ export function MarketingHeader({ isAuthenticated, onNavHash }) {
               {MARKETING_NAV.signInCta.label}
             </button>
           )}
-          <MarketingButton
+          <Button
             ctaId={primary.ctaId}
             label={primary.label}
             variant="primary"

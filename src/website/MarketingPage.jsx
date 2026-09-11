@@ -1,13 +1,14 @@
 import { useCallback, useEffect } from 'react'
 import { MARKETING_META } from './content/marketingContent'
-import { MarketingCompare } from './components/MarketingCompare'
-import { MarketingFeatures } from './components/MarketingFeatures'
-import { MarketingFinalCta } from './components/MarketingFinalCta'
-import { MarketingFooter } from './components/MarketingFooter'
-import { MarketingHeader } from './components/MarketingHeader'
-import { MarketingHero } from './components/MarketingHero'
-import { MarketingPricing } from './components/MarketingPricing'
-import { MarketingSteps } from './components/MarketingSteps'
+import { Compare } from './components/Compare'
+import { Features } from './components/Features'
+import { FinalCta } from './components/FinalCta'
+import { Footer } from './components/Footer'
+import { Header } from './components/Header'
+import { Hero } from './components/Hero'
+import { Pricing } from './components/Pricing'
+import { Steps } from './components/Steps'
+import { DemoNotice } from './components/DemoNotice'
 import { scrollToMarketingTarget } from './scrollToSection'
 import { MKT_SCROLL_STORAGE_KEY } from '@shared/siteHosts.js'
 import './styles/marketing.css'
@@ -40,17 +41,18 @@ export function MarketingPage({ isAuthenticated = false }) {
 
   return (
     <div className="mkt-site">
-      <MarketingHeader isAuthenticated={isAuthenticated} onNavHash={onNavHash} />
+      <DemoNotice />
+      <Header isAuthenticated={isAuthenticated} onNavHash={onNavHash} />
       <main>
-        <MarketingHero isAuthenticated={isAuthenticated} />
+        <Hero isAuthenticated={isAuthenticated} />
         <div className="mkt-sheet-edge" aria-hidden="true" />
-        <MarketingCompare />
-        <MarketingFeatures />
-        <MarketingSteps />
-        <MarketingPricing isAuthenticated={isAuthenticated} />
-        <MarketingFinalCta isAuthenticated={isAuthenticated} />
+        <Compare />
+        <Features />
+        <Steps />
+        <Pricing isAuthenticated={isAuthenticated} />
+        <FinalCta isAuthenticated={isAuthenticated} />
       </main>
-      <MarketingFooter onNavHash={onNavHash} />
+      <Footer onNavHash={onNavHash} />
     </div>
   )
 }

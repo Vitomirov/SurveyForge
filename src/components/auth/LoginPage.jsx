@@ -6,7 +6,7 @@ import { prefetchForRoute } from '@/utils/routing/routePrefetch'
 import { AUTH_COPY, AUTH_VALIDATION } from '@/constants/authCopy'
 import { APP_TAGLINE } from '@/constants/branding'
 import { SignupPlanPanelAside, SignupPlanPanelCompact } from '@/components/auth/SignupPlanPanel.jsx'
-import { MarketingPricingCompareLink } from '@/website/components/MarketingPricing.jsx'
+import { PricingCompareLink } from '@/website/components/Pricing.jsx'
 import { nav } from '@/utils/routing/appRoute'
 import { normalizeSignupPlanId } from '@shared/planCatalog.js'
 
@@ -238,7 +238,7 @@ export function LoginPage({ onLogin, initialMode = 'login', onGoHome, signupPlan
               </p>
               {onGoHome && (
                 <p className="mt-3 text-center lg:text-left">
-                  <MarketingPricingCompareLink />
+                  <PricingCompareLink />
                 </p>
               )}
             </div>

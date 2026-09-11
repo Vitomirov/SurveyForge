@@ -1,6 +1,6 @@
 import { MARKETING_STEPS } from '../content/marketingContent'
 
-export function MarketingSteps() {
+export function Steps() {
   return (
     <section id={MARKETING_STEPS.id} className={MARKETING_STEPS.dimBackground ? 'section-dim' : undefined}>
       <div className="wrap">

@@ -1,7 +1,7 @@
 import { MARKETING_FINAL_CTA } from '../content/marketingContent'
-import { MarketingButton } from './MarketingButton'
+import { Button } from './Button'
 
-export function MarketingFinalCta({ isAuthenticated }) {
+export function FinalCta({ isAuthenticated }) {
   return (
     <section className="cta-final" id={MARKETING_FINAL_CTA.id}>
       <div className="wrap">
@@ -9,7 +9,7 @@ export function MarketingFinalCta({ isAuthenticated }) {
           <h2>{MARKETING_FINAL_CTA.title}</h2>
           <p>{MARKETING_FINAL_CTA.body}</p>
         </div>
-        <MarketingButton
+        <Button
           ctaId={MARKETING_FINAL_CTA.cta.ctaId}
           label={MARKETING_FINAL_CTA.cta.label}
           variant="on-dark"

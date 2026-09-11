@@ -152,3 +152,12 @@ export const MARKETING_FOOTER = {
     { label: 'Features', hash: '#features' },
   ],
 }
+
+/** Shown once until dismissed — remove when the public site is launch-ready. */
+export const MARKETING_DEMO_NOTICE = {
+  storageKey: 'rescope.mktDemoNoticeDismissed',
+  title: 'Demo preview',
+  body:
+    'This website is under active development. Some content, pricing, and layout details are placeholders and may change. Thanks for your understanding.',
+  dismissLabel: 'Close notice',
+}

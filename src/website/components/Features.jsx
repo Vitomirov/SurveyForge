@@ -1,6 +1,6 @@
 import { MARKETING_FEATURES } from '../content/marketingContent'
 
-export function MarketingFeatures() {
+export function Features() {
   return (
     <section id={MARKETING_FEATURES.id}>
       <div className="wrap">

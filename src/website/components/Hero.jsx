@@ -1,7 +1,7 @@
 import { MARKETING_HERO } from '../content/marketingContent'
-import { MarketingButton } from './MarketingButton'
+import { Button } from './Button'
 
-export function MarketingHero({ isAuthenticated }) {
+export function Hero({ isAuthenticated }) {
   const { canvas } = MARKETING_HERO
 
   return (
@@ -12,14 +12,14 @@ export function MarketingHero({ isAuthenticated }) {
           <h1>{MARKETING_HERO.title}</h1>
           <p className="lede">{MARKETING_HERO.lede}</p>
           <div className="ctas">
-            <MarketingButton
+            <Button
               ctaId={MARKETING_HERO.primaryCta.ctaId}
               label={MARKETING_HERO.primaryCta.label}
               variant="primary"
               className="btn-dominant"
               isAuthenticated={isAuthenticated}
             />
-            <MarketingButton
+            <Button
               ctaId={MARKETING_HERO.secondaryCta.ctaId}
               label={MARKETING_HERO.secondaryCta.label}
               variant="ghost"

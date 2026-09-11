@@ -2,26 +2,26 @@ import { MARKETING_PRICING_SECTION, listMarketingPricingPlans } from '@shared/pl
 import { navMarketingHome } from '@/utils/routing/appRoute'
 import { isMarketingSiteHost, queueMarketingScroll } from '@shared/siteHosts.js'
 import { scrollToMarketingTarget } from '@/website/scrollToSection'
-import { MarketingButton } from './MarketingButton'
+import { Button } from './Button'
 
 /** In-page anchor for the pricing section (shared with signup “compare plans”). */
-export const marketingPricingHash = `#${MARKETING_PRICING_SECTION.id}`
+export const pricingSectionHash = `#${MARKETING_PRICING_SECTION.id}`
 
-export function goToMarketingPricing() {
+export function goToPricingSection() {
   if (!isMarketingSiteHost()) {
     queueMarketingScroll(MARKETING_PRICING_SECTION.id)
     navMarketingHome()
     return
   }
   navMarketingHome()
-  requestAnimationFrame(() => scrollToMarketingTarget(marketingPricingHash))
+  requestAnimationFrame(() => scrollToMarketingTarget(pricingSectionHash))
 }
 
-export function MarketingPricingCompareLink({ className = '' }) {
+export function PricingCompareLink({ className = '' }) {
   return (
     <button
       type="button"
-      onClick={goToMarketingPricing}
+      onClick={goToPricingSection}
       className={`text-sm font-semibold text-brand-600 underline-offset-4 hover:text-brand-700 hover:underline ${className}`.trim()}
     >
       Compare all plans
@@ -29,7 +29,7 @@ export function MarketingPricingCompareLink({ className = '' }) {
   )
 }
 
-export function MarketingPricing({ isAuthenticated }) {
+export function Pricing({ isAuthenticated }) {
   const plans = listMarketingPricingPlans()
 
   return (
@@ -63,14 +63,14 @@ export function MarketingPricing({ isAuthenticated }) {
                 ))}
               </ul>
               {plan.cta.kind === 'contact' ? (
-                <MarketingButton
+                <Button
                   ctaId="contact"
                   label={plan.cta.label}
                   variant={plan.cta.variant}
                   isAuthenticated={isAuthenticated}
                 />
               ) : (
-                <MarketingButton
+                <Button
                   label={plan.cta.label}
                   variant={plan.cta.variant}
                   planId={plan.cta.planId}

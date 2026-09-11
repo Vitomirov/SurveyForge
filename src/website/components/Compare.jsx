@@ -1,6 +1,6 @@
 import { MARKETING_COMPARE } from '../content/marketingContent'
 
-export function MarketingCompare() {
+export function Compare() {
   const { generic, rescope } = MARKETING_COMPARE
 
   return (
