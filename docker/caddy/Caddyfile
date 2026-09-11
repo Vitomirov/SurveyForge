@@ -9,7 +9,8 @@
 # published on loopback only. The nginx inside that container keeps serving
 # the React build and proxying /api/ to the api container — unchanged.
 #
-# app / apex / www → SaaS dashboard (canonical host: app.rescopesurveys.com).
+# app.rescopesurveys.com → SaaS (login, dashboard, builder — no marketing homepage).
+# rescopesurveys.com + www → marketing site (#/home); CTAs send auth to app host (see shared/siteHosts.js).
 # surveys.* → public survey taker; stays embeddable (Professional+ iframe snippet).
 #
 # Full guide: docs/DEPLOY.md

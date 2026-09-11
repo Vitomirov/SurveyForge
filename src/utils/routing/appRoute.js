@@ -1,10 +1,10 @@
 // ─── Hash routing ──────────────────────────────────────────────────────────
 // The URL is the single source of truth for navigation, so every view
 // survives a refresh and browser back/forward works.
-//   #/                dashboard (signed in) or marketing home (signed out)
-//   #/home            marketing site (always)
-//   #/login           sign in
-//   #/signup?plan=starter   create org (optional plan intent from pricing)
+//   #/                dashboard (signed in) or marketing home (signed out, marketing host)
+//   #/home            marketing site (marketing host)
+//   #/login           sign in (app host in production)
+//   #/signup?plan=starter   create org (app host in production)
 //   #/builder/:id     edit (unknown id = new draft)
 //   #/builder/:id?export=1  edit and open Export Manager (notification deep link)
 //   #/preview/:id     preview
@@ -15,6 +15,13 @@
 import { useMemo, useSyncExternalStore } from 'react'
 import { parseSurveyHost } from '@shared/surveyUrl.js'
 import { normalizeSignupPlanId } from '@shared/planCatalog.js'
+import {
+  assignAppRoute,
+  assignMarketingRoute,
+  isAppSiteHost,
+  isMarketingSiteHost,
+  usesSplitSiteHosts,
+} from '@shared/siteHosts.js'
 
 const DASHBOARD = {
   view: 'dashboard',
@@ -27,6 +34,7 @@ const DASHBOARD = {
 }
 const VIEWS     = ['builder', 'preview', 'take', 'embed']
 const PUBLIC_APP_VIEWS = ['home', 'login', 'signup']
+const APP_ONLY_VIEWS = ['login', 'signup', 'dashboard', 'builder', 'preview']
 
 function parsePublicAppHash(hash = '') {
   const path = hashPath(hash)
@@ -123,24 +131,56 @@ export function parseTakeHash() {
   return view === 'take' ? id : null
 }
 
-/** Navigate — pushes a history entry so back/forward moves between views. */
+function setHash(hash) {
+  if (window.location.hash !== hash) window.location.hash = hash
+}
+
+/** Navigate — same-origin hash, or cross-origin assign in production split. */
 export function nav(view, id, opts = {}) {
-  if (view === 'dashboard') {
-    const hash = '#/'
-    if (window.location.hash !== hash) window.location.hash = hash
+  const split = usesSplitSiteHosts()
+  const onMarketing = isMarketingSiteHost()
+  const onApp = isAppSiteHost()
+
+  if (split && onMarketing && APP_ONLY_VIEWS.includes(view)) {
+    assignAppRoute(view, id, opts)
     return
   }
+
+  if (split && onApp && view === 'home') {
+    assignMarketingRoute('#/home')
+    return
+  }
+
+  if (view === 'dashboard') {
+    if (split && onMarketing) {
+      assignAppRoute('dashboard')
+      return
+    }
+    setHash('#/')
+    return
+  }
+
   if (PUBLIC_APP_VIEWS.includes(view)) {
     let hash = `#/${view}`
     if (view === 'signup' && opts.plan) {
       hash += `?plan=${encodeURIComponent(normalizeSignupPlanId(opts.plan))}`
     }
-    if (window.location.hash !== hash) window.location.hash = hash
+    setHash(hash)
     return
   }
+
   let hash = `#/${view}/${id}`
   if (opts.export && view === 'builder') hash += '?export=1'
-  if (window.location.hash !== hash) window.location.hash = hash
+  setHash(hash)
+}
+
+/** Public marketing homepage (rescopesurveys.com in production). */
+export function navMarketingHome() {
+  if (usesSplitSiteHosts() && isAppSiteHost()) {
+    assignMarketingRoute('#/home')
+    return
+  }
+  nav('home')
 }
 
 function subscribe(onChange) {

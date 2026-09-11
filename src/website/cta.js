@@ -1,5 +1,6 @@
-import { nav } from '@/utils/routing/appRoute'
+import { nav, navMarketingHome } from '@/utils/routing/appRoute'
 import { normalizeSignupPlanId } from '@shared/planCatalog.js'
+import { isMarketingSiteHost, queueMarketingScroll } from '@shared/siteHosts.js'
 import { scrollToMarketingTarget } from './scrollToSection'
 
 /** @typedef {'freeTrial' | 'signIn' | 'contact' | 'scrollTrial' | 'dashboard'} MarketingCtaId */
@@ -38,10 +39,15 @@ export function runCtaAction(action, { isAuthenticated } = {}) {
     return
   }
   if (action.type === 'hash') {
+    if (!isMarketingSiteHost()) {
+      queueMarketingScroll(action.hash.replace(/^#/, ''))
+      navMarketingHome()
+      return
+    }
     const routeHash = window.location.hash.replace(/\?.*/, '')
     const onMarketing = routeHash === '#/home' || routeHash === '#/' || routeHash === ''
     if (!onMarketing) {
-      nav('home')
+      navMarketingHome()
       requestAnimationFrame(() => scrollToMarketingTarget(action.hash))
       return
     }

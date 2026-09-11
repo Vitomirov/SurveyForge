@@ -40,6 +40,15 @@ import {
   normalizeSignupPlanId,
   signupIntentSummary,
 } from '../../../shared/planCatalog.js'
+import {
+  APP_HOST,
+  MARKETING_HOSTS,
+  isMarketingSiteHost,
+  isAppSiteHost,
+  usesSplitSiteHosts,
+  marketingSiteOrigin,
+  appSiteOrigin,
+} from '../../../shared/siteHosts.js'
 
 test('plan feature matrix gates by tier', () => {
   assert.equal(canUseBrandKit('free_trial'), false)
@@ -55,6 +64,19 @@ test('plan feature matrix gates by tier', () => {
   assert.equal(embedOriginLimit('enterprise'), null)
   assert.equal(maxSurveys('free_trial'), 5)
   assert.equal(maxSurveys('starter'), null)
+})
+
+test('production host split: marketing apex vs app subdomain', () => {
+  assert.equal(APP_HOST, 'app.rescopesurveys.com')
+  assert.deepEqual(MARKETING_HOSTS, ['rescopesurveys.com', 'www.rescopesurveys.com'])
+  assert.equal(isMarketingSiteHost('www.rescopesurveys.com'), true)
+  assert.equal(isMarketingSiteHost('app.rescopesurveys.com'), false)
+  assert.equal(isAppSiteHost('app.rescopesurveys.com'), true)
+  assert.equal(isAppSiteHost('rescopesurveys.com'), false)
+  assert.equal(usesSplitSiteHosts('app.rescopesurveys.com'), true)
+  assert.equal(usesSplitSiteHosts('localhost'), false)
+  assert.equal(marketingSiteOrigin(), 'https://rescopesurveys.com')
+  assert.equal(appSiteOrigin(), 'https://app.rescopesurveys.com')
 })
 
 test('marketing pricing reads from catalog only', () => {

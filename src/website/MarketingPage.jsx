@@ -9,6 +9,7 @@ import { MarketingHero } from './components/MarketingHero'
 import { MarketingPricing } from './components/MarketingPricing'
 import { MarketingSteps } from './components/MarketingSteps'
 import { scrollToMarketingTarget } from './scrollToSection'
+import { MKT_SCROLL_STORAGE_KEY } from '@shared/siteHosts.js'
 import './styles/marketing.css'
 
 const BUILDER_TITLE = 'Rescope Surveys — Builder'
@@ -19,6 +20,17 @@ export function MarketingPage({ isAuthenticated = false }) {
     document.title = MARKETING_META.title
     return () => {
       document.title = prev || BUILDER_TITLE
+    }
+  }, [])
+
+  useEffect(() => {
+    try {
+      const target = sessionStorage.getItem(MKT_SCROLL_STORAGE_KEY)
+      if (!target) return
+      sessionStorage.removeItem(MKT_SCROLL_STORAGE_KEY)
+      requestAnimationFrame(() => scrollToMarketingTarget(`#${target.replace(/^#/, '')}`))
+    } catch {
+      /* ignore */
     }
   }, [])
 

@@ -8,7 +8,8 @@ import { onAuthInvalidated } from '@/api/auth/authEvents'
 import { AUTH_ERRORS } from '@/constants/authCopy'
 import { useApi } from '@/config/api'
 import { prefetchForRoute } from '@/utils/routing/routePrefetch'
-import { useRoute, nav } from '@/utils/routing/appRoute'
+import { useRoute, nav, navMarketingHome, isMarketingRoute } from '@/utils/routing/appRoute'
+import { isMarketingSiteHost, usesSplitSiteHosts, assignAppRoute } from '@shared/siteHosts.js'
 import { isNewSurveyDraft, markNewSurveyDraft } from '@/utils/data/surveyDrafts'
 import { SURVEY_NOT_FOUND_MESSAGE, SURVEY_NOT_FOUND_TITLE } from '@/constants/errors'
 
@@ -142,7 +143,8 @@ export default function App() {
     return onAuthInvalidated((code) => {
       logout()
       setSession(null)
-      nav('home')
+      if (usesSplitSiteHosts() && !isMarketingSiteHost()) nav('login')
+      else navMarketingHome()
       const message = code === 'TOKEN_EXPIRED'
         ? AUTH_ERRORS.sessionExpired
         : AUTH_ERRORS.sessionInvalid
@@ -164,9 +166,25 @@ export default function App() {
     if (view === 'builder' || view === 'preview') nav('dashboard')
   }, [ownerSession, view])
 
-  const goHome = () => nav('home')
+  useEffect(() => {
+    if (!usesSplitSiteHosts() || session) return
+    if (isMarketingSiteHost() && (view === 'login' || view === 'signup')) {
+      assignAppRoute(view, null, view === 'signup' ? { plan: signupPlanId ?? 'free_trial' } : {})
+    }
+  }, [session, view, signupPlanId])
+
+  useEffect(() => {
+    if (!usesSplitSiteHosts() || !session) return
+    if (isMarketingSiteHost() && isMarketingRoute(view)) {
+      assignAppRoute('dashboard')
+    }
+  }, [session, view])
+
+  const goMarketing = () => navMarketingHome()
   const authMode = view === 'signup' ? 'signup' : 'login'
   const back = () => nav('dashboard')
+  const onMarketingHost = isMarketingSiteHost()
+  const splitHosts = usesSplitSiteHosts()
 
   if (isPublic) {
     if (status === 'loading') return <PageLoader label="Loading survey…" />
@@ -190,18 +208,24 @@ export default function App() {
   }
 
   if (!session) {
-    if (view === 'login' || view === 'signup' || view === 'builder' || view === 'preview') {
+    if (splitHosts && onMarketingHost && (view === 'login' || view === 'signup')) {
+      return <PageLoader label="Opening sign-in…" />
+    }
+
+    const authGateViews = ['login', 'signup', 'builder', 'preview']
+    if (authGateViews.includes(view) || (splitHosts && !onMarketingHost)) {
       return (
         <Page title="Sign-in error" label="Loading…">
           <LoginPage
-            initialMode={authMode}
-            onGoHome={goHome}
+            initialMode={authGateViews.includes(view) ? authMode : 'login'}
+            onGoHome={goMarketing}
             signupPlanId={signupPlanId ?? 'free_trial'}
             onLogin={(s) => { prefetchForRoute({ session: s }); setSession(s) }}
           />
         </Page>
       )
     }
+
     return (
       <Page title="Marketing" label="Loading site…">
         <MarketingPage isAuthenticated={false} />
@@ -215,13 +239,31 @@ export default function App() {
         <PlatformConsole
           session={session}
           onSessionUpdate={setSession}
-          onLogout={() => { logout(); setSession(null); nav('home') }}
+          onLogout={() => { logout(); setSession(null); navMarketingHome() }}
         />
       </Page>
     )
   }
 
   if (view === 'home') {
+    if (splitHosts && !onMarketingHost) {
+      return (
+        <Page title="Dashboard error" label="Loading dashboard…" onReset={back}>
+          <Dashboard
+            session={session}
+            onSessionUpdate={setSession}
+            onLogout={() => { logout(); setSession(null); navMarketingHome() }}
+            onNewSurvey={() => {
+              const surveyId = newSurveyId()
+              markNewSurveyDraft(surveyId)
+              nav('builder', surveyId)
+            }}
+            onOpenSurvey={(surveyId, opts) => nav('builder', surveyId, opts)}
+            onPreviewSurvey={(surveyId) => nav('preview', surveyId)}
+          />
+        </Page>
+      )
+    }
     return (
       <Page title="Marketing" label="Loading site…">
         <MarketingPage isAuthenticated />
@@ -260,7 +302,7 @@ export default function App() {
       <Dashboard
         session={session}
         onSessionUpdate={setSession}
-        onLogout={() => { logout(); setSession(null); nav('home') }}
+        onLogout={() => { logout(); setSession(null); navMarketingHome() }}
         onNewSurvey={() => {
           const surveyId = newSurveyId()
           markNewSurveyDraft(surveyId)

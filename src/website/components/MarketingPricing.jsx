@@ -1,5 +1,6 @@
 import { MARKETING_PRICING_SECTION, listMarketingPricingPlans } from '@shared/planCatalog.js'
-import { nav } from '@/utils/routing/appRoute'
+import { navMarketingHome } from '@/utils/routing/appRoute'
+import { isMarketingSiteHost, queueMarketingScroll } from '@shared/siteHosts.js'
 import { scrollToMarketingTarget } from '@/website/scrollToSection'
 import { MarketingButton } from './MarketingButton'
 
@@ -7,7 +8,12 @@ import { MarketingButton } from './MarketingButton'
 export const marketingPricingHash = `#${MARKETING_PRICING_SECTION.id}`
 
 export function goToMarketingPricing() {
-  nav('home')
+  if (!isMarketingSiteHost()) {
+    queueMarketingScroll(MARKETING_PRICING_SECTION.id)
+    navMarketingHome()
+    return
+  }
+  navMarketingHome()
   requestAnimationFrame(() => scrollToMarketingTarget(marketingPricingHash))
 }
 
