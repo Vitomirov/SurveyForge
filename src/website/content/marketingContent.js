@@ -9,8 +9,8 @@ export const MARKETING_META = {
 export const MARKETING_NAV = {
   links: [
     { label: 'Features', hash: '#features' },
-    { label: 'How it works', hash: '#how' },
     { label: 'Pricing', hash: '#pricing' },
+    { label: 'Contact', hash: '#contact' },
   ],
   primaryCta: { label: 'Start free trial', ctaId: 'freeTrial' },
   signedInPrimaryCta: { label: 'Go to dashboard', ctaId: 'dashboard' },
