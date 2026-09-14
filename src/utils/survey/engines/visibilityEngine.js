@@ -42,9 +42,11 @@ function terminationBlockTargetIndex(pagesArr) {
  *  - group visibility (hides every question that belongs to a hidden group)
  *  - per-question visibility
  *
- * Returns { pages, blocksByPage, navigationLockByPage } where `pages` is an array
- * of page item arrays, `blocksByPage[i]` holds termination blocks for page i, and
- * `navigationLockByPage[i]` is the minimum seconds before Next unlocks on page i.
+ * Returns { pages, blocksByPage, navigationLockByPage, pageTitlesByPage } where
+ * `pages` is an array of page item arrays, `blocksByPage[i]` holds termination
+ * blocks for page i, `navigationLockByPage[i]` is the minimum seconds before
+ * Next unlocks on page i, and `pageTitlesByPage[i]` is the title of the visible
+ * page_break that started that page (null for page 0).
  *
  * Must be recomputed whenever `responses` changes, since visibility can
  * depend on answers given earlier in the survey.
@@ -70,6 +72,7 @@ export function buildVisiblePages(items, responses, surveySettings = null) {
   const pagesArr  = [[]]
   const blocksArr = [[]]
   const locksArr  = [allPagesLock > 0 ? allPagesLock : Math.max(pageOneOnlyLock)]
+  const titlesArr = [null]
   let currentGroupId = null
 
   const applyGroupLock = (groupItem) => {
@@ -81,11 +84,12 @@ export function buildVisiblePages(items, responses, surveySettings = null) {
     locksArr[idx] = Math.max(locksArr[idx] || 0, groupLock)
   }
 
-  const startNewPage = (pageBreakLock = 0) => {
+  const startNewPage = (pageBreakLock = 0, pageTitle = null) => {
     currentGroupId = null
     pagesArr.push([])
     blocksArr.push([])
     locksArr.push(pageLock(pageBreakLock))
+    titlesArr.push(pageTitle || null)
   }
 
   for (const item of items) {
@@ -104,7 +108,7 @@ export function buildVisiblePages(items, responses, surveySettings = null) {
         }
         continue // merges into current page
       }
-      startNewPage(breakLock)
+      startNewPage(breakLock, item.title)
       continue
     }
 
@@ -129,13 +133,19 @@ export function buildVisiblePages(items, responses, surveySettings = null) {
   }
 
   const filtered = pagesArr
-    .map((p, i) => ({ p, b: blocksArr[i] || [], l: locksArr[i] || 0 }))
+    .map((p, i) => ({
+      p,
+      b: blocksArr[i] || [],
+      l: locksArr[i] || 0,
+      t: titlesArr[i] ?? null,
+    }))
     .filter(x => x.p.length > 0)
 
   return {
     pages: filtered.map(x => x.p),
     blocksByPage: filtered.map(x => x.b),
     navigationLockByPage: filtered.map(x => x.l),
+    pageTitlesByPage: filtered.map(x => x.t),
   }
 }
 

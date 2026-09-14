@@ -284,6 +284,72 @@ test('page 1-only lock does not apply to later pages', () => {
   assert.deepEqual(navigationLockByPage, [15, 0])
 })
 
+test('page titles follow visible page breaks, not builder order', () => {
+  const branchQ = {
+    id: 'q-branch',
+    itemType: 'question',
+    questionType: 'single_select',
+    text: 'Pick a sport',
+    options: [
+      { id: 'opt-f1', text: 'Formula 1' },
+      { id: 'opt-fb', text: 'Football' },
+    ],
+  }
+  const showFootball = {
+    enabled: true,
+    mode: 'show_if',
+    conditions: [{
+      id: 'c-fb', join: null, questionId: branchQ.id,
+      conditionType: 'any_of', optionIds: ['opt-fb'],
+    }],
+  }
+  const showF1 = {
+    enabled: true,
+    mode: 'show_if',
+    conditions: [{
+      id: 'c-f1', join: null, questionId: branchQ.id,
+      conditionType: 'any_of', optionIds: ['opt-f1'],
+    }],
+  }
+  const pbTeam = {
+    id: 'pb-team',
+    itemType: 'page_break',
+    title: 'Team and Ball Sports',
+    visibility: showFootball,
+  }
+  const qTeam = {
+    id: 'q-team',
+    itemType: 'question',
+    questionType: 'open_text',
+    text: 'Team question',
+    visibility: showFootball,
+  }
+  const pbMotor = {
+    id: 'pb-motor',
+    itemType: 'page_break',
+    title: 'Motorsport & Individual Sports',
+    visibility: showF1,
+  }
+  const qMotor = {
+    id: 'q-motor',
+    itemType: 'question',
+    questionType: 'open_text',
+    text: 'Motor question',
+    visibility: showF1,
+  }
+  const surveyItems = [branchQ, pbTeam, qTeam, pbMotor, qMotor]
+
+  const f1 = buildVisiblePages(surveyItems, { [branchQ.id]: 'opt-f1' })
+  assert.equal(f1.pages.length, 2)
+  assert.deepEqual(f1.pageTitlesByPage, [null, 'Motorsport & Individual Sports'])
+  assert.equal(f1.pages[1].some(i => i.id === qMotor.id), true)
+
+  const fb = buildVisiblePages(surveyItems, { [branchQ.id]: 'opt-fb' })
+  assert.equal(fb.pages.length, 2)
+  assert.deepEqual(fb.pageTitlesByPage, [null, 'Team and Ball Sports'])
+  assert.equal(fb.pages[1].some(i => i.id === qTeam.id), true)
+})
+
 test('page 2 lock from page break is independent of page 1', () => {
   const q1 = { id: 'q1', itemType: 'question', questionType: 'open_text', text: 'Q1' }
   const pageBreak = {

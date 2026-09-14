@@ -93,7 +93,7 @@ export function SurveyPreview({ survey, items, onClose, isPublic = false, isEmbe
   // Build pages + capture termination blocks, fully respecting conditional
   // show/hide logic on questions, page breaks, and groups. Must recompute
   // whenever `responses` changes, since visibility can depend on earlier answers.
-  const { pages, blocksByPage, navigationLockByPage } = useMemo(
+  const { pages, blocksByPage, navigationLockByPage, pageTitlesByPage } = useMemo(
     () => buildVisiblePages(items, responses, survey?.settings),
     [items, responses, survey?.settings]
   )
@@ -115,15 +115,10 @@ export function SurveyPreview({ survey, items, onClose, isPublic = false, isEmbe
   )
 
   const currentPageBreakTitle = useMemo(() => {
-    if (currentPage <= 0) return null
-    let breakIndex = 0
-    for (const item of items) {
-      if (item.itemType !== 'page_break') continue
-      if (breakIndex === currentPage - 1) return item.title || null
-      breakIndex++
-    }
-    return null
-  }, [items, currentPage])
+    const raw = pageTitlesByPage[currentPage]
+    if (!raw) return null
+    return resolvePipingTokens(raw, responses, items)
+  }, [pageTitlesByPage, currentPage, responses, items])
 
   // Resolve piped text once per visible page item when responses change
   const pipedDisplayByItemId = useMemo(() => {
@@ -275,6 +270,12 @@ export function SurveyPreview({ survey, items, onClose, isPublic = false, isEmbe
     return false
   }
 
+  const handleBack = () => {
+    setCurrentPage(p => Math.max(0, p - 1))
+    bumpLockVisit()
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
   const handleNext = () => {
     if (isNavigationLocked) return
     if (!validatePage()) return
@@ -391,7 +392,7 @@ export function SurveyPreview({ survey, items, onClose, isPublic = false, isEmbe
       ) : terminated ? (
         <TerminationScreen settings={survey?.settings} terminatedBy={terminatedBy} onReset={reset} onDownload={() => persistAndDownload('terminated', terminatedBy, true)} isPublic={isPublic} />
       ) : submitted ? (
-        <CompletionScreen onReset={reset} onDownload={() => persistAndDownload('complete', null, true)} isPublic={isPublic} />
+        <CompletionScreen settings={survey?.settings} />
       ) : (
         <>
           <div className="flex-1 py-6 sm:py-8 px-4 sm:px-6">
@@ -469,33 +470,48 @@ export function SurveyPreview({ survey, items, onClose, isPublic = false, isEmbe
                   </div>
                 )
               })}
-            </div>
-          </div>
 
-          {/* Navigation */}
-          <div className="bg-white border-t border-ink-100 px-4 sm:px-6 py-3 sm:py-4 sticky bottom-0 safe-bottom">
-            <div className="max-w-2xl mx-auto flex items-center justify-between gap-2">
-              <button onClick={() => { setCurrentPage(p => Math.max(0, p-1)); bumpLockVisit(); window.scrollTo({top:0,behavior:'smooth'}) }} disabled={currentPage === 0} className="flex items-center gap-1 sm:gap-2 text-sm font-medium text-ink-500 hover:text-ink-700 disabled:opacity-30 disabled:cursor-not-allowed transition-all shrink-0">
-                <ChevronLeft size={16} /> Back
-              </button>
-              <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+              {/* Page navigation — below questions so respondents need not reach the page footer */}
+              <nav
+                className="mt-6 sm:mt-8 pt-6 sm:pt-8 border-t border-ink-100"
+                aria-label="Survey page navigation"
+              >
                 {isNavigationLocked && (
-                  <span className="text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1.5 rounded-lg shrink-0">
-                    Next unlocks in {remainingSeconds}s
-                  </span>
+                  <p className="mb-4 text-center text-sm font-medium text-amber-800 bg-amber-50 border border-amber-200/80 rounded-xl px-4 py-2.5">
+                    Please review this page — Next unlocks in{' '}
+                    <span className="tabular-nums font-semibold">{remainingSeconds}s</span>
+                  </p>
                 )}
-                <button
-                  onClick={handleNext}
-                  disabled={isNavigationLocked}
-                  className="btn-primary px-4 sm:px-8 shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isLastPage ? (
-                    <><Check size={15} /> <span className="hidden sm:inline">Submit</span></>
-                  ) : (
-                    <>Next <ChevronRight size={15} /></>
-                  )}
-                </button>
-              </div>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <button
+                    type="button"
+                    onClick={handleBack}
+                    disabled={currentPage === 0}
+                    className="order-2 sm:order-1 inline-flex items-center justify-center sm:justify-start gap-2 min-h-11 px-4 text-sm font-medium text-ink-600 hover:text-ink-900 hover:bg-ink-50 rounded-xl border border-transparent hover:border-ink-200 disabled:opacity-35 disabled:pointer-events-none transition-colors"
+                  >
+                    <ChevronLeft size={18} aria-hidden />
+                    Back
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleNext}
+                    disabled={isNavigationLocked}
+                    className="order-1 sm:order-2 btn-primary w-full sm:w-auto min-h-11 px-6 sm:px-10 flex items-center justify-center gap-2 text-sm sm:text-base font-semibold shadow-sm disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
+                  >
+                    {isLastPage ? (
+                      <>
+                        <Check size={18} aria-hidden />
+                        Submit survey
+                      </>
+                    ) : (
+                      <>
+                        Next
+                        <ChevronRight size={18} aria-hidden />
+                      </>
+                    )}
+                  </button>
+                </div>
+              </nav>
             </div>
           </div>
         </>
