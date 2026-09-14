@@ -93,7 +93,7 @@ export function SurveyPreview({ survey, items, onClose, isPublic = false, isEmbe
   // Build pages + capture termination blocks, fully respecting conditional
   // show/hide logic on questions, page breaks, and groups. Must recompute
   // whenever `responses` changes, since visibility can depend on earlier answers.
-  const { pages, blocksByPage, navigationLockByPage } = useMemo(
+  const { pages, blocksByPage, navigationLockByPage, pageTitlesByPage } = useMemo(
     () => buildVisiblePages(items, responses, survey?.settings),
     [items, responses, survey?.settings]
   )
@@ -115,15 +115,10 @@ export function SurveyPreview({ survey, items, onClose, isPublic = false, isEmbe
   )
 
   const currentPageBreakTitle = useMemo(() => {
-    if (currentPage <= 0) return null
-    let breakIndex = 0
-    for (const item of items) {
-      if (item.itemType !== 'page_break') continue
-      if (breakIndex === currentPage - 1) return item.title || null
-      breakIndex++
-    }
-    return null
-  }, [items, currentPage])
+    const raw = pageTitlesByPage[currentPage]
+    if (!raw) return null
+    return resolvePipingTokens(raw, responses, items)
+  }, [pageTitlesByPage, currentPage, responses, items])
 
   // Resolve piped text once per visible page item when responses change
   const pipedDisplayByItemId = useMemo(() => {
