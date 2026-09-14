@@ -392,7 +392,7 @@ export function SurveyPreview({ survey, items, onClose, isPublic = false, isEmbe
       ) : terminated ? (
         <TerminationScreen settings={survey?.settings} terminatedBy={terminatedBy} onReset={reset} onDownload={() => persistAndDownload('terminated', terminatedBy, true)} isPublic={isPublic} />
       ) : submitted ? (
-        <CompletionScreen onReset={reset} onDownload={() => persistAndDownload('complete', null, true)} isPublic={isPublic} />
+        <CompletionScreen settings={survey?.settings} />
       ) : (
         <>
           <div className="flex-1 py-6 sm:py-8 px-4 sm:px-6">

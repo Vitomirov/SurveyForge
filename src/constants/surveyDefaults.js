@@ -5,6 +5,7 @@ export const DEFAULT_START_BUTTON_TEXT = 'Start Survey'
 export const DEFAULT_DATE_FORMAT = 'DD/MM/YYYY'
 
 export const DEFAULT_SCREEN_MESSAGES = {
+  completeTitle:    'Survey Complete',
   terminateTitle:   'Thank you for your time.',
   terminateMessage: 'Unfortunately, you do not qualify for this survey.',
   closedTitle:      'This survey is now closed.',

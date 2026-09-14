@@ -1,7 +1,7 @@
 import { useRef } from 'react'
 import { Image as ImageIcon, X, Upload } from 'lucide-react'
 import { Toggle } from '@/components/ui'
-import { DEFAULT_START_BUTTON_TEXT } from '@/constants/surveyDefaults'
+import { DEFAULT_SCREEN_MESSAGES, DEFAULT_START_BUTTON_TEXT } from '@/constants/surveyDefaults'
 
 const MAX_IMAGE_BYTES = 4 * 1024 * 1024 // 4MB sanity cap for base64 storage
 
@@ -91,23 +91,34 @@ export function CoverPageSettings({ survey, dispatch }) {
             className="hidden"
           />
 
-          {/* Start button text */}
-          <div>
-            <label className="text-xs text-ink-500 mb-1 block">Start button text</label>
-            <input
-              type="text"
-              value={survey.startButtonText || ''}
-              onChange={e => dispatch({ type: 'SET_SURVEY_FIELD', field: 'startButtonText', value: e.target.value })}
-              placeholder={DEFAULT_START_BUTTON_TEXT}
-              className="input-base text-sm"
-            />
-          </div>
-
           <p className="text-xs text-ink-400">
             Respondents will see your survey title, description, and this image before Q1. Use Preview to check how it looks.
           </p>
         </div>
       )}
+
+      <div className="mt-3 space-y-3 border-t border-ink-100 pt-3">
+        <div>
+          <label className="text-xs text-ink-500 mb-1 block">Start button text</label>
+          <input
+            type="text"
+            value={survey.startButtonText || ''}
+            onChange={e => dispatch({ type: 'SET_SURVEY_FIELD', field: 'startButtonText', value: e.target.value })}
+            placeholder={DEFAULT_START_BUTTON_TEXT}
+            className="input-base text-sm"
+          />
+        </div>
+        <div>
+          <label className="text-xs text-ink-500 mb-1 block">Completion page heading</label>
+          <input
+            type="text"
+            value={survey.settings?.completeTitle || ''}
+            onChange={e => dispatch({ type: 'SET_SURVEY_SETTING', key: 'completeTitle', value: e.target.value })}
+            placeholder={DEFAULT_SCREEN_MESSAGES.completeTitle}
+            className="input-base text-sm"
+          />
+        </div>
+      </div>
     </div>
   )
 }

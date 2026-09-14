@@ -1,6 +1,9 @@
-import { Check, Download } from 'lucide-react'
+import { Check } from 'lucide-react'
+import { DEFAULT_SCREEN_MESSAGES } from '@/constants/surveyDefaults'
 
-export function CompletionScreen({ onReset, onDownload, isPublic = false }) {
+export function CompletionScreen({ settings }) {
+  const title = settings?.completeTitle || DEFAULT_SCREEN_MESSAGES.completeTitle
+
   return (
     <div className="flex-1 flex items-center justify-center py-8 sm:py-12 px-4 sm:px-6">
       <div className="max-w-md w-full text-center">
@@ -8,23 +11,7 @@ export function CompletionScreen({ onReset, onDownload, isPublic = false }) {
           <Check size={32} className="text-emerald-500 sm:hidden" />
           <Check size={36} className="text-emerald-500 hidden sm:block" />
         </div>
-        <h2 className="text-xl sm:text-2xl font-bold text-ink-800 mb-3">Survey Complete</h2>
-        <p className="text-ink-500 mb-4">
-          {isPublic ? 'Thank you for completing this survey. Your responses have been recorded.' : 'All responses captured. Download the CSV to see exactly how this response would be exported.'}
-        </p>
-        {!isPublic && (
-          <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl mb-6">
-            <p className="text-xs text-amber-700 font-medium">👁 Preview mode — download exports this single test response</p>
-          </div>
-        )}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-2 sm:gap-3">
-          {!isPublic && <button onClick={onReset} className="btn-ghost border border-ink-200 justify-center">← Restart</button>}
-          {!isPublic && (
-            <button onClick={onDownload} className="btn-primary flex items-center gap-2 justify-center">
-              <Download size={14} /> Download CSV
-            </button>
-          )}
-        </div>
+        <h2 className="text-xl sm:text-2xl font-bold text-ink-800 mb-3">{title}</h2>
       </div>
     </div>
   )
