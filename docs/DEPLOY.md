@@ -165,6 +165,9 @@ Store `POSTGRES_PASSWORD` securely off the server. Changing it in `.env` later d
 | `JWT_SECRET` | 32+ characters; required in production |
 | `INTERNAL_API_SECRET` | Protects Caddy on-demand TLS ask endpoint |
 | `CORS_ORIGIN` | Comma-separated HTTPS origins — must include every app host |
+| `SMTP_URL` | Outbound mail for invites, email confirmation, and password reset (`smtps://user:pass@host:465`). **Required** — the API refuses to start in production without it |
+| `EMAIL_FROM` | Sender shown to recipients (default `Rescope Surveys <no-reply@rescopesurveys.com>`); the domain must be allowed to send via your SMTP provider (SPF/DKIM) |
+| `APP_URL` | Base URL embedded in emailed links (default `https://app.rescopesurveys.com`) |
 | `DOCKERHUB_USER` | Docker Hub account |
 | `IMAGE_TAG` | Deployed version (e.g. `v0.1.0`) |
 | `WEB_HOST_PORT` | Bare port number (`8080`); must match Caddyfile |

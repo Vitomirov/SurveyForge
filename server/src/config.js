@@ -7,6 +7,10 @@ const DEFAULT_PORT = 3003
 const DEFAULT_ACCESS_TOKEN_EXPIRES_IN = '15m'
 const DEFAULT_REFRESH_TOKEN_EXPIRES_IN = '30d'
 const DEFAULT_DEV_CORS_ORIGIN = 'http://localhost:5173'
+const DEFAULT_DEV_APP_URL = 'http://localhost:5173'
+const DEFAULT_PROD_APP_URL = 'https://app.rescopesurveys.com'
+const DEFAULT_EMAIL_FROM = 'Rescope Surveys <no-reply@rescopesurveys.com>'
+const EMAIL_TRANSPORTS = new Set(['smtp', 'log'])
 const MIN_JWT_SECRET_LENGTH = 32
 
 const UNIT_MS = { ms: 1, s: 1000, m: 60_000, h: 3_600_000, d: 86_400_000 }
@@ -43,6 +47,38 @@ export function durationToMs(value, fallbackMs) {
   const match = String(value ?? '').trim().match(/^(\d+)\s*(ms|s|m|h|d)$/i)
   if (!match) return fallbackMs
   return Number(match[1]) * UNIT_MS[match[2].toLowerCase()]
+}
+
+/**
+ * Outbound email for account lifecycle links (invites, verification, resets).
+ * Production must send real mail; `log` only prints links and is a dev/test aid.
+ */
+export function parseEmailConfig(env, { isDev }) {
+  const transport = String(env.EMAIL_TRANSPORT || (isDev ? 'log' : 'smtp')).trim().toLowerCase()
+  if (!EMAIL_TRANSPORTS.has(transport)) {
+    throw new Error('EMAIL_TRANSPORT must be "smtp" or "log".')
+  }
+  const smtpUrl = String(env.SMTP_URL || '').trim()
+  if (transport === 'smtp' && !smtpUrl) {
+    throw new Error(
+      'SMTP_URL is required when EMAIL_TRANSPORT=smtp '
+      + '(e.g. smtps://user:pass@smtp.example.com:465). Use EMAIL_TRANSPORT=log for local development only.',
+    )
+  }
+  const appUrl = String(env.APP_URL || (isDev ? DEFAULT_DEV_APP_URL : DEFAULT_PROD_APP_URL))
+    .trim()
+    .replace(/\/+$/, '')
+  try {
+    new URL(appUrl)
+  } catch {
+    throw new Error('APP_URL must be an absolute URL (e.g. https://app.rescopesurveys.com).')
+  }
+  return {
+    emailTransport: transport,
+    smtpUrl: smtpUrl || null,
+    emailFrom: String(env.EMAIL_FROM || DEFAULT_EMAIL_FROM).trim(),
+    appUrl,
+  }
 }
 
 const CORS_WILDCARDS = new Set(['true', '*', 'reflect'])
@@ -103,6 +139,7 @@ function validateStrictProductionFlags({
   cookieSecure,
   authAllowBearer,
   internalApiSecret,
+  emailTransport,
 }) {
   if (isDev || !requireStrongJwt) return
 
@@ -114,6 +151,7 @@ function validateStrictProductionFlags({
     !cookieSecure && 'COOKIE_SECURE',
     authAllowBearer && 'AUTH_ALLOW_BEARER',
     !internalApiSecret && 'INTERNAL_API_SECRET',
+    emailTransport === 'log' && 'EMAIL_TRANSPORT',
   ].filter(Boolean)
 
   if (unsafe.length) {
@@ -152,6 +190,9 @@ export function loadConfig(env = process.env) {
     validateJwtSecret(jwtSecret)
   }
 
+  const corsOrigin = parseCorsOrigin(env.CORS_ORIGIN, { isDev })
+  const email = parseEmailConfig(env, { isDev })
+
   validateStrictProductionFlags({
     isDev,
     requireStrongJwt,
@@ -162,6 +203,7 @@ export function loadConfig(env = process.env) {
     cookieSecure,
     authAllowBearer,
     internalApiSecret,
+    emailTransport: email.emailTransport,
   })
 
   const port = Number(env.PORT) || DEFAULT_PORT
@@ -169,9 +211,9 @@ export function loadConfig(env = process.env) {
   const refreshTokenExpiresIn = env.REFRESH_TOKEN_EXPIRES_IN || DEFAULT_REFRESH_TOKEN_EXPIRES_IN
   // Internal compatibility alias used by the auth plugin.
   const jwtExpiresIn = accessTokenExpiresIn
-  const corsOrigin = parseCorsOrigin(env.CORS_ORIGIN, { isDev })
 
   return {
+    ...email,
     port,
     jwtSecret,
     jwtExpiresIn,

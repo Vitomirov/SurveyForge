@@ -31,6 +31,7 @@ import {
   canManagePlatform, canSeeAllSurveys, filterSurveysForSession,
 } from '@/utils/platform/permissions'
 import { useResponseNotifications } from '@/hooks/useResponseNotifications'
+import { EmailVerificationBanner } from './EmailVerificationBanner.jsx'
 
 const PlatformSettings = lazy(() => import('./PlatformSettings.jsx'))
 const TeamPanel        = lazy(() => import('./TeamPanel.jsx'))
@@ -514,6 +515,7 @@ export function Dashboard({ onOpenSurvey, onNewSurvey, onPreviewSurvey, session,
 
       <AppContentShell className="flex-1 min-h-0 overflow-y-auto py-4 sm:py-6">
         <AppWorkspaceColumns showRail={false}>
+        <EmailVerificationBanner session={session} />
         <StatsBar surveys={surveys} />
 
         {canManagePlatform(session) && (

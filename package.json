@@ -30,6 +30,7 @@
     "test:rbac6": "node --test scripts/tests/integration/rbac/billing.test.mjs",
     "test:config": "node --test scripts/tests/unit/config.test.mjs",
     "test:auth-cookies": "node --test scripts/tests/integration/auth/auth-cookies.test.mjs",
+    "test:auth-lifecycle": "node --test scripts/tests/integration/auth/account-lifecycle.test.mjs",
     "test:security:ownership": "node --test scripts/tests/integration/security/response-ownership.test.mjs",
     "test:security": "node --test scripts/tests/integration/security/*.test.mjs",
     "migrate:platform-lists": "npm run migrate:platform-lists --prefix server",

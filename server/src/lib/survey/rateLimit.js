@@ -149,6 +149,14 @@ export function createRouteLimiters({
     signupGlobal: create({ windowMs: MINUTE_MS, max: 60 * factor }),
     refresh: create({ windowMs: MINUTE_MS, max: 30 * factor }),
     refreshGlobal: create({ windowMs: MINUTE_MS, max: 1_000 * factor }),
+    // Account lifecycle: emails that leave the system (forgot password, resend verification).
+    recovery: create({ windowMs: 15 * MINUTE_MS, max: 5 * factor }),
+    recoveryGlobal: create({ windowMs: MINUTE_MS, max: 200 * factor }),
+    // One-time link redemption (accept invite, reset password, verify email).
+    tokenExchange: create({ windowMs: MINUTE_MS, max: 20 * factor }),
+    tokenExchangeGlobal: create({ windowMs: MINUTE_MS, max: 500 * factor }),
+    invite: create({ windowMs: MINUTE_MS, max: 30 * factor }),
+    inviteGlobal: create({ windowMs: MINUTE_MS, max: 300 * factor }),
     publicFetch: create({ windowMs: MINUTE_MS, max: 60 * factor }),
     surveyFetch: create({ windowMs: MINUTE_MS, max: 600 * factor }),
     dnc: create({ windowMs: MINUTE_MS, max: 20 * factor }),
@@ -187,4 +195,18 @@ export async function sendIfRateLimited(
     return reply.code(429).send({ error: 'Too many requests. Please try again later.' })
   }
   return null
+}
+
+/** Global (all clients) then per-IP limit for one auth scope. Returns the 429 reply or null. */
+export async function enforceAuthLimits(request, reply, { ipLimiter, globalLimiter, scope }) {
+  const globallyLimited = await sendIfRateLimited(
+    globalLimiter,
+    request,
+    reply,
+    `${scope}-global`,
+    { includeIp: false },
+  )
+  if (globallyLimited) return globallyLimited
+
+  return sendIfRateLimited(ipLimiter, request, reply, scope)
 }

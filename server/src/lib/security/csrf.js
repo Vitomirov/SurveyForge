@@ -9,9 +9,16 @@ export const CSRF_HEADER = 'x-csrf-token'
 
 const UNSAFE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE'])
 
+// Credential-establishing routes: no session cookie is trusted here, so a forged
+// cross-site POST gains nothing. Everything else with cookies must pass CSRF.
 const CSRF_EXEMPT_EXACT = new Set([
   '/api/auth/login',
   '/api/auth/signup',
+  '/api/auth/invites/preview',
+  '/api/auth/invites/accept',
+  '/api/auth/password/forgot',
+  '/api/auth/password/reset',
+  '/api/auth/email/verify',
 ])
 
 const CSRF_EXEMPT_PREFIXES = [

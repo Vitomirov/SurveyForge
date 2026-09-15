@@ -5,11 +5,12 @@
  * cookies.
  */
 import { verifyPassword, hashPassword } from '../lib/auth/password.js'
+import { validatePassword } from '../lib/auth/passwordPolicy.js'
 import { provisionOrgBilling } from '../lib/billing/billingDefaults.js'
-import { sendIfRateLimited } from '../lib/survey/rateLimit.js'
+import { enforceAuthLimits, sendIfRateLimited } from '../lib/survey/rateLimit.js'
 import { setAuthCookies, clearAuthCookies, readRefreshToken } from '../lib/auth/cookies.js'
+import { buildSession, signToken, issueAuthSession } from '../lib/auth/session.js'
 import {
-  createRefreshToken,
   rotateRefreshToken,
   revokeRefreshToken,
   revokeAllForUser,
@@ -22,41 +23,8 @@ import {
   assertUsernameAvailableInOrg,
   deriveUsernameForOrg,
 } from '../lib/auth/userIdentity.js'
+import { sendVerificationEmail } from '../lib/auth/accountLinks.js'
 import { catalogPlan } from '../../../shared/planCatalog.js'
-
-function buildSession(user, organizationName = null) {
-  return {
-    userId:           user.id,
-    organizationId:   user.organizationId,
-    organizationName: organizationName,
-    username:         user.username || user.email,
-    name:             user.name || user.username || user.email,
-    avatarUrl:        user.avatarUrl || null,
-    role:             user.role,
-    loginAt:          new Date().toISOString(),
-  }
-}
-
-function signToken(app, session, tokenVersion = 0) {
-  // Keep JWT lean — never embed avatarUrl (base64 images blow up Authorization headers).
-  return app.jwt.sign({
-    userId:           session.userId,
-    organizationId:   session.organizationId,
-    organizationName: session.organizationName,
-    username:         session.username,
-    name:             session.name,
-    role:             session.role,
-    tv:               tokenVersion,
-  })
-}
-
-async function issueAuthSession(app, reply, user, organizationName = null) {
-  const session = buildSession(user, organizationName)
-  const accessToken = signToken(app, session, user.tokenVersion ?? 0)
-  const { rawToken } = await createRefreshToken(app.prisma, user.id)
-  setAuthCookies(reply, { accessToken, refreshToken: rawToken })
-  return session
-}
 
 const MAX_AVATAR_BYTES = 512 * 1024
 
@@ -73,23 +41,6 @@ function validateAvatarUrl(value) {
     return { ok: false, error: 'Profile image must be 512 KB or smaller.' }
   }
   return { ok: true, avatarUrl: value }
-}
-
-async function enforceAuthLimits(
-  request,
-  reply,
-  { ipLimiter, globalLimiter, scope },
-) {
-  const globallyLimited = await sendIfRateLimited(
-    globalLimiter,
-    request,
-    reply,
-    `${scope}-global`,
-    { includeIp: false },
-  )
-  if (globallyLimited) return globallyLimited
-
-  return sendIfRateLimited(ipLimiter, request, reply, scope)
 }
 
 export async function registerAuthRoutes(app) {
@@ -111,9 +62,8 @@ export async function registerAuthRoutes(app) {
     if (!name?.trim() || !email?.trim() || !password) {
       return reply.code(400).send({ error: 'Name, email, and password are required.' })
     }
-    if (password.length < 8) {
-      return reply.code(400).send({ error: 'Password must be at least 8 characters.' })
-    }
+    const passwordCheck = validatePassword(password)
+    if (!passwordCheck.ok) return reply.code(400).send({ error: passwordCheck.error })
 
     const formatCheck = validateEmailFormat(email)
     if (!formatCheck.ok) return reply.code(400).send({ error: formatCheck.error })
@@ -148,6 +98,8 @@ export async function registerAuthRoutes(app) {
     })
 
     const session = await issueAuthSession(app, reply, user, org.name)
+    // Email delivery must never block or fail account creation.
+    sendVerificationEmail(app, user).catch(err => request.log.error(err, 'verification email failed'))
     return reply.code(201).send({ session })
   })
 
@@ -245,7 +197,7 @@ export async function registerAuthRoutes(app) {
     const { user, organizationId, role, userId } = request.auth
     const extra = await app.prisma.user.findUnique({
       where: { id: userId },
-      select: { avatarUrl: true },
+      select: { avatarUrl: true, emailVerifiedAt: true },
     })
     const session = {
       userId,
@@ -256,6 +208,7 @@ export async function registerAuthRoutes(app) {
       avatarUrl:        extra?.avatarUrl || null,
       email:            user.email,
       role,
+      emailVerified:    Boolean(extra?.emailVerifiedAt),
     }
     return { session }
   })
@@ -298,9 +251,8 @@ export async function registerAuthRoutes(app) {
     }
 
     if (newPassword) {
-      if (newPassword.length < 8) {
-        return reply.code(400).send({ error: 'Password must be at least 8 characters.' })
-      }
+      const passwordCheck = validatePassword(newPassword)
+      if (!passwordCheck.ok) return reply.code(400).send({ error: passwordCheck.error })
       if (!currentPassword) {
         return reply.code(400).send({ error: 'Current password is required to set a new password.' })
       }

@@ -11,7 +11,12 @@ import { registerHotCache } from './plugins/hotCache.js'
 import { registerRateLimits } from './plugins/rateLimits.js'
 import { registerCsrf } from './plugins/csrf.js'
 import { registerAuth } from './plugins/auth.js'
+import { registerMailer } from './plugins/mailer.js'
 import { registerAuthRoutes } from './routes/auth.js'
+import { registerInviteRoutes } from './routes/invites.js'
+import { registerPasswordResetRoutes } from './routes/passwordReset.js'
+import { registerEmailVerificationRoutes } from './routes/emailVerification.js'
+import { registerDevMailboxRoutes } from './routes/devMailbox.js'
 import { registerPublicRoutes } from './routes/public.js'
 import { registerSurveyRoutes } from './routes/surveys.js'
 import { registerExportRoutes } from './routes/exports.js'
@@ -55,6 +60,7 @@ export async function buildApp() {
   await registerPrisma(app)
   await registerHotCache(app)
   await registerRateLimits(app, config)
+  await registerMailer(app, config)
   await registerCsrf(app, config)
   await registerAuth(app, {
     jwtSecret: config.jwtSecret,
@@ -80,6 +86,9 @@ export async function buildApp() {
   })
 
   await registerAuthRoutes(app)
+  await registerInviteRoutes(app)
+  await registerPasswordResetRoutes(app)
+  await registerEmailVerificationRoutes(app)
   await registerPublicRoutes(app)
   await registerDashboardRoutes(app)
   await registerNotificationRoutes(app)
@@ -93,6 +102,7 @@ export async function buildApp() {
   await registerInternalRoutes(app)
   await registerDncRoutes(app)
   await registerMigrateRoutes(app, { isDev: config.isDev })
+  await registerDevMailboxRoutes(app, config)
 
   return app
 }

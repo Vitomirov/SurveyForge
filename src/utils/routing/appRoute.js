@@ -5,6 +5,10 @@
 //   #/home            marketing site (marketing host)
 //   #/login           sign in (app host in production)
 //   #/signup?plan=starter   create org (app host in production)
+//   #/forgot-password             request a reset link
+//   #/reset-password?token=…      choose a new password (emailed link)
+//   #/accept-invite?token=…       join an organization (emailed link)
+//   #/verify-email?token=…        confirm email address (emailed link)
 //   #/builder/:id     edit (unknown id = new draft)
 //   #/builder/:id?export=1  edit and open Export Manager (notification deep link)
 //   #/preview/:id     preview
@@ -16,6 +20,7 @@ import { useMemo, useSyncExternalStore } from 'react'
 import { parseSurveyHost } from '@shared/surveyUrl.js'
 import { normalizeSignupPlanId } from '@shared/planCatalog.js'
 import {
+  ACCOUNT_LINK_VIEWS,
   assignAppRoute,
   assignMarketingRoute,
   isAppSiteHost,
@@ -33,13 +38,20 @@ const DASHBOARD = {
   signupPlanId: null,
 }
 const VIEWS     = ['builder', 'preview', 'take', 'embed']
-const PUBLIC_APP_VIEWS = ['home', 'login', 'signup']
-const APP_ONLY_VIEWS = ['login', 'signup', 'dashboard', 'builder', 'preview']
+const PUBLIC_APP_VIEWS = ['home', 'login', 'signup', ...ACCOUNT_LINK_VIEWS]
+const APP_ONLY_VIEWS = ['login', 'signup', 'dashboard', 'builder', 'preview', ...ACCOUNT_LINK_VIEWS]
+const PUBLIC_APP_HASH = new RegExp(`^#\\/(${PUBLIC_APP_VIEWS.join('|')})$`)
+
+/** Views reached from an emailed one-time link (token in the hash query). */
+export function isAccountLinkView(view) {
+  return ACCOUNT_LINK_VIEWS.includes(view)
+}
 
 function parsePublicAppHash(hash = '') {
   const path = hashPath(hash)
-  const match = path.match(/^#\/(home|login|signup)$/)
+  const match = path.match(PUBLIC_APP_HASH)
   if (match) {
+    const query = hashQuery(hash)
     return {
       view: match[1],
       id: null,
@@ -48,8 +60,9 @@ function parsePublicAppHash(hash = '') {
       isEmbed: false,
       openExport: false,
       signupPlanId: match[1] === 'signup'
-        ? normalizeSignupPlanId(hashQuery(hash).get('plan'))
+        ? normalizeSignupPlanId(query.get('plan'))
         : null,
+      token: isAccountLinkView(match[1]) ? (query.get('token') || null) : null,
     }
   }
   return null
@@ -164,6 +177,9 @@ export function nav(view, id, opts = {}) {
     let hash = `#/${view}`
     if (view === 'signup' && opts.plan) {
       hash += `?plan=${encodeURIComponent(normalizeSignupPlanId(opts.plan))}`
+    }
+    if (isAccountLinkView(view) && opts.token) {
+      hash += `?token=${encodeURIComponent(opts.token)}`
     }
     setHash(hash)
     return

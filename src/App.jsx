@@ -8,7 +8,7 @@ import { onAuthInvalidated } from '@/api/auth/authEvents'
 import { AUTH_ERRORS } from '@/constants/authCopy'
 import { useApi } from '@/config/api'
 import { prefetchForRoute } from '@/utils/routing/routePrefetch'
-import { useRoute, nav, navMarketingHome, isMarketingRoute } from '@/utils/routing/appRoute'
+import { useRoute, nav, navMarketingHome, isMarketingRoute, isAccountLinkView } from '@/utils/routing/appRoute'
 import { isMarketingSiteHost, usesSplitSiteHosts, assignAppRoute } from '@shared/siteHosts.js'
 import { isNewSurveyDraft, markNewSurveyDraft } from '@/utils/data/surveyDrafts'
 import { SURVEY_NOT_FOUND_MESSAGE, SURVEY_NOT_FOUND_TITLE } from '@/constants/errors'
@@ -17,6 +17,7 @@ import { useSurveyBranding } from '@/hooks/useSurveyBranding'
 import { isPlatformOwner } from '@/utils/platform/permissions'
 
 const LoginPage        = lazy(() => import('@/components/auth/LoginPage.jsx'))
+const AccountLinkPage  = lazy(() => import('@/components/auth/AccountLinkPage.jsx'))
 const MarketingPage    = lazy(() => import('@/website/MarketingPage.jsx'))
 const Dashboard        = lazy(() => import('@/components/dashboard/Dashboard.jsx'))
 const PlatformConsole  = lazy(() => import('@/components/dashboard/PlatformConsole.jsx'))
@@ -114,7 +115,7 @@ export default function App() {
   const [session, setSession] = useState(() => (useApi ? null : getSession()))
   const [authChecking, setAuthChecking] = useState(() => useApi)
   const { toast }             = useToast()
-  const { view, id, byPath, clientDomain, isEmbed, openExport, signupPlanId } = useRoute()
+  const { view, id, byPath, clientDomain, isEmbed, openExport, signupPlanId, token } = useRoute()
   const isPublic              = view === 'take'
   const ownerSession          = isPlatformOwner(session)
   const { status, entry }     = useSurveyEntry(
@@ -158,7 +159,10 @@ export default function App() {
 
   useEffect(() => {
     if (!session) return
-    if (view === 'login' || view === 'signup') nav('dashboard')
+    // verify-email is allowed while signed in; the page navigates on its own.
+    if (view === 'login' || view === 'signup' || (isAccountLinkView(view) && view !== 'verify-email')) {
+      nav('dashboard')
+    }
   }, [session, view])
 
   useEffect(() => {
@@ -168,10 +172,10 @@ export default function App() {
 
   useEffect(() => {
     if (!usesSplitSiteHosts() || session) return
-    if (isMarketingSiteHost() && (view === 'login' || view === 'signup')) {
-      assignAppRoute(view, null, view === 'signup' ? { plan: signupPlanId ?? 'free_trial' } : {})
+    if (isMarketingSiteHost() && (view === 'login' || view === 'signup' || isAccountLinkView(view))) {
+      assignAppRoute(view, null, view === 'signup' ? { plan: signupPlanId ?? 'free_trial' } : { token })
     }
-  }, [session, view, signupPlanId])
+  }, [session, view, signupPlanId, token])
 
   useEffect(() => {
     if (!usesSplitSiteHosts() || !session) return
@@ -205,6 +209,24 @@ export default function App() {
 
   if (authChecking) {
     return <PageLoader label="Loading…" />
+  }
+
+  if (useApi && isAccountLinkView(view) && (!session || view === 'verify-email')) {
+    if (splitHosts && onMarketingHost) {
+      return <PageLoader label="Opening sign-in…" />
+    }
+    return (
+      <Page title="Account error" label="Loading…">
+        <AccountLinkPage
+          view={view}
+          token={token}
+          session={session}
+          onGoHome={goMarketing}
+          onSessionUpdate={setSession}
+          onLogin={(s) => { prefetchForRoute({ session: s }); setSession(s) }}
+        />
+      </Page>
+    )
   }
 
   if (!session) {

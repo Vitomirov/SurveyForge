@@ -61,6 +61,9 @@ services:
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
       AUTH_ALLOW_BEARER: ${AUTH_ALLOW_BEARER:-true}
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:8080}
+      # Partner demo: account emails (invites, resets) are printed to `docker compose logs api`.
+      EMAIL_TRANSPORT: ${EMAIL_TRANSPORT:-log}
+      APP_URL: ${APP_URL:-http://localhost:8080}
       SEED_DEFAULT_ACCOUNTS: ${SEED_DEFAULT_ACCOUNTS:-true}
       RUN_PLATFORM_LIST_MIGRATION: ${RUN_PLATFORM_LIST_MIGRATION:-true}
       REQUIRE_STRONG_JWT: ${REQUIRE_STRONG_JWT:-false}

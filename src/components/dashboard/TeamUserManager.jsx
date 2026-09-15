@@ -1,7 +1,8 @@
-import { useMemo, useState } from 'react'
-import { Plus, Trash2, Edit3, Check, X, Eye, EyeOff, Search, RefreshCw } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { Plus, Trash2, Edit3, Eye, EyeOff, Search, RefreshCw, Mail, Send, X } from 'lucide-react'
 import { useApi } from '@/config/api'
-import { createUser, updateUserApi, deleteUserApi } from '@/api/platform/platform'
+import { updateUserApi, deleteUserApi } from '@/api/platform/platform'
+import { createInvite, fetchInvites, resendInvite, revokeInvite } from '@/api/platform/invites'
 import { addUser, updateUser, deleteUser } from '@/utils/data/authStore'
 import { roleLabel } from '@/utils/platform/permissions'
 import { AUTH_TEAM, AUTH_PROFILE } from '@/constants/authCopy'
@@ -14,14 +15,27 @@ function generatePassword() {
   return out
 }
 
+const EMPTY_FORM = { email: '', username: '', password: '', name: '', role: 'editor' }
+
+/**
+ * API mode: admins invite by email and members set their own password via the emailed link.
+ * Local (offline) mode: legacy add-with-password, unchanged.
+ */
 export function TeamUserManager({ users, setUsers, session, seatUsage, hideHeader = false }) {
   const [showForm, setShowForm] = useState(false)
   const [showPass, setShowPass] = useState(false)
   const [editId, setEditId] = useState(null)
   const [query, setQuery] = useState('')
-  const [form, setForm] = useState({ email: '', username: '', password: '', name: '', role: 'editor' })
+  const [form, setForm] = useState(EMPTY_FORM)
   const [error, setError] = useState('')
-  const [revealed, setRevealed] = useState(null)
+  const [notice, setNotice] = useState('')
+  const [invites, setInvites] = useState([])
+  const [busyInviteId, setBusyInviteId] = useState(null)
+
+  useEffect(() => {
+    if (!useApi) return
+    fetchInvites().then(setInvites).catch(() => setInvites([]))
+  }, [])
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -33,15 +47,26 @@ export function TeamUserManager({ users, setUsers, session, seatUsage, hideHeade
     )
   }, [users, query])
 
+  const isInviteMode = useApi && !editId
+  const showsPassword = !useApi
+
   const resetForm = () => {
-    setForm({ email: '', username: '', password: '', name: '', role: 'editor' })
+    setForm(EMPTY_FORM)
     setError('')
     setEditId(null)
     setShowForm(false)
   }
 
+  const openCreate = () => {
+    setEditId(null)
+    setError('')
+    setNotice('')
+    setForm({ ...EMPTY_FORM, password: useApi ? '' : generatePassword() })
+    setShowForm(true)
+  }
+
   const handleSubmit = async () => {
-    if (!form.name.trim()) {
+    if (!isInviteMode && !form.name.trim()) {
       setError('Display name is required.')
       return
     }
@@ -49,11 +74,11 @@ export function TeamUserManager({ users, setUsers, session, seatUsage, hideHeade
       setError('Email is required for new users.')
       return
     }
-    if (!editId && !form.password) {
+    if (showsPassword && !editId && !form.password) {
       setError('Password is required for new users.')
       return
     }
-    if (form.password && form.password.length < 8) {
+    if (showsPassword && form.password && form.password.length < 8) {
       setError('Password must be at least 8 characters.')
       return
     }
@@ -61,38 +86,14 @@ export function TeamUserManager({ users, setUsers, session, seatUsage, hideHeade
     if (useApi) {
       try {
         if (editId) {
-          const patch = {
-            name: form.name.trim(),
-            role: form.role,
-          }
+          const patch = { name: form.name.trim(), role: form.role }
           if (form.username.trim()) patch.username = form.username.trim()
-          if (form.password) patch.password = form.password
           const data = await updateUserApi(editId, patch)
           setUsers(prev => prev.map(u => u.id === editId ? data.user : u))
-          if (data.temporaryPassword) {
-            setRevealed({
-              email: data.user.email,
-              username: data.user.username,
-              password: data.temporaryPassword,
-              reset: true,
-            })
-          }
         } else {
-          const data = await createUser({
-            email: form.email.trim(),
-            password: form.password,
-            name: form.name.trim(),
-            role: form.role,
-          })
-          setUsers(prev => [...prev, data.user])
-          if (data.temporaryPassword) {
-            setRevealed({
-              email: data.user.email,
-              username: data.user.username,
-              password: data.temporaryPassword,
-              reset: false,
-            })
-          }
+          const invite = await createInvite({ email: form.email.trim(), role: form.role })
+          setInvites(prev => [invite, ...prev.filter(i => i.email !== invite.email)])
+          setNotice(AUTH_TEAM.inviteSent)
         }
         resetForm()
       } catch (err) {
@@ -127,6 +128,7 @@ export function TeamUserManager({ users, setUsers, session, seatUsage, hideHeade
     setEditId(u.id)
     setForm({ email: u.email || '', username: u.username || '', password: '', name: u.name, role: u.role })
     setError('')
+    setNotice('')
     setShowForm(true)
   }
 
@@ -149,28 +151,48 @@ export function TeamUserManager({ users, setUsers, session, seatUsage, hideHeade
     setUsers(deleteUser(id))
   }
 
+  const handleResendInvite = async (invite) => {
+    setBusyInviteId(invite.id)
+    setError('')
+    try {
+      const next = await resendInvite(invite.id)
+      setInvites(prev => prev.map(i => i.id === invite.id ? next : i))
+      setNotice(AUTH_TEAM.inviteResent)
+    } catch (err) {
+      setError(err.message || 'Failed to resend invitation.')
+    } finally {
+      setBusyInviteId(null)
+    }
+  }
+
+  const handleRevokeInvite = async (invite) => {
+    if (!window.confirm(`Revoke the invitation for ${invite.email}?`)) return
+    setBusyInviteId(invite.id)
+    setError('')
+    try {
+      await revokeInvite(invite.id)
+      setInvites(prev => prev.filter(i => i.id !== invite.id))
+    } catch (err) {
+      setError(err.message || 'Failed to revoke invitation.')
+    } finally {
+      setBusyInviteId(null)
+    }
+  }
+
   const seatsLabel = seatUsage
     ? `${seatUsage.used}/${seatUsage.total} ${AUTH_PROFILE.seatsUsed}`
     : `${users.length} ${AUTH_PROFILE.seatsUsed}`
 
+  const formTitle = editId ? 'Edit team member' : (useApi ? AUTH_TEAM.inviteMember : 'Add team member')
+  const submitLabel = editId ? 'Save changes' : (useApi ? 'Send invitation' : 'Add member')
+
   return (
     <section className="rounded-xl border border-ink-100 bg-ink-50/40 p-4 sm:p-5">
-      {revealed && (
-        <div className="mb-4 p-3 rounded-xl border border-amber-200 bg-amber-50 text-sm">
-          <p className="font-semibold text-amber-900 mb-1">
-            {revealed.reset ? AUTH_TEAM.passwordResetOnce : AUTH_TEAM.credentialsOnce}
-          </p>
-          <p className="text-ink-700 font-mono text-xs break-all">
-            Email: {revealed.email}<br />
-            Username: @{revealed.username}<br />
-            Password: {revealed.password}
-          </p>
-          <button
-            type="button"
-            onClick={() => setRevealed(null)}
-            className="mt-2 text-xs font-medium text-amber-800 hover:text-amber-950"
-          >
-            Dismiss
+      {notice && (
+        <div className="mb-4 p-3 rounded-xl border border-emerald-200 bg-emerald-50 text-sm text-emerald-800 flex items-start justify-between gap-3">
+          <span>{notice}</span>
+          <button type="button" onClick={() => setNotice('')} className="text-emerald-700 hover:text-emerald-900" aria-label="Dismiss">
+            <X size={14} />
           </button>
         </div>
       )}
@@ -189,14 +211,10 @@ export function TeamUserManager({ users, setUsers, session, seatUsage, hideHeade
           {!showForm && (
             <button
               type="button"
-              onClick={() => {
-                setShowForm(true)
-                setEditId(null)
-                setForm({ email: '', username: '', password: generatePassword(), name: '', role: 'editor' })
-              }}
+              onClick={openCreate}
               className="text-xs font-medium text-brand-600 hover:text-brand-700 flex items-center gap-1 px-2.5 py-1.5 hover:bg-brand-50 border border-brand-200 rounded-lg transition-all"
             >
-              <Plus size={12} /> Add member
+              <Plus size={12} /> {useApi ? AUTH_TEAM.inviteMember : 'Add member'}
             </button>
           )}
         </div>
@@ -268,20 +286,72 @@ export function TeamUserManager({ users, setUsers, session, seatUsage, hideHeade
         )}
       </div>
 
+      {useApi && invites.length > 0 && (
+        <div className="mb-3">
+          <p className="text-xs font-semibold text-ink-500 px-2 mb-1">{AUTH_TEAM.pendingInvites}</p>
+          <div className="space-y-1">
+            {invites.map(invite => (
+              <div key={invite.id} className="flex items-center gap-3 px-2 py-2 rounded-lg border border-dashed border-ink-200 bg-white/60">
+                <div className="w-9 h-9 rounded-full bg-ink-100 flex items-center justify-center text-ink-400 shrink-0">
+                  <Mail size={14} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-medium text-ink-700 truncate">{invite.email}</p>
+                    <span className="text-[10px] font-semibold uppercase tracking-wide text-ink-500 bg-ink-100 px-1.5 py-0.5 rounded">
+                      {roleLabel(invite.role)}
+                    </span>
+                  </div>
+                  <p className="text-xs text-ink-400">
+                    Invited · expires {new Date(invite.expiresAt).toLocaleDateString()}
+                  </p>
+                </div>
+                <div className="flex gap-1">
+                  <button
+                    type="button"
+                    disabled={busyInviteId === invite.id}
+                    onClick={() => handleResendInvite(invite)}
+                    className="p-1.5 text-ink-400 hover:text-brand-600 hover:bg-brand-50 rounded-lg disabled:opacity-50"
+                    title={AUTH_TEAM.resendInvite}
+                  >
+                    <Send size={13} />
+                  </button>
+                  <button
+                    type="button"
+                    disabled={busyInviteId === invite.id}
+                    onClick={() => handleRevokeInvite(invite)}
+                    className="p-1.5 text-ink-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg disabled:opacity-50"
+                    title={AUTH_TEAM.revokeInvite}
+                  >
+                    <Trash2 size={13} />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {error && !showForm && <p className="text-xs text-rose-600 mb-3 px-2">{error}</p>}
+
       {showForm && (
         <div className="border border-ink-200 rounded-xl p-3 sm:p-4 bg-white space-y-3">
-          <p className="text-xs font-semibold text-ink-600">{editId ? 'Edit team member' : 'Invite team member'}</p>
+          <p className="text-xs font-semibold text-ink-600">{formTitle}</p>
+          {isInviteMode && <p className="text-xs text-ink-400">{AUTH_TEAM.inviteHint}</p>}
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <div>
-              <label className="text-xs text-ink-500 mb-1 block">{AUTH_PROFILE.displayName}</label>
-              <input
-                type="text"
-                value={form.name}
-                onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                placeholder="Jane Smith"
-                className="input-base py-1.5 text-sm"
-              />
-            </div>
+            {!isInviteMode && (
+              <div>
+                <label className="text-xs text-ink-500 mb-1 block">{AUTH_PROFILE.displayName}</label>
+                <input
+                  type="text"
+                  value={form.name}
+                  onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                  placeholder="Jane Smith"
+                  className="input-base py-1.5 text-sm"
+                />
+              </div>
+            )}
             <div>
               <label className="text-xs text-ink-500 mb-1 block">{AUTH_PROFILE.email}</label>
               <input
@@ -290,10 +360,25 @@ export function TeamUserManager({ users, setUsers, session, seatUsage, hideHeade
                 onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
                 placeholder="jane@company.com"
                 readOnly={Boolean(editId)}
+                autoFocus={isInviteMode}
                 className={`input-base py-1.5 text-sm ${editId ? 'bg-ink-50 text-ink-500 cursor-not-allowed' : ''}`}
               />
             </div>
+            {isInviteMode && (
+              <div>
+                <label className="text-xs text-ink-500 mb-1 block">Role</label>
+                <select
+                  value={form.role}
+                  onChange={e => setForm(f => ({ ...f, role: e.target.value }))}
+                  className="input-base py-1.5 text-sm"
+                >
+                  <option value="admin">Admin</option>
+                  <option value="editor">User</option>
+                </select>
+              </div>
+            )}
           </div>
+
           {editId && (
             <div>
               <label className="text-xs text-ink-500 mb-1 block">{AUTH_PROFILE.username}</label>
@@ -306,60 +391,71 @@ export function TeamUserManager({ users, setUsers, session, seatUsage, hideHeade
               />
             </div>
           )}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <div>
-              <label className="text-xs text-ink-500 mb-1 block">
-                {editId ? AUTH_PROFILE.resetPassword : 'Temporary password'}
-              </label>
-              <div className="relative">
-                <input
-                  type={showPass ? 'text' : 'password'}
-                  value={form.password}
-                  onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
-                  placeholder={editId ? 'Leave blank to keep' : '••••••••'}
-                  className="input-base py-1.5 text-sm pr-16"
-                />
-                <div className="absolute right-1 top-1 flex gap-0.5">
-                  <button
-                    type="button"
-                    onClick={() => setForm(f => ({ ...f, password: generatePassword() }))}
-                    className="p-1.5 text-ink-400 hover:text-brand-600 rounded-lg"
-                    title={AUTH_PROFILE.generatePassword}
-                  >
-                    <RefreshCw size={13} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowPass(v => !v)}
-                    className="p-1.5 text-ink-400 hover:text-ink-600 rounded-lg"
-                  >
-                    {showPass ? <EyeOff size={13} /> : <Eye size={13} />}
-                  </button>
+
+          {!isInviteMode && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {showsPassword ? (
+                <div>
+                  <label className="text-xs text-ink-500 mb-1 block">
+                    {editId ? AUTH_PROFILE.resetPassword : 'Temporary password'}
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showPass ? 'text' : 'password'}
+                      value={form.password}
+                      onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
+                      placeholder={editId ? 'Leave blank to keep' : '••••••••'}
+                      className="input-base py-1.5 text-sm pr-16"
+                    />
+                    <div className="absolute right-1 top-1 flex gap-0.5">
+                      <button
+                        type="button"
+                        onClick={() => setForm(f => ({ ...f, password: generatePassword() }))}
+                        className="p-1.5 text-ink-400 hover:text-brand-600 rounded-lg"
+                        title={AUTH_PROFILE.generatePassword}
+                      >
+                        <RefreshCw size={13} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowPass(v => !v)}
+                        className="p-1.5 text-ink-400 hover:text-ink-600 rounded-lg"
+                      >
+                        {showPass ? <EyeOff size={13} /> : <Eye size={13} />}
+                      </button>
+                    </div>
+                  </div>
+                  {editId && (
+                    <p className="text-[11px] text-ink-400 mt-1">{AUTH_PROFILE.adminResetHint}</p>
+                  )}
                 </div>
-              </div>
-              {editId && (
-                <p className="text-[11px] text-ink-400 mt-1">{AUTH_PROFILE.adminResetHint}</p>
+              ) : (
+                <div>
+                  <label className="text-xs text-ink-500 mb-1 block">Password</label>
+                  <p className="text-[11px] text-ink-400 leading-relaxed pt-1">{AUTH_TEAM.passwordSelfService}</p>
+                </div>
               )}
+              <div>
+                <label className="text-xs text-ink-500 mb-1 block">Role</label>
+                <select
+                  value={form.role}
+                  onChange={e => setForm(f => ({ ...f, role: e.target.value }))}
+                  className="input-base py-1.5 text-sm"
+                >
+                  <option value="admin">Admin</option>
+                  <option value="editor">User</option>
+                </select>
+              </div>
             </div>
-            <div>
-              <label className="text-xs text-ink-500 mb-1 block">Role</label>
-              <select
-                value={form.role}
-                onChange={e => setForm(f => ({ ...f, role: e.target.value }))}
-                className="input-base py-1.5 text-sm"
-              >
-                <option value="admin">Admin</option>
-                <option value="editor">User</option>
-              </select>
-            </div>
-          </div>
+          )}
+
           {error && <p className="text-xs text-rose-600">{error}</p>}
           <div className="flex gap-2">
             <button type="button" onClick={resetForm} className="flex-1 btn-ghost border border-ink-200 text-sm py-1.5">
               Cancel
             </button>
             <button type="button" onClick={handleSubmit} className="flex-1 btn-primary text-sm py-1.5">
-              {editId ? 'Save changes' : 'Add member'}
+              {submitLabel}
             </button>
           </div>
         </div>

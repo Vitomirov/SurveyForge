@@ -116,6 +116,7 @@ test('forceVerified is blocked when not in development', () => {
     JWT_SECRET: 'x'.repeat(32),
     REQUIRE_STRONG_JWT: 'false',
     CORS_ORIGIN: 'https://rescopesurveys.com',
+    SMTP_URL: 'smtps://user:pass@smtp.example.com:465',
   })
   assert.equal(prod.isDev, false)
 
