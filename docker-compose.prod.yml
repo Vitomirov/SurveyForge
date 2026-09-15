@@ -56,6 +56,11 @@ services:
       COOKIE_SECURE: 'true'
       AUTH_ALLOW_BEARER: 'false'
       CORS_ORIGIN: ${CORS_ORIGIN:-https://app.rescopesurveys.com,https://rescopesurveys.com,https://www.rescopesurveys.com,https://surveys.rescopesurveys.com}
+      # Real mail is mandatory in production: invites, email confirmation, password reset.
+      EMAIL_TRANSPORT: smtp
+      SMTP_URL: ${SMTP_URL:?Set SMTP_URL (e.g. smtps://user:pass@smtp.example.com:465)}
+      EMAIL_FROM: ${EMAIL_FROM:-Rescope Surveys <no-reply@rescopesurveys.com>}
+      APP_URL: ${APP_URL:-https://app.rescopesurveys.com}
       SEED_DEFAULT_ACCOUNTS: 'false'
       RUN_PLATFORM_LIST_MIGRATION: 'false'
       REQUIRE_STRONG_JWT: 'true'

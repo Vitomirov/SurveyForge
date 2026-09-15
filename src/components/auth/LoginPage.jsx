@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react'
 import { Eye, EyeOff, AlertCircle } from 'lucide-react'
 import { login, signup, DEFAULT_CREDENTIALS } from '@/utils/data/authStore'
 import { prefetchForRoute } from '@/utils/routing/routePrefetch'
-import { AUTH_COPY, AUTH_VALIDATION } from '@/constants/authCopy'
+import { AUTH_ACCOUNT, AUTH_COPY, AUTH_VALIDATION } from '@/constants/authCopy'
+import { useApi } from '@/config/api'
 import { SignupPlanPanelAside, SignupPlanPanelCompact } from '@/components/auth/SignupPlanPanel.jsx'
 import { LoginWelcomePanelAside, LoginWelcomePanelCompact } from '@/components/auth/LoginWelcomePanel.jsx'
 import { AuthSplitLayout } from '@/components/auth/AuthSplitLayout.jsx'
@@ -154,7 +155,18 @@ export function LoginPage({ onLogin, initialMode = 'login', onGoHome, signupPlan
       </div>
 
       <div>
-        <label className="text-xs font-semibold text-ink-600 block mb-1">Password</label>
+        <div className="flex items-center justify-between mb-1">
+          <label className="text-xs font-semibold text-ink-600 block">Password</label>
+          {!isSignup && useApi && (
+            <button
+              type="button"
+              onClick={() => nav('forgot-password')}
+              className="text-xs font-medium text-brand-600 hover:text-brand-700"
+            >
+              {AUTH_ACCOUNT.forgotLink}
+            </button>
+          )}
+        </div>
         <div className="relative">
           <input
             type={showPass ? 'text' : 'password'}

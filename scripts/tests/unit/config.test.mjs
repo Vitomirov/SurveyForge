@@ -11,6 +11,7 @@ import { loadConfig, validateJwtSecret, durationToMs, parseCorsOrigin } from '..
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const STRONG_SECRET = 'a'.repeat(32)
+const SMTP = 'smtps://user:pass@smtp.example.com:465'
 
 test('development defaults enable seed, cookies, and bearer fallback', () => {
   const config = loadConfig({
@@ -37,6 +38,7 @@ test('production defaults disable seed and platform migration', () => {
     JWT_SECRET: STRONG_SECRET,
     INTERNAL_API_SECRET: 'prod-internal-secret',
     CORS_ORIGIN: 'https://rescopesurveys.com,https://www.rescopesurveys.com',
+    SMTP_URL: SMTP,
   })
   assert.equal(config.isDev, false)
   assert.equal(config.seedDefaultAccounts, false)
@@ -55,6 +57,7 @@ test('explicit env flags override defaults', () => {
     NODE_ENV: 'production',
     JWT_SECRET: STRONG_SECRET,
     CORS_ORIGIN: 'https://app.example.com',
+    SMTP_URL: SMTP,
     SEED_DEFAULT_ACCOUNTS: 'true',
     RUN_PLATFORM_LIST_MIGRATION: 'true',
     REQUIRE_STRONG_JWT: 'false',
@@ -71,6 +74,7 @@ test('strict production mode rejects unsafe runtime flags', () => {
     JWT_SECRET: STRONG_SECRET,
     INTERNAL_API_SECRET: 'prod-internal-secret',
     CORS_ORIGIN: 'https://app.example.com',
+    SMTP_URL: SMTP,
   }
 
   for (const [key, value] of [
@@ -89,12 +93,37 @@ test('strict production mode rejects unsafe runtime flags', () => {
   }
 })
 
+test('email: development logs links; production requires SMTP and rejects log transport', () => {
+  const dev = loadConfig({ NODE_ENV: 'development' })
+  assert.equal(dev.emailTransport, 'log')
+  assert.equal(dev.appUrl, 'http://localhost:5173')
+
+  const prod = {
+    NODE_ENV: 'production',
+    JWT_SECRET: STRONG_SECRET,
+    INTERNAL_API_SECRET: 'prod-internal-secret',
+    CORS_ORIGIN: 'https://app.example.com',
+  }
+  assert.throws(() => loadConfig(prod), /SMTP_URL is required/)
+  assert.throws(
+    () => loadConfig({ ...prod, EMAIL_TRANSPORT: 'log' }),
+    /Unsafe production security configuration:.*EMAIL_TRANSPORT/,
+  )
+  assert.throws(() => loadConfig({ ...prod, SMTP_URL: SMTP, APP_URL: 'not a url' }), /APP_URL must be an absolute URL/)
+
+  const ok = loadConfig({ ...prod, SMTP_URL: SMTP, APP_URL: 'https://app.example.com/' })
+  assert.equal(ok.emailTransport, 'smtp')
+  assert.equal(ok.smtpUrl, SMTP)
+  assert.equal(ok.appUrl, 'https://app.example.com')
+})
+
 test('strict production mode accepts the hardened defaults', () => {
   assert.doesNotThrow(() => loadConfig({
     NODE_ENV: 'production',
     JWT_SECRET: STRONG_SECRET,
     INTERNAL_API_SECRET: 'prod-internal-secret',
     CORS_ORIGIN: 'https://app.example.com',
+    SMTP_URL: SMTP,
   }))
 })
 

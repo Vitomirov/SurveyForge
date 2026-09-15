@@ -10,6 +10,9 @@ export const APP_HOST = `app.${RESCOPESURVEYS_HOST}`
 
 export const MARKETING_HOSTS = [RESCOPESURVEYS_HOST, `www.${RESCOPESURVEYS_HOST}`]
 
+/** App-host views opened from emailed one-time links (#/<view>?token=…). */
+export const ACCOUNT_LINK_VIEWS = ['forgot-password', 'reset-password', 'accept-invite', 'verify-email']
+
 export function normalizeHostname(hostname) {
   return String(hostname || '').split(':')[0].toLowerCase()
 }
@@ -55,6 +58,9 @@ export function buildAppLocationHash(view, id = null, opts = {}) {
     let hash = '#/signup'
     if (opts.plan) hash += `?plan=${encodeURIComponent(normalizeSignupPlanId(opts.plan))}`
     return hash
+  }
+  if (ACCOUNT_LINK_VIEWS.includes(view)) {
+    return opts.token ? `#/${view}?token=${encodeURIComponent(opts.token)}` : `#/${view}`
   }
   let hash = `#/${view}/${id}`
   if (opts.export && view === 'builder') hash += '?export=1'

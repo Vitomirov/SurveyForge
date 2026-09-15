@@ -47,6 +47,11 @@ jwt_secret="$(openssl rand -base64 48 | tr -d '\n')"
 dockerhub_user="${DOCKERHUB_USER:-$DEFAULT_DOCKERHUB_USER}"
 image_tag="${IMAGE_TAG:-latest}"
 web_host_port="${WEB_HOST_PORT:-$DEFAULT_WEB_HOST_PORT}"
+smtp_url="${SMTP_URL:-}"
+
+if [[ -z "$smtp_url" ]]; then
+  echo "NOTE: SMTP_URL not provided — set it in .env before deploy (SMTP_URL=smtps://user:pass@host:465)."
+fi
 
 if [[ "$image_tag" == "latest" ]]; then
   echo "WARNING: IMAGE_TAG=latest — prefer a version tag (IMAGE_TAG=v0.1.0) so rollback is possible."
@@ -65,6 +70,11 @@ JWT_SECRET=${jwt_secret}
 
 CORS_ORIGIN=https://app.rescopesurveys.com,https://rescopesurveys.com,https://www.rescopesurveys.com,https://surveys.rescopesurveys.com
 
+# Outbound email (invites, email confirmation, password reset). Required — fill in before deploy.
+SMTP_URL=${smtp_url}
+EMAIL_FROM=Rescope Surveys <no-reply@rescopesurveys.com>
+APP_URL=https://app.rescopesurveys.com
+
 DOCKERHUB_USER=${dockerhub_user}
 IMAGE_TAG=${image_tag}
 
@@ -77,7 +87,11 @@ if [[ -n "${SUDO_USER:-}" ]]; then
   chown "$SUDO_USER:$SUDO_USER" "$ENV_FILE" 2>/dev/null || true
 fi
 
-validate_production_env
+if [[ -n "$smtp_url" ]]; then
+  validate_production_env
+else
+  echo "Skipping full validation until SMTP_URL is set; deploy.sh will enforce it."
+fi
 
 echo "Wrote $ENV_FILE (mode 600)"
 echo "Keys:"

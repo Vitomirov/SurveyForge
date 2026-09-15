@@ -42,13 +42,14 @@ The platform is **not yet enterprise-ready**. Highest residual risks are incompl
 | **1** | Dependencies & config | `@fastify/jwt` 10.x, Fastify 5.x, HS256-only JWTs, strict prod config, required `POSTGRES_PASSWORD` / strong `JWT_SECRET` |
 | **2** | Distributed rate limits | Private Redis; per-IP, per-account, global auth, and per-survey quotas; hashed keys; `Retry-After` headers; in-memory fallback |
 | **3** | Application security (P0) | CSRF (`Origin` + `rs_csrf`); refresh cookie path `/api/auth`; CSP `frame-ancestors` on HTML; per-survey embed CSP; validated `postMessage` origins; `INTERNAL_API_SECRET` for Caddy ask; trusted `X-Forwarded-Host` overwrite; Caddy ask rate limits |
+| **12** | Account lifecycle | Email verification for self-signup admins; invite-only team onboarding (no admin-set passwords); self-service password reset; single-use hashed tokens; mandatory SMTP in production |
 
 ### Remaining
 
 | Phase | Priority | Focus |
 |-------|----------|--------|
 | **2.1** | P2 | Rate-limit tuning for enterprise NAT (shared-office IP quotas) |
-| **4** | P1 | Authoritative JSON schemas; security audit log; MFA & account lifecycle; data governance & fingerprinting controls |
+| **4** | P1 | Authoritative JSON schemas; security audit log; MFA (TOTP) for admins; data governance & fingerprinting controls |
 | **5** | P2 | Container hardening; CI/CD security gates; monitoring & alerting; PostgreSQL RLS evaluation |
 | **6** | P3 | Browser/upload polish (HSTS, CSP reporting); host SSH hardening; penetration test; `SECURITY.md` |
 
@@ -66,8 +67,9 @@ The platform is **not yet enterprise-ready**. Highest residual risks are incompl
 - **Password storage:** bcrypt (cost 10); generic auth failure messages.
 - **CSRF (Phase 3):** unsafe cookie-authenticated `/api` methods require allowlisted `Origin` / `Sec-Fetch-Site` plus double-submit `rs_csrf` / `X-CSRF-Token`. Login/signup and `/api/public/*` exempt.
 - **CORS:** production requires explicit origin allowlist; wildcards rejected. **`CORS_ORIGIN` must include every app host** (e.g. `https://app.rescopesurveys.com`).
+- **Account lifecycle (Phase 12):** one-time links for invites (7 days), password reset (1 hour), and email confirmation (48 hours). Tokens are 256-bit random, stored as SHA-256 hashes, single-use (atomic claim), and re-issuing voids earlier links. Tokens travel in the URL fragment so they never reach server logs. `POST /api/auth/password/forgot` always returns 200 (no account enumeration). Reset increments `tokenVersion` and revokes all refresh families. Admins invite by email + role only — they never see or set a member's password; acceptance creates the user inside the inviting org with a verified email and enforces seat limits. Unverified admins cannot invite. Outbound mail via SMTP is **required** in production (`EMAIL_TRANSPORT=log` is rejected).
 
-*References:* `server/src/lib/auth/cookies.js`, `server/src/lib/security/csrf.js`, `server/src/plugins/csrf.js`, `server/src/plugins/auth.js`, `src/api/client.js`
+*References:* `server/src/lib/auth/cookies.js`, `server/src/lib/security/csrf.js`, `server/src/plugins/csrf.js`, `server/src/plugins/auth.js`, `server/src/lib/auth/authTokens.js`, `server/src/lib/auth/accountLinks.js`, `server/src/routes/invites.js`, `server/src/routes/passwordReset.js`, `server/src/routes/emailVerification.js`, `src/api/client.js`
 
 ### 3.2 Authorization & tenant isolation
 
@@ -129,12 +131,13 @@ The platform is **not yet enterprise-ready**. Highest residual risks are incompl
 
 ### 3.8 Automated verification
 
-Integration tests cover RBAC, survey/response ownership, auth cookies & refresh, CSRF, rate limits, revision conflicts, XSS sanitization, and config validation under `scripts/tests/`.
+Integration tests cover RBAC, survey/response ownership, auth cookies & refresh, account lifecycle (`npm run test:auth-lifecycle`: verification, invites, reset, single-use tokens, no account enumeration), CSRF, rate limits, revision conflicts, XSS sanitization, and config validation under `scripts/tests/`.
 
 **Production operator checklist (after each security-related deploy):**
 
 1. `CORS_ORIGIN` includes all app/survey hosts (no spaces after commas).
 2. `INTERNAL_API_SECRET` in `.env` **and** Caddy systemd override (same value).
+2b. `SMTP_URL` set and a test invite / reset email actually arrives (check spam; SPF/DKIM for `EMAIL_FROM` domain).
 3. Recreate API after `.env` changes: `docker compose … up -d --force-recreate api` (`restart` does not reload env).
 4. `./scripts/deploy/check-dns.sh` passes for all four hostnames.
 5. Run smoke checklist in `docs/DEPLOY.md` §7.
@@ -153,11 +156,11 @@ The API validates IDs, statuses, and basic completion but not full per-question 
 
 **Recommendation:** versioned JSON schemas per question type; server-side completion/termination evaluation; reject unknown properties; trusted metadata only from server.
 
-#### 4.2 No enterprise identity controls
+#### 4.2 Remaining identity controls
 
-No MFA, SSO, email verification, secure invites, password reset, breached-password screening, or session inventory. Signup is open; minimum password length is 8 characters.
+Email verification, invite-only onboarding, and self-service password reset shipped in Phase 12 (see §3.1). Still open: MFA, SSO, breached-password screening, session inventory ("sign out everywhere" UI), and the legacy admin `POST /api/platform/users` endpoint that sets a member password directly (kept for test fixtures; the UI no longer uses it in API mode). Signup remains open; minimum password length is 8 characters.
 
-**Recommendation:** MFA for `admin` and `platform_owner`; verified-email invites; one-time setup links; absolute + idle session limits; SSO for enterprise tier.
+**Recommendation:** TOTP MFA for `admin` and `platform_owner`; HIBP k-anonymity check on signup/reset; retire `POST /api/platform/users` once fixtures use invites; absolute + idle session limits; SSO (OIDC/SAML) for the enterprise tier.
 
 #### 4.3 No security audit trail
 

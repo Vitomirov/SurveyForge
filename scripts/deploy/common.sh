@@ -91,7 +91,7 @@ web_health_url() {
 }
 
 validate_production_env() {
-  local jwt_secret postgres_password cors_origin
+  local jwt_secret postgres_password cors_origin smtp_url
 
   [[ -f "$ENV_FILE" ]] || fail ".env not found in $ROOT — run: ./scripts/deploy/init-env.sh"
 
@@ -121,6 +121,12 @@ validate_production_env() {
         ;;
     esac
   fi
+
+  smtp_url="$(env_value SMTP_URL)"
+  case "$smtp_url" in
+    smtp://*|smtps://*) ;;
+    *) fail "SMTP_URL is missing or not an smtp:// / smtps:// URL in .env — the API refuses to start in production without outbound email." ;;
+  esac
 }
 
 version_gte() {

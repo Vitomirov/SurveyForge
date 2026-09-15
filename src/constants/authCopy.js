@@ -49,6 +49,42 @@ export const AUTH_ERRORS = {
   forbidden:           'You don\'t have permission to do that.',
 }
 
+/** Emailed one-time-link flows: forgot / reset password, accept invite, verify email. */
+export const AUTH_ACCOUNT = {
+  forgotLink:          'Forgot password?',
+  forgotTitle:         'Reset your password',
+  forgotSubtitle:      'Enter the email for your account and we\'ll send you a link to choose a new password.',
+  forgotButton:        'Send reset link',
+  forgotSent:          'If an account exists for that email, a reset link is on its way. The link expires in 1 hour.',
+  backToSignIn:        'Back to sign in',
+
+  resetTitle:          'Choose a new password',
+  resetSubtitle:       'Your other devices will be signed out once the new password is saved.',
+  resetButton:         'Save new password',
+  resetInvalid:        'This reset link is invalid or has expired. Request a new one below.',
+
+  inviteTitle:         'Join your team',
+  inviteSubtitle:      'Set your name and password to finish creating your account.',
+  inviteJoining:       (org) => `You've been invited to ${org}.`,
+  inviteButton:        'Create account',
+  inviteInvalid:       'This invitation is invalid, expired, or was revoked. Ask your admin to send a new one.',
+  inviteLoading:       'Checking your invitation…',
+
+  verifyTitle:         'Confirm your email',
+  verifyChecking:      'Confirming your email…',
+  verifySuccess:       'Your email is confirmed. You can now invite teammates.',
+  verifyInvalid:       'This confirmation link is invalid or has expired.',
+  verifyResend:        'Send a new link',
+  verifyResent:        'A new confirmation link is on its way — check your inbox.',
+  verifyBanner:        'Confirm your email address to invite teammates and secure your account.',
+  verifyBannerAction:  'Resend email',
+  continueToDashboard: 'Continue to dashboard',
+
+  newPassword:         'New password',
+  confirmPassword:     'Confirm password',
+  working:             'Please wait…',
+}
+
 export const AUTH_TEAM = {
   heading:             'Team activity',
   teamActivity:        'Team activity',
@@ -61,6 +97,14 @@ export const AUTH_TEAM = {
   noActivity:          'No activity yet',
   credentialsOnce:     'Copy these credentials now — the password will not be shown again.',
   passwordResetOnce:   'New password set — copy it now. It will not be shown again.',
+  inviteMember:        'Invite member',
+  inviteHint:          'They\'ll get an email link to set their own password. Invitations expire in 7 days.',
+  inviteSent:          'Invitation sent.',
+  pendingInvites:      'Pending invitations',
+  resendInvite:        'Resend',
+  revokeInvite:        'Revoke',
+  inviteResent:        'Invitation re-sent — the previous link no longer works.',
+  passwordSelfService: 'Members change their own password from My account, or use “Forgot password?” on the sign-in page.',
 }
 
 export const AUTH_PROFILE = {

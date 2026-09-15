@@ -12,6 +12,12 @@ const PUBLIC_EXACT = new Set([
   '/api/auth/signup',
   '/api/auth/logout',
   '/api/auth/refresh',
+  // One-time-link flows: the emailed token is the credential.
+  '/api/auth/invites/preview',
+  '/api/auth/invites/accept',
+  '/api/auth/password/forgot',
+  '/api/auth/password/reset',
+  '/api/auth/email/verify',
 ])
 const PUBLIC_PREFIXES = ['/api/public/', '/api/internal/']
 

@@ -52,6 +52,7 @@ export async function seedDefaultAdmin(prisma) {
       passwordHash,
       name:           'Admin',
       role:           'admin',
+      emailVerifiedAt: new Date(),
     },
   })
 
@@ -92,6 +93,7 @@ export async function seedPlatformOwner(prisma) {
       passwordHash,
       name:           'Platform Owner',
       role:           ROLES.PLATFORM_OWNER,
+      emailVerifiedAt: new Date(),
     },
   })
 
