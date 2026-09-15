@@ -218,11 +218,6 @@ export function LoginPage({ onLogin, initialMode = 'login', onGoHome, signupPlan
           : (isSignup ? AUTH_COPY.createAccountButton : AUTH_COPY.signIn)}
       </button>
 
-      {showDevHint && (
-        <p className="text-[11px] text-center text-ink-400 pt-1">
-          Dev: {DEFAULT_CREDENTIALS.email} / {DEFAULT_CREDENTIALS.password}
-        </p>
-      )}
     </form>
   )
 
